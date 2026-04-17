@@ -1,0 +1,21 @@
+Yeader
+Copyright (c) 2026 Yeats
+
+This project is developed with reference to the following upstream project:
+
+- gedoor/legado
+  Repository: https://github.com/gedoor/legado
+  Upstream license at the time of writing: GPL-3.0
+
+Project status and attribution notes:
+
+- Yeader is an independent Rust + Tauri reimplementation effort inspired by
+  the behavior, data formats, and compatibility expectations of Legado.
+- A local reference clone of the upstream repository may be kept under
+  `.cache/legado-upstream/` for analysis and migration work. That directory is
+  ignored from version control and is not part of this repository's
+  distributable source tree.
+- If source code, assets, fixtures, rules, or other material are copied from
+  upstream in the future, the relevant files should retain appropriate
+  attribution and license notices.
+- See `LICENSE` for the license that currently applies to this repository.

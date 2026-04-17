@@ -1,0 +1,10 @@
+[package]
+name = "yeader-library"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+rusqlite.workspace = true
+serde_json.workspace = true
+yeader-models.workspace = true

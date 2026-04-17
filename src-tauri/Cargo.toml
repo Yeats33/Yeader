@@ -1,0 +1,25 @@
+[package]
+name = "yeader"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[lib]
+name = "yeader_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build.workspace = true
+
+[dependencies]
+env_logger.workspace = true
+log.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tauri.workspace = true
+tauri-plugin-shell.workspace = true
+yeader-models.workspace = true
+yeader-protocol.workspace = true
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-opener.workspace = true

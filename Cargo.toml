@@ -1,0 +1,43 @@
+[workspace]
+members = [
+  "crates/yeader-backup",
+  "crates/yeader-library",
+  "crates/yeader-models",
+  "crates/yeader-net",
+  "crates/yeader-protocol",
+  "crates/yeader-reader",
+  "crates/yeader-rules",
+  "src-tauri",
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2024"
+license = "AGPL-3.0"
+version = "0.1.0"
+
+[workspace.dependencies]
+anyhow = "1"
+env_logger = "0.11"
+log = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2", features = ["devtools"] }
+tauri-build = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+rusqlite = { version = "0.31", features = ["bundled"] }
+tauri-plugin-shell = "2"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+yeader-backup = { path = "crates/yeader-backup" }
+yeader-library = { path = "crates/yeader-library" }
+yeader-models = { path = "crates/yeader-models" }
+yeader-net = { path = "crates/yeader-net" }
+yeader-protocol = { path = "crates/yeader-protocol" }
+yeader-reader = { path = "crates/yeader-reader" }
+yeader-rules = { path = "crates/yeader-rules" }
+
+[profile.release]
+codegen-units = 1
+lto = true
+panic = "abort"
+strip = true

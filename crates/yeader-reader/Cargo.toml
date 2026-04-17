@@ -1,0 +1,10 @@
+[package]
+name = "yeader-reader"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+yeader-library.workspace = true
+yeader-models.workspace = true
+yeader-rules.workspace = true

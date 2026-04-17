@@ -1,0 +1,8 @@
+[package]
+name = "yeader-rules"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+yeader-models.workspace = true

@@ -1,0 +1,10 @@
+[package]
+name = "yeader-backup"
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+serde_json.workspace = true
+yeader-models.workspace = true
+zip.workspace = true

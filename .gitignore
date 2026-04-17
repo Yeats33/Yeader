@@ -1,0 +1,20 @@
+node_modules/
+dist/
+target/
+.cache/
+.cargo/
+*.pdb
+.DS_Store
+*.log
+.env
+
+#AI Coding Assistant
+docs/superpowers/
+.omx
+.claude
+AGENTS.md
+CLAUDE.md
+
+#plan
+fixtures/
+
