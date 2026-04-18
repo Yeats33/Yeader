@@ -1,6 +1,5 @@
 import "./styles.css";
-import { createAppApi } from "./api.ts";
-import { renderAppShell } from "./render.ts";
+import { initApp } from "./app.ts";
 
 async function bootstrap() {
   const container = document.querySelector<HTMLDivElement>("#app");
@@ -8,8 +7,11 @@ async function bootstrap() {
     throw new Error("Missing #app container");
   }
 
-  const snapshot = await createAppApi().getAppShellSnapshot();
-  container.innerHTML = renderAppShell(snapshot);
+  if (!window.location.hash) {
+    window.location.hash = "/";
+  }
+
+  await initApp(container);
 }
 
 void bootstrap();
