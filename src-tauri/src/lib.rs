@@ -127,7 +127,7 @@ fn list_book_sources() -> Vec<LegacyBookSource> {
         LegacyBookSource {
             book_source_url: "https://example.com/source1".to_string(),
             book_source_name: "示例书源1".to_string(),
-            book_source_group: "默认".to_string(),
+            book_source_group: Some("默认".to_string()),
             enabled: true,
             enabled_explore: Some(true),
             explore_url: None,
@@ -137,11 +137,14 @@ fn list_book_sources() -> Vec<LegacyBookSource> {
             rule_book_info: None,
             rule_toc: None,
             rule_content: None,
+            search_url: None,
+            book_url_pattern: None,
+            extra: Default::default(),
         },
         LegacyBookSource {
             book_source_url: "https://example.com/source2".to_string(),
             book_source_name: "示例书源2".to_string(),
-            book_source_group: "默认".to_string(),
+            book_source_group: Some("默认".to_string()),
             enabled: false,
             enabled_explore: Some(false),
             explore_url: None,
@@ -151,6 +154,9 @@ fn list_book_sources() -> Vec<LegacyBookSource> {
             rule_book_info: None,
             rule_toc: None,
             rule_content: None,
+            search_url: None,
+            book_url_pattern: None,
+            extra: Default::default(),
         },
     ]
 }
