@@ -50,6 +50,12 @@ function describeEnabledSummary(sources: LegacyBookSource[]): string {
   return `${enabledCount}/${sources.length} 启用`;
 }
 
+function describeAvailabilitySummary(sources: LegacyBookSource[]): string {
+  const tested = sources.filter((s) => typeof s.lastTestAvailable === "boolean");
+  const availableCount = tested.filter((s) => s.lastTestAvailable).length;
+  return `${availableCount}/${tested.length} 可用`;
+}
+
 export function describeLastTestedText(testedAt: string, now: Date = new Date()): string {
   const epochSeconds = Number(testedAt);
   const date = Number.isFinite(epochSeconds) && /^\d+$/.test(testedAt)
@@ -274,10 +280,11 @@ function describeSourceGroups(sources: LegacyBookSource[]): string {
   return Array.from(groups.entries())
     .sort(([left], [right]) => left.localeCompare(right, "zh-Hans-CN"))
     .map(([groupName, groupSources]) => `
-      <details class="source-group" open>
+      <details class="source-group">
         <summary class="source-group-summary">
           <span class="source-group-title">${escapeText(groupName)}</span>
           <span class="source-summary-chip">${describeEnabledSummary(groupSources)}</span>
+          <span class="source-summary-chip available">${describeAvailabilitySummary(groupSources)}</span>
           <span class="source-summary-actions">
             ${describeAvailabilityTestButton("测试本组", groupSources)}
             ${describeBulkToggleButton("group", groupSources)}
@@ -315,10 +322,11 @@ export function describeBookSourceTree(bookSources: LegacyBookSource[]): string 
 
   if (directSources.length > 0) {
     sections.push(`
-      <details class="source-tier" open>
+      <details class="source-tier">
         <summary class="source-tier-summary">
-          <span class="source-tier-title">直接导入</span>
+          <span class="source-tier-title">本地书源</span>
           <span class="source-summary-chip">${describeEnabledSummary(directSources)}</span>
+          <span class="source-summary-chip available">${describeAvailabilitySummary(directSources)}</span>
           <span class="source-summary-actions">
             ${describeAvailabilityTestButton("测试此层", directSources)}
           </span>
@@ -335,11 +343,12 @@ export function describeBookSourceTree(bookSources: LegacyBookSource[]): string 
     const subscriptionNodes = Array.from(subscriptionSources.entries())
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([subscriptionUrl, groupedSources]) => `
-        <details class="source-subscription" open>
+        <details class="source-subscription">
           <summary class="source-subscription-summary">
             <span class="source-subscription-title">订阅链接</span>
             <code class="source-subscription-url">${escapeText(subscriptionUrl)}</code>
             <span class="source-summary-chip">${describeEnabledSummary(groupedSources)}</span>
+            <span class="source-summary-chip available">${describeAvailabilitySummary(groupedSources)}</span>
             <span class="source-summary-actions">
               ${describeAvailabilityTestButton("测试订阅", groupedSources)}
               ${describeBulkToggleButton("subscription", groupedSources)}
@@ -353,10 +362,11 @@ export function describeBookSourceTree(bookSources: LegacyBookSource[]): string 
       .join("");
 
     sections.push(`
-      <details class="source-tier" open>
+      <details class="source-tier">
         <summary class="source-tier-summary">
           <span class="source-tier-title">订阅源</span>
           <span class="source-summary-chip">${describeEnabledSummary(allSubscriptionSources)}</span>
+          <span class="source-summary-chip available">${describeAvailabilitySummary(allSubscriptionSources)}</span>
           <span class="source-summary-actions">
             ${describeAvailabilityTestButton("测试此层", allSubscriptionSources)}
           </span>

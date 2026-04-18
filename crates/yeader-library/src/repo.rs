@@ -147,14 +147,28 @@ impl<'a> BookSourceRepo<'a> {
         detail: Option<String>,
         tested_at: &str,
     ) -> rusqlite::Result<bool> {
-        let Some(mut source) = self.find_by_url(url)? else {
-            return Ok(false);
-        };
-        source.last_test_available = Some(available);
-        source.last_tested_at = Some(tested_at.to_string());
-        source.last_test_detail = detail;
-        self.upsert(&source)?;
-        Ok(true)
+        let rows = self.db.conn().execute(
+            "UPDATE book_sources SET last_test_available = ?2, last_tested_at = ?3, last_test_detail = ?4 WHERE book_source_url = ?1",
+            params![url, available as i32, tested_at, detail],
+        )?;
+        Ok(rows > 0)
+    }
+
+    pub fn set_test_result_batch(
+        &self,
+        results: &[(String, bool, Option<String>, String)],
+    ) -> rusqlite::Result<usize> {
+        let tx = self.db.conn().unchecked_transaction()?;
+        let mut count = 0;
+        for (url, available, detail, tested_at) in results {
+            let rows = tx.execute(
+                "UPDATE book_sources SET last_test_available = ?2, last_tested_at = ?3, last_test_detail = ?4 WHERE book_source_url = ?1",
+                params![url, *available as i32, tested_at, detail],
+            )?;
+            count += rows;
+        }
+        tx.commit()?;
+        Ok(count)
     }
 }
 

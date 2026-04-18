@@ -751,6 +751,291 @@ body.dark-mode {
 }
 
 /* ---------------------------------------------------------------------------
+   Book Source Management
+   --------------------------------------------------------------------------- */
+.source-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  margin-bottom: 1rem;
+}
+
+.source-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Source tier (direct / subscription layers) */
+.source-tier {
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+}
+
+.source-tier-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  background: var(--color-bg);
+  list-style: none;
+  user-select: none;
+}
+
+.source-tier-summary::-webkit-details-marker { display: none; }
+
+.source-tier-title {
+  font-weight: 700;
+  font-size: 0.875rem;
+  color: var(--color-text);
+}
+
+.source-tier-body {
+  padding: 0.75rem;
+}
+
+/* Source group (within a tier) */
+.source-group {
+  margin-bottom: 0.5rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+}
+
+.source-group:last-child {
+  margin-bottom: 0;
+}
+
+.source-group-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  cursor: pointer;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+  list-style: none;
+  user-select: none;
+}
+
+.source-group-summary::-webkit-details-marker { display: none; }
+
+.source-group-summary:hover {
+  opacity: 0.9;
+}
+
+.source-group-title {
+  font-weight: 600;
+  font-size: 0.8125rem;
+  color: white;
+}
+
+.source-item-list {
+  list-style: none;
+  padding: 0.375rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+/* Source item row */
+.source-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.625rem;
+  border-radius: 6px;
+  transition: background 0.15s;
+  background: var(--color-bg);
+}
+
+.source-row:hover {
+  background: var(--color-border);
+}
+
+.source-item-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.source-item-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.source-item-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.source-meta-tag {
+  font-size: 0.6875rem;
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  background: var(--color-primary);
+  color: white;
+  font-weight: 600;
+}
+
+.source-item-meta code {
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
+
+.source-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-shrink: 0;
+}
+
+/* Chips */
+.source-state-chip,
+.source-availability-chip,
+.source-summary-chip {
+  font-size: 0.6875rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 20px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.source-state-chip {
+  background: var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.source-state-chip.active {
+  background: var(--color-success);
+  color: white;
+}
+
+.source-availability-chip {
+  background: var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.source-availability-chip.available {
+  background: rgba(56, 161, 105, 0.15);
+  color: var(--color-success);
+  border: 1px solid var(--color-success);
+}
+
+.source-availability-chip.unavailable {
+  background: rgba(229, 62, 62, 0.1);
+  color: var(--color-danger);
+  border: 1px solid var(--color-danger);
+}
+
+.source-availability-chip.pending {
+  background: var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.source-summary-chip {
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+}
+
+.source-summary-chip.available {
+  background: rgba(56, 161, 105, 0.15);
+  color: var(--color-success);
+  border: 1px solid var(--color-success);
+}
+
+.source-summary-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-left: auto;
+}
+
+.source-last-tested {
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* Subscription tier specific */
+.source-subscription {
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  overflow: hidden;
+}
+
+.source-subscription-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  background: var(--color-bg);
+  list-style: none;
+  user-select: none;
+  flex-wrap: wrap;
+}
+
+.source-subscription-summary::-webkit-details-marker { display: none; }
+
+.source-subscription-title {
+  font-weight: 700;
+  font-size: 0.875rem;
+  color: var(--color-text);
+}
+
+.source-subscription-url {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* URL import form */
+.url-import-form {
+  padding: 0.75rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
+/* ---------------------------------------------------------------------------
    Utilities
    --------------------------------------------------------------------------- */
 .hidden {

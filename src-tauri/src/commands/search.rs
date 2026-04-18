@@ -5,6 +5,8 @@ use yeader_models::{LegacyBookSource, SearchResult};
 
 use crate::state::AppState;
 
+const TEST_RESULT_BATCH_SIZE: usize = 10;
+
 #[tauri::command]
 pub async fn search_books(
     state: State<'_, AppState>,
@@ -101,35 +103,40 @@ pub async fn test_book_sources_availability(
         }
     };
 
-    let mut results = Vec::with_capacity(sources.len());
     let tested_at = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_secs().to_string())
         .unwrap_or_else(|_| "0".to_string());
+
+    let mut results = Vec::with_capacity(sources.len());
+    let mut pending_persist: Vec<(String, bool, Option<String>, String)> = Vec::new();
+
     for source in sources {
-        let result = match search_impl(&source, "测试", 1).await {
-            Ok(_) => BookSourceAvailability {
-                source_url: source.book_source_url.clone(),
-                available: true,
-                detail: Some("请求和解析通过".to_string()),
-                tested_at: tested_at.clone(),
-            },
-            Err(error) => BookSourceAvailability {
-                source_url: source.book_source_url.clone(),
-                available: false,
-                detail: Some(error),
-                tested_at: tested_at.clone(),
-            },
+        let (available, detail) = match search_impl(&source, "测试", 1).await {
+            Ok(_) => (true, Some("请求和解析通过".to_string())),
+            Err(error) => (false, Some(error)),
         };
+        let detail_for_persist = detail.clone();
+        results.push(BookSourceAvailability {
+            source_url: source.book_source_url.clone(),
+            available,
+            detail,
+            tested_at: tested_at.clone(),
+        });
+        pending_persist.push((source.book_source_url.clone(), available, detail_for_persist, tested_at.clone()));
+
+        if pending_persist.len() >= TEST_RESULT_BATCH_SIZE {
+            let to_persist = std::mem::take(&mut pending_persist);
+            let db = state.db.lock().unwrap();
+            let repo = yeader_library::BookSourceRepo::new(&db);
+            let _ = repo.set_test_result_batch(&to_persist);
+        }
+    }
+
+    if !pending_persist.is_empty() {
         let db = state.db.lock().unwrap();
         let repo = yeader_library::BookSourceRepo::new(&db);
-        let _ = repo.set_test_result(
-            &result.source_url,
-            result.available,
-            result.detail.clone(),
-            &result.tested_at,
-        );
-        results.push(result);
+        let _ = repo.set_test_result_batch(&pending_persist);
     }
 
     Ok(results)
