@@ -5630,6 +5630,7 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-opener",
  "tauri-plugin-shell",
+ "yeader-library",
  "yeader-models",
  "yeader-protocol",
 ]

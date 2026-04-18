@@ -75,3 +75,29 @@ pub struct Bookmark {
     pub note: Option<String>,
     pub created_at: String,
 }
+
+// ---------------------------------------------------------------------------
+// Reader pipeline types
+// ---------------------------------------------------------------------------
+
+/// Book metadata fetched from a book source.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BookInfo {
+    pub name: String,
+    pub author: String,
+    pub intro: Option<String>,
+    pub kind: Option<String>,
+    pub cover_url: Option<String>,
+    pub toc_url: Option<String>,
+    pub last_chapter: Option<String>,
+    pub word_count: Option<String>,
+}
+
+/// A single chapter in a book's table of contents.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Chapter {
+    pub title: String,
+    pub url: String,
+    pub is_volume: bool,
+    pub is_vip: bool,
+}
