@@ -5,7 +5,9 @@ license.workspace = true
 version.workspace = true
 
 [dependencies]
+http = "1"
 regex.workspace = true
+rhai = "1.24"
 scraper.workspace = true
 serde_json.workspace = true
 thiserror = "1"
