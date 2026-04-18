@@ -21,6 +21,16 @@ import type {
   LegacyBookSource,
   LegacyReplaceRule,
 } from "../types.ts";
+import {
+  getCurrentTheme,
+  setCurrentTheme,
+  getColorMode,
+  toggleColorMode,
+  getCustomCss,
+  setCustomCss,
+  describeThemeOptions,
+  type ThemeName,
+} from "../theme.ts";
 
 type PersistedBookSourceAvailability = BookSourceAvailability & {
   testedAt: string;
@@ -144,6 +154,22 @@ export function getSourceDeleteButtonLabel(isPending: boolean): string {
 
 export function getDeleteAllButtonLabel(isPending: boolean): string {
   return isPending ? "确认删除全部" : "开发专用：删除全部";
+}
+
+function describeSubscriptionRefreshButton(sources: LegacyBookSource[], subscriptionUrl: string): string {
+  const encodedUrls = escapeAttr(JSON.stringify(sources.map((s) => s.bookSourceUrl)));
+
+  return `
+    <button
+      type="button"
+      class="btn-toggle"
+      data-subscription-refresh="true"
+      data-subscription-url="${escapeAttr(subscriptionUrl)}"
+      data-source-urls="${encodedUrls}"
+    >
+      更新订阅
+    </button>
+  `;
 }
 
 function describeBulkToggleButton(
@@ -351,6 +377,7 @@ export function describeBookSourceTree(bookSources: LegacyBookSource[]): string 
             <span class="source-summary-chip available">${describeAvailabilitySummary(groupedSources)}</span>
             <span class="source-summary-actions">
               ${describeAvailabilityTestButton("测试订阅", groupedSources)}
+              ${describeSubscriptionRefreshButton(groupedSources, subscriptionUrl)}
               ${describeBulkToggleButton("subscription", groupedSources)}
             </span>
           </summary>
@@ -463,6 +490,34 @@ export async function renderSettingsPage(): Promise<string> {
           <button class="btn-secondary" id="export-backup-btn">导出备份</button>
         </div>
         <div id="import-result" class="import-result"></div>
+      </section>
+
+      <section class="settings-section">
+        <div class="section-header">
+          <h2>外观</h2>
+        </div>
+        <div class="appearance-settings" id="appearance-settings">
+          <div class="setting-row">
+            <span class="setting-label">主题</span>
+            <div class="theme-buttons" id="theme-buttons"></div>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">深色模式</span>
+            <button class="btn-toggle" id="color-mode-btn"></button>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">自定义 CSS</span>
+            <button class="btn-secondary" id="edit-custom-css-btn">编辑</button>
+          </div>
+          <div id="custom-css-editor" class="custom-css-editor hidden">
+            <textarea id="custom-css-input" class="custom-css-input" placeholder="输入自定义 CSS..."></textarea>
+            <div class="custom-css-actions">
+              <button class="btn-primary" id="save-custom-css-btn">保存</button>
+              <button class="btn-secondary" id="cancel-custom-css-btn">取消</button>
+            </div>
+          </div>
+          <div id="appearance-result" class="import-result"></div>
+        </div>
       </section>
     </div>
   `;
@@ -863,7 +918,105 @@ export function initSettingsHandlers(container: HTMLElement) {
     }
   });
 
+  container.querySelectorAll<HTMLButtonElement>("[data-subscription-refresh]").forEach((btn) => {
+    btn.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const subscriptionUrl = btn.dataset.subscriptionUrl!;
+      const sourceUrls = JSON.parse(btn.dataset.sourceUrls ?? "[]") as string[];
+      if (sourceUrls.length === 0) return;
+
+      renderSourceActionResult("loading", "更新订阅中...");
+      try {
+        const sources = await importBookSourcesSubscription(subscriptionUrl);
+        renderSourceActionResult(
+          "success",
+          `订阅已更新，新增 ${sources.length} 个书源`,
+        );
+        window.location.reload();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        renderSourceActionResult("error", `更新订阅失败：${msg}`);
+      }
+    });
+  });
+
   exportBackupBtn.addEventListener("click", () => {
     alert("导出功能开发中...");
+  });
+
+  // ---- Appearance Settings ----
+  const themeButtons = $<HTMLElement>(container, "#theme-buttons");
+  const colorModeBtn = $<HTMLButtonElement>(container, "#color-mode-btn");
+  const editCustomCssBtn = $<HTMLButtonElement>(container, "#edit-custom-css-btn");
+  const customCssEditor = $<HTMLElement>(container, "#custom-css-editor");
+  const customCssInput = $<HTMLTextAreaElement>(container, "#custom-css-input");
+  const saveCustomCssBtn = $<HTMLButtonElement>(container, "#save-custom-css-btn");
+  const cancelCustomCssBtn = $<HTMLButtonElement>(container, "#cancel-custom-css-btn");
+  const appearanceResult = $<HTMLElement>(container, "#appearance-result");
+
+  function renderAppearanceResult(kind: "success" | "error" | "loading", text: string) {
+    appearanceResult.innerHTML = `<div class="${kind === "loading" ? "loading" : `${kind}-msg`}">${escapeText(text)}</div>`;
+  }
+
+  function renderThemeButtons() {
+    const current = getCurrentTheme();
+    const options = describeThemeOptions();
+    themeButtons.innerHTML = options
+      .map(
+        ({ name, label }) => `
+        <button class="theme-switcher-btn ${current === name ? "active" : ""}" data-theme="${escapeAttr(name)}">
+          ${escapeText(label)}
+        </button>
+      `,
+      )
+      .join("");
+  }
+
+  function renderColorModeBtn() {
+    const isDark = getColorMode() === "dark";
+    colorModeBtn.textContent = isDark ? "深色" : "浅色";
+    colorModeBtn.classList.toggle("active", isDark);
+  }
+
+  renderThemeButtons();
+  renderColorModeBtn();
+
+  themeButtons.addEventListener("click", (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>(".theme-switcher-btn");
+    if (!btn) return;
+    const name = btn.dataset.theme as ThemeName;
+    setCurrentTheme(name);
+    renderThemeButtons();
+    renderAppearanceResult("success", `已切换到 ${btn.textContent ?? name} 主题`);
+  });
+
+  colorModeBtn.addEventListener("click", () => {
+    const mode = toggleColorMode();
+    renderColorModeBtn();
+    renderAppearanceResult("success", `已切换到${mode === "dark" ? "深色" : "浅色"}模式`);
+  });
+
+  editCustomCssBtn.addEventListener("click", () => {
+    customCssInput.value = getCustomCss();
+    customCssEditor.classList.remove("hidden");
+    editCustomCssBtn.textContent = "收起";
+    editCustomCssBtn.dataset.expanded = "true";
+  });
+
+  cancelCustomCssBtn.addEventListener("click", () => {
+    customCssEditor.classList.add("hidden");
+    editCustomCssBtn.textContent = "编辑";
+    delete editCustomCssBtn.dataset.expanded;
+  });
+
+  saveCustomCssBtn.addEventListener("click", () => {
+    const css = customCssInput.value;
+    setCustomCss(css);
+    customCssEditor.classList.add("hidden");
+    editCustomCssBtn.textContent = "编辑";
+    delete editCustomCssBtn.dataset.expanded;
+    renderAppearanceResult("success", "自定义 CSS 已保存");
   });
 }

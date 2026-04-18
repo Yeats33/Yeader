@@ -1,0 +1,80 @@
+/* ============================================================
+   Mintlify Design System Theme
+   ============================================================ */
+
+:root[data-theme="mintlify"] {
+  --color-bg: #ffffff;
+  --color-surface: #ffffff;
+  --color-text: #0d0d0d;
+  --color-text-secondary: #333333;
+  --color-text-muted: #666666;
+  --color-text-placeholder: #888888;
+  --color-border: rgba(0, 0, 0, 0.05);
+  --color-border-medium: rgba(0, 0, 0, 0.08);
+  --color-brand: #18e299;
+  --color-brand-light: #d4fae8;
+  --color-brand-deep: #0fa76e;
+  --color-danger: #d45656;
+  --color-warning: #c37d0d;
+  --color-info: #3772cf;
+  --font-main: "Inter", "Inter Fallback", system-ui, -apple-system, sans-serif;
+  --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, SFMono-Regular, monospace;
+  --font-size: 16px;
+  --line-height: 1.5;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-pill: 9999px;
+  --shadow-card: rgba(0, 0, 0, 0.03) 0px 2px 4px;
+  --shadow-button: rgba(0, 0, 0, 0.06) 0px 1px 2px;
+  --focus-ring: 1px solid var(--color-brand);
+  --page-header-bg: var(--color-bg);
+  --chip-enabled-bg: var(--color-brand);
+  --chip-available-bg: var(--color-brand-light);
+  --chip-available-color: var(--color-brand-deep);
+  --chip-unavailable-bg: rgba(212, 86, 86, 0.08);
+  --chip-unavailable-color: var(--color-danger);
+  --btn-primary-bg: var(--color-text);
+  --btn-primary-color: #ffffff;
+  --gradient-brand: linear-gradient(135deg, var(--color-brand) 0%, #0fa76e 100%);
+  --gradient-cover: linear-gradient(135deg, var(--color-brand) 0%, #0fa76e 100%);
+}
+
+:root[data-theme="mintlify"][data-color-mode="dark"] {
+  --color-bg: #0d0d0d;
+  --color-surface: #141414;
+  --color-text: #ededed;
+  --color-text-secondary: #a0a0a0;
+  --color-text-muted: #a0a0a0;
+  --color-text-placeholder: #666666;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-medium: rgba(255, 255, 255, 0.08);
+  --page-header-bg: var(--color-bg);
+}
+
+:root[data-theme="mintlify"] .source-chip.state.active {
+  background: var(--color-brand-light);
+  color: var(--color-brand-deep);
+}
+
+:root[data-theme="mintlify"] .source-chip.availability.available {
+  background: var(--color-brand-light);
+  color: var(--color-brand-deep);
+}
+
+:root[data-theme="mintlify"] .source-chip.availability.unavailable {
+  background: rgba(212, 86, 86, 0.08);
+  color: var(--color-danger);
+}
+
+:root[data-theme="mintlify"] .source-meta-tag {
+  background: var(--color-brand-light);
+  color: var(--color-brand-deep);
+}
+
+:root[data-theme="mintlify"] .book-cover-placeholder,
+:root[data-theme="mintlify"] .list-cover-placeholder,
+:root[data-theme="mintlify"] .result-cover-placeholder {
+  background: var(--gradient-brand);
+}

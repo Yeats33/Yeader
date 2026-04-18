@@ -1,0 +1,75 @@
+/* ============================================================
+   Apple Design System Theme
+   ============================================================ */
+
+:root[data-theme="apple"] {
+  --color-bg: #f5f5f7;
+  --color-surface: #ffffff;
+  --color-text: #1d1d1f;
+  --color-text-muted: rgba(0, 0, 0, 0.48);
+  --color-border: rgba(0, 0, 0, 0.04);
+  --color-danger: #ff3b30;
+  --color-success: #34c759;
+  --color-warning: #ff9500;
+  --color-apple-blue: #0071e3;
+  --color-apple-blue-hover: #0077ed;
+  --color-link: #0066cc;
+  --color-link-dark: #2997ff;
+  --font-display: -apple-system, SF Pro Display, SF Pro Icons, Helvetica Neue, Helvetica, Arial, sans-serif;
+  --font-body: -apple-system, SF Pro Text, SF Pro Icons, Helvetica Neue, Helvetica, Arial, sans-serif;
+  --font-size: 17px;
+  --line-height: 1.47;
+  --radius: 8px;
+  --radius-pill: 980px;
+  --radius-search: 11px;
+  --shadow-card: rgba(0, 0, 0, 0.22) 3px 5px 30px 0px;
+  --shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --focus-ring: 2px solid var(--color-apple-blue);
+  --page-header-bg: rgba(0, 0, 0, 0.8);
+  --chip-enabled-bg: var(--color-success);
+  --chip-available-bg: rgba(52, 199, 89, 0.12);
+  --chip-available-color: var(--color-success);
+  --chip-unavailable-bg: rgba(255, 59, 48, 0.1);
+  --chip-unavailable-color: var(--color-danger);
+  --btn-primary-bg: var(--color-apple-blue);
+  --btn-primary-color: #ffffff;
+  --gradient-brand: linear-gradient(135deg, var(--color-apple-blue) 0%, #5856d6 100%);
+  --gradient-cover: linear-gradient(135deg, var(--color-apple-blue) 0%, #5856d6 100%);
+}
+
+:root[data-theme="apple"][data-color-mode="dark"] {
+  --color-bg: #000000;
+  --color-surface: #1d1d1f;
+  --color-text: #ffffff;
+  --color-text-muted: rgba(255, 255, 255, 0.48);
+  --color-border: rgba(255, 255, 255, 0.08);
+  --page-header-bg: rgba(0, 0, 0, 0.8);
+}
+
+:root[data-theme="apple"] .source-chip.state.active {
+  background: var(--color-success);
+  color: #ffffff;
+}
+
+:root[data-theme="apple"] .source-chip.availability.available {
+  background: rgba(52, 199, 89, 0.15);
+  color: var(--color-success);
+  border-color: transparent;
+}
+
+:root[data-theme="apple"] .source-chip.availability.unavailable {
+  background: rgba(255, 59, 48, 0.1);
+  color: var(--color-danger);
+  border-color: transparent;
+}
+
+:root[data-theme="apple"] .source-meta-tag {
+  background: var(--color-apple-blue);
+  color: #ffffff;
+}
+
+:root[data-theme="apple"] .book-cover-placeholder,
+:root[data-theme="apple"] .list-cover-placeholder,
+:root[data-theme="apple"] .result-cover-placeholder {
+  background: var(--gradient-brand);
+}
