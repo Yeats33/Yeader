@@ -195,6 +195,15 @@ impl AnalyzeRule {
         }
     }
 
+    /// Create a new analyzer with existing Content.
+    pub fn from_content(content: Content, base_url: &str) -> Self {
+        Self {
+            content,
+            base_url: base_url.to_string(),
+            variables: HashMap::new(),
+        }
+    }
+
     /// Set a variable for later retrieval via `@get:{key}`.
     pub fn set_variable(&mut self, key: impl Into<String>, value: impl Into<String>) {
         self.variables.insert(key.into(), value.into());
