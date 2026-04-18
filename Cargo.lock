@@ -6149,9 +6149,14 @@ dependencies = [
 name = "yeader-reader"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "chardetng",
+ "encoding_rs",
+ "regex",
  "yeader-library",
  "yeader-models",
  "yeader-rules",
+ "zip",
 ]
 
 [[package]]

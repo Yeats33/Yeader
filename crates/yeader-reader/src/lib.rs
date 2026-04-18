@@ -1,8 +1,7 @@
 //! Reader orchestration will live here.
 
-use yeader_models::ReadingProgress;
-
 pub mod pipeline;
+pub mod txt;
 
 pub use pipeline::{BookInfo, Chapter, fetch_book_info, fetch_toc, fetch_content};
 
