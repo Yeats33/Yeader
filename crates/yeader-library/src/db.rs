@@ -64,6 +64,33 @@ impl Database {
                 chapter_title TEXT NOT NULL DEFAULT '',
                 offset        INTEGER NOT NULL DEFAULT 0
             );
+
+            CREATE TABLE IF NOT EXISTS book_groups (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                name         TEXT NOT NULL,
+                sort_order   INTEGER NOT NULL DEFAULT 0
+            );
+
+            CREATE TABLE IF NOT EXISTS books (
+                book_url      TEXT PRIMARY KEY,
+                name          TEXT NOT NULL,
+                author        TEXT NOT NULL DEFAULT '',
+                cover_url     TEXT NOT NULL DEFAULT '',
+                source_url    TEXT NOT NULL DEFAULT '',
+                toc_url       TEXT NOT NULL DEFAULT '',
+                last_read_at  INTEGER NOT NULL DEFAULT 0,
+                group_id      INTEGER REFERENCES book_groups(id),
+                book_type     INTEGER NOT NULL DEFAULT 0,
+                intro         TEXT NOT NULL DEFAULT ''
+            );
+
+            CREATE TABLE IF NOT EXISTS bookmarks (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                book_id       TEXT NOT NULL REFERENCES books(book_url),
+                chapter_index INTEGER NOT NULL DEFAULT 0,
+                offset        INTEGER NOT NULL DEFAULT 0,
+                created_at    INTEGER NOT NULL DEFAULT 0
+            );
             ",
         )
     }

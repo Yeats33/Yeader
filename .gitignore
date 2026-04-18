@@ -9,11 +9,11 @@ target/
 .env
 
 #AI Coding Assistant
-docs/superpowers/
+# docs/superpowers/
 .omx
-.claude
-AGENTS.md
-CLAUDE.md
+# .claude
+# AGENTS.md
+# CLAUDE.md
 
 #plan
 
