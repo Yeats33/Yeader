@@ -8,7 +8,6 @@ use std::io::Read;
 use std::path::Path;
 
 use chardetng::EncodingDetector;
-use encoding_rs::Encoding;
 
 /// Detected encoding result.
 #[derive(Debug, Clone)]
