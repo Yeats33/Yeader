@@ -61,6 +61,11 @@ fn detect_mode(raw: &str) -> (Mode, &str) {
     if raw.starts_with("$.") || raw.starts_with("$[") {
         return (Mode::Json, raw);
     }
+    if raw.starts_with("$(") && raw.ends_with(')') {
+        // Regex mode: $() wraps a regex pattern
+        let inner = raw.trim_start_matches("$(").trim_end_matches(')');
+        return (Mode::Regex, inner);
+    }
     if raw.starts_with('/') {
         return (Mode::XPath, raw);
     }

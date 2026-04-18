@@ -22,9 +22,9 @@ use regex::Regex;
 /// let result = apply_replace("hello   world", "\\s+", " ", false);
 /// assert_eq!(result, "hello world");
 ///
-/// // Extract first capture group from first match only
+/// // Replace first match only (¥100 -> 100, rest preserved)
 /// let result = apply_replace("价格:¥100 数量:5", "¥(\\d+)", "$1", true);
-/// assert_eq!(result, "100");
+/// assert_eq!(result, "价格:100 数量:5");
 /// ```
 pub fn apply_replace(text: &str, pattern: &str, replacement: &str, replace_first: bool) -> String {
     let Ok(re) = Regex::new(pattern) else {
@@ -32,14 +32,7 @@ pub fn apply_replace(text: &str, pattern: &str, replacement: &str, replace_first
     };
 
     if replace_first {
-        match re.captures(text) {
-            Some(captures) => {
-                let mut output = String::new();
-                captures.expand(replacement, &mut output);
-                output
-            }
-            None => text.to_string(),
-        }
+        re.replace(text, replacement).to_string()
     } else {
         re.replace_all(text, replacement).to_string()
     }
@@ -90,10 +83,10 @@ mod tests {
     }
 
     #[test]
-    fn replace_first_extracts_match() {
-        // replaceFirst: 获取第一个匹配并在其上执行替换
+    fn replace_first_replaces_first_match_with_capture_group() {
+        // replaceFirst: replace only the first match, using $1 capture group
         let result = apply_replace("价格:¥100 数量:5", "¥(\\d+)", "$1", true);
-        assert_eq!(result, "100");
+        assert_eq!(result, "价格:100 数量:5");
     }
 
     #[test]
@@ -111,8 +104,9 @@ mod tests {
 
     #[test]
     fn replace_first_only_replaces_first() {
+        // replace_first: only replace the first occurrence
         let result = apply_replace("aaa bbb aaa", "aaa", "ccc", true);
-        assert_eq!(result, "ccc");
+        assert_eq!(result, "ccc bbb aaa");
     }
 
     #[test]
