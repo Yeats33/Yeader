@@ -114,6 +114,73 @@ mod tests {
 
     const BOOK_SOURCE_FIXTURE: &str =
         include_str!("../../../fixtures/legado/sources/sample-book-source.json");
+    const FULL_BOOK_SOURCE_FIXTURE: &str = r###"
+[
+  {
+    "bookSourceUrl": "https://example.com/full-source",
+    "bookSourceName": "Full Fixture Source",
+    "bookSourceGroup": "Rules",
+    "bookSourceType": 0,
+    "bookUrlPattern": "https://example.com/book/\\d+",
+    "enabled": true,
+    "enabledExplore": true,
+    "exploreUrl": "Latest::/explore/latest\nRank::/explore/rank",
+    "searchUrl": "https://example.com/search?key={{key}}",
+    "loginCheckJs": "document.cookie.includes('session=')",
+    "ruleSearch": {
+      "bookList": "@CSS:.result-list > li",
+      "name": "a.title@text##\\s+## ",
+      "author": "span.author@text",
+      "intro": "p.desc@text",
+      "kind": "span.kind@text",
+      "lastChapter": "span.latest@text",
+      "updateTime": "span.update@text",
+      "bookUrl": "a.title@href",
+      "coverUrl": "img.cover@src",
+      "wordCount": "span.words@text##[^\\d万字]##",
+      "checkKeyWord": "搜索"
+    },
+    "ruleBookInfo": {
+      "init": "@CSS:.book-info",
+      "name": "h1.title@text",
+      "author": "span.author@text",
+      "intro": "$.book.intro",
+      "kind": "div.meta span.kind@text",
+      "lastChapter": "a.latest@text",
+      "updateTime": "span.updated@text",
+      "coverUrl": "img.cover@src",
+      "tocUrl": "a.catalog@href",
+      "wordCount": "span.words@text##\\s+##",
+      "canReName": "true",
+      "downloadUrls": "$.downloads[*].url"
+    },
+    "ruleToc": {
+      "chapterList": "@CSS:#chapters li",
+      "chapterName": "a@text##^正文\\s*##",
+      "chapterUrl": "a@href",
+      "formatJs": "title.replace(/第(\\d+)章/, 'Chapter $1')",
+      "isVolume": "span.volume@text",
+      "isVip": "span.vip@text",
+      "isPay": "span.paid@text",
+      "updateTime": "span.time@text",
+      "nextTocUrl": "a.next@href",
+      "preUpdateJs": "java.put('page', java.get('page') + 1)"
+    },
+    "ruleContent": {
+      "content": "@CSS:#content@html",
+      "title": "h1.chapter-title@text",
+      "nextContentUrl": "a.next-page@href",
+      "webJs": "document.querySelector('.read-more')?.click(); 'ok';",
+      "sourceRegex": "https://cdn\\.example\\.com/.*",
+      "replaceRegex": "##广告.*$##",
+      "imageStyle": "FULL",
+      "imageDecode": "atob(result)",
+      "payAction": "fetch('/unlock').then(() => 'ok')"
+    },
+    "customMetadata": "preserved"
+  }
+]
+"###;
     const RSS_SOURCE_FIXTURE: &str =
         include_str!("../../../fixtures/legado/rss/sample-rss-source.json");
     const REPLACE_RULE_FIXTURE: &str =
@@ -145,6 +212,44 @@ mod tests {
             Some(&Value::String("kept".to_string()))
         );
         assert!(!source.extra.contains_key("ruleSearch"));
+    }
+
+    #[test]
+    fn parses_full_book_source_rule_fixture() {
+        let sources =
+            parse_book_sources(FULL_BOOK_SOURCE_FIXTURE).expect("full book source fixture parses");
+        let source = sources.first().expect("fixture contains one source");
+
+        assert_eq!(source.book_source_type, Some(0));
+        assert_eq!(
+            source.book_url_pattern.as_deref(),
+            Some("https://example.com/book/\\d+")
+        );
+        assert_eq!(
+            source
+                .rule_book_info
+                .as_ref()
+                .and_then(|rule| rule.toc_url.as_deref()),
+            Some("a.catalog@href")
+        );
+        assert_eq!(
+            source
+                .rule_toc
+                .as_ref()
+                .and_then(|rule| rule.chapter_name.as_deref()),
+            Some("a@text##^正文\\s*##")
+        );
+        assert_eq!(
+            source
+                .rule_content
+                .as_ref()
+                .and_then(|rule| rule.content.as_deref()),
+            Some("@CSS:#content@html")
+        );
+        assert_eq!(
+            source.extra.get("customMetadata"),
+            Some(&Value::String("preserved".to_string()))
+        );
     }
 
     #[test]
