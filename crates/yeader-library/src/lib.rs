@@ -4,4 +4,4 @@ mod db;
 mod repo;
 
 pub use db::Database;
-pub use repo::{BookSourceRepo, ReadingProgressRepo, ReplaceRuleRepo, RssSourceRepo};
+pub use repo::{BookGroupRepo, BookRepo, BookmarkRepo, BookSourceRepo, ReadingProgressRepo, ReplaceRuleRepo, RssSourceRepo};
