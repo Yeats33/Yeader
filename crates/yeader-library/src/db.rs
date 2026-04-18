@@ -65,31 +65,34 @@ impl Database {
                 offset        INTEGER NOT NULL DEFAULT 0
             );
 
-            CREATE TABLE IF NOT EXISTS book_groups (
-                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            CREATE TABLE IF NOT EXISTS books (
+                url          TEXT PRIMARY KEY,
                 name         TEXT NOT NULL,
-                sort_order   INTEGER NOT NULL DEFAULT 0
+                author       TEXT NOT NULL DEFAULT '',
+                cover_url    TEXT,
+                source_url   TEXT NOT NULL,
+                toc_url      TEXT,
+                last_read_at TEXT,
+                group_id     INTEGER,
+                book_type    TEXT,
+                intro        TEXT,
+                extra        TEXT NOT NULL DEFAULT '{}'
             );
 
-            CREATE TABLE IF NOT EXISTS books (
-                book_url      TEXT PRIMARY KEY,
-                name          TEXT NOT NULL,
-                author        TEXT NOT NULL DEFAULT '',
-                cover_url     TEXT NOT NULL DEFAULT '',
-                source_url    TEXT NOT NULL DEFAULT '',
-                toc_url       TEXT NOT NULL DEFAULT '',
-                last_read_at  INTEGER NOT NULL DEFAULT 0,
-                group_id      INTEGER REFERENCES book_groups(id),
-                book_type     INTEGER NOT NULL DEFAULT 0,
-                intro         TEXT NOT NULL DEFAULT ''
+            CREATE TABLE IF NOT EXISTS book_groups (
+                id         INTEGER PRIMARY KEY,
+                name       TEXT NOT NULL,
+                sort_order INTEGER NOT NULL DEFAULT 0
             );
 
             CREATE TABLE IF NOT EXISTS bookmarks (
-                id            INTEGER PRIMARY KEY AUTOINCREMENT,
-                book_id       TEXT NOT NULL REFERENCES books(book_url),
-                chapter_index INTEGER NOT NULL DEFAULT 0,
-                offset        INTEGER NOT NULL DEFAULT 0,
-                created_at    INTEGER NOT NULL DEFAULT 0
+                id             INTEGER PRIMARY KEY,
+                book_url       TEXT NOT NULL,
+                chapter_index  INTEGER NOT NULL DEFAULT 0,
+                chapter_title  TEXT NOT NULL DEFAULT '',
+                offset         INTEGER NOT NULL DEFAULT 0,
+                note           TEXT,
+                created_at     TEXT NOT NULL
             );
             ",
         )

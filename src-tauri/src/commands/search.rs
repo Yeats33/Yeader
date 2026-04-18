@@ -1,14 +1,15 @@
 use tauri::State;
+use yeader_models::SearchResult;
 
-use crate::state::SharedState;
+use crate::state::AppState;
 
 #[tauri::command]
-pub async fn search_books(
-    source_url: String,
-    keyword: String,
-    page: i32,
-    state: State<'_, SharedState>,
-) -> Result<Vec<yeader_rules::BookSearchResult>, String> {
-    // STUB: will be implemented with real pipeline
-    Err("Not yet implemented".into())
+pub fn search_books(
+    _state: State<'_, AppState>,
+    _source_url: String,
+    _keyword: String,
+    _page: i32,
+) -> Result<Vec<SearchResult>, String> {
+    // TODO: integrate yeader-reader search pipeline
+    Ok(Vec::new())
 }

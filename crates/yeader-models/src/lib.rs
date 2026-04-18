@@ -11,6 +11,6 @@ pub use legacy::{
     LEGADO_BACKUP_FILES, LegacyBookSource, LegacyReplaceRule, LegacyRssSource, parse_book_sources,
     parse_replace_rules, parse_rss_sources,
 };
-pub use library::{Book, BookId, BookshelfEntry, Chapter, ReadingProgress};
+pub use library::{Book, BookGroup, BookId, BookInfo, Bookmark, Chapter, ReadingProgress};
 pub use rule::{BookInfoRule, ContentRule, SearchRule, TocRule};
 pub use search::{SearchQuery, SearchResult};

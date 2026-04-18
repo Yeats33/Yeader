@@ -1,48 +1,34 @@
 use tauri::State;
+use yeader_models::{BookInfo, Chapter, ReadingProgress};
 
-use crate::state::SharedState;
+use crate::state::AppState;
 
 #[tauri::command]
-pub async fn fetch_book_info(
-    book_url: String,
-    source_url: String,
-    state: State<'_, SharedState>,
-) -> Result<yeader_reader::BookInfo, String> {
-    Err("Not yet implemented".into())
+pub fn fetch_book_info(
+    _state: State<'_, AppState>,
+    _book_url: String,
+    _source_url: String,
+) -> Result<BookInfo, String> {
+    // TODO: integrate yeader-reader book info pipeline
+    Err("fetch_book_info not yet implemented".into())
 }
 
 #[tauri::command]
-pub async fn fetch_toc(
-    toc_url: String,
-    source_url: String,
-    state: State<'_, SharedState>,
-) -> Result<Vec<yeader_reader::Chapter>, String> {
-    Err("Not yet implemented".into())
+pub fn fetch_toc(
+    _state: State<'_, AppState>,
+    _toc_url: String,
+    _source_url: String,
+) -> Result<Vec<Chapter>, String> {
+    // TODO: integrate yeader-reader TOC pipeline
+    Err("fetch_toc not yet implemented".into())
 }
 
 #[tauri::command]
-pub async fn fetch_content(
-    chapter_url: String,
-    source_url: String,
-    state: State<'_, SharedState>,
+pub fn fetch_content(
+    _state: State<'_, AppState>,
+    _chapter_url: String,
+    _source_url: String,
 ) -> Result<String, String> {
-    Err("Not yet implemented".into())
-}
-
-#[tauri::command]
-pub fn get_reading_progress(
-    book_id: String,
-    state: State<'_, SharedState>,
-) -> Result<Option<yeader_models::ReadingProgress>, String> {
-    let repo = yeader_library::ReadingProgressRepo::new(&state.db.lock().unwrap());
-    repo.find_by_book(&book_id).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-pub fn save_reading_progress(
-    progress: yeader_models::ReadingProgress,
-    state: State<'_, SharedState>,
-) -> Result<(), String> {
-    let repo = yeader_library::ReadingProgressRepo::new(&state.db.lock().unwrap());
-    repo.upsert(&progress).map_err(|e| e.to_string())
+    // TODO: integrate yeader-reader content pipeline
+    Err("fetch_content not yet implemented".into())
 }
