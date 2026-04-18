@@ -1,10 +1,11 @@
 //! Reader orchestration will live here.
 
+pub mod pipeline;
+pub mod txt;
+
 use yeader_models::ReadingProgress;
 
-pub mod pipeline;
-
-pub use pipeline::{BookInfo, Chapter, fetch_book_info, fetch_toc, fetch_content};
+pub use pipeline::{fetch_book_info, fetch_content, fetch_toc};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReaderSession {
