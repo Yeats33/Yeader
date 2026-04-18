@@ -1,0 +1,17 @@
+[
+  {
+    "bookSourceUrl": "https://example.com/source",
+    "bookSourceName": "Fixture Source",
+    "bookSourceGroup": "Testing",
+    "bookSourceType": 0,
+    "enabled": true,
+    "enabledExplore": true,
+    "searchUrl": "https://example.com/search?key={{key}}",
+    "bookSourceComment": "Sample fixture derived from upstream field layout",
+    "customVariable": "kept",
+    "ruleSearch": {
+      "bookList": "class.books@li",
+      "name": "tag.a@text"
+    }
+  }
+]

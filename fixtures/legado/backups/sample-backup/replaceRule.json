@@ -1,0 +1,10 @@
+[
+  {
+    "id": 42,
+    "name": "Trim Sponsor",
+    "pattern": "赞助商",
+    "replacement": "",
+    "isEnabled": true,
+    "timeoutMillisecond": 3000
+  }
+]

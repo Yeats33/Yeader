@@ -16,7 +16,7 @@ AGENTS.md
 CLAUDE.md
 
 #plan
-fixtures/
 
 #samples
-sample/.worktrees/
+sample/
+.worktrees/

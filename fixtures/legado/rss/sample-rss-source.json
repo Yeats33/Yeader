@@ -1,0 +1,11 @@
+[
+  {
+    "sourceUrl": "https://example.com/rss",
+    "sourceName": "Fixture RSS",
+    "sourceIcon": "https://example.com/icon.png",
+    "enabled": true,
+    "ruleArticles": "class.list@article",
+    "ruleTitle": "tag.h1@text",
+    "style": ".article { color: red; }"
+  }
+]

@@ -1,0 +1,9 @@
+[
+  {
+    "bookSourceUrl": "https://example.com/source",
+    "bookSourceName": "Fixture Source",
+    "bookSourceGroup": "Testing",
+    "enabled": true,
+    "searchUrl": "https://example.com/search?key={{key}}"
+  }
+]
