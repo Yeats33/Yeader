@@ -59,6 +59,9 @@ pub async fn search_books(
                 client.post_form(&analyzed.url, "", &analyzed.headers).await?
             }
         }
+        Method::HEAD => {
+            client.head(&analyzed.url, &analyzed.headers).await?
+        }
     };
 
     // Create analyzer with response body

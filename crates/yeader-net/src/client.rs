@@ -62,6 +62,10 @@ impl HttpClient {
         .await
     }
 
+    pub async fn head(&self, url: &str, headers: &HeaderMap) -> Result<HttpResponse> {
+        self.request(Method::HEAD, url, None, headers).await
+    }
+
     async fn request(
         &self,
         method: Method,
