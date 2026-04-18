@@ -8,9 +8,11 @@ use std::fmt;
 use serde_json::Value;
 
 use crate::css::CssAnalyzer;
+use crate::js_engine::eval_js;
 use crate::json_path::{json_path_list, json_path_string_list};
 use crate::regex::{apply_replace, regex_get_elements};
 use crate::rule_parser::{split_source_rule, Mode, SourceRule};
+use crate::xpath::XPathAnalyzer;
 
 /// Represents an index specification extracted from a rule suffix.
 /// E.g., `.0` -> Index(0), `.-1` -> Index(-1), `[0:3]` -> Slice(0, 3), etc.
@@ -429,9 +431,21 @@ impl AnalyzeRule {
                     Some(values)
                 }
             }
-            Mode::Js | Mode::XPath => {
-                // Js and XPath modes are not yet implemented
-                None
+            Mode::Js => {
+                let content_str = self.content.to_string();
+                let eval_result = eval_js(&source_rule.rule, Some(&content_str));
+                if eval_result.is_empty() {
+                    None
+                } else {
+                    Some(vec![eval_result])
+                }
+            }
+            Mode::XPath => {
+                if self.content.is_html() {
+                    Some(XPathAnalyzer::new(self.content.as_str()).get_string_list(&source_rule.rule))
+                } else {
+                    None
+                }
             }
         }
     }
@@ -529,8 +543,26 @@ impl AnalyzeRule {
                     Some(values.into_iter().map(Content::Html).collect())
                 }
             }
-            Mode::Js | Mode::XPath => {
-                None
+            Mode::Js => {
+                let content_str = self.content.to_string();
+                let eval_result = eval_js(&source_rule.rule, Some(&content_str));
+                if eval_result.is_empty() {
+                    None
+                } else {
+                    Some(vec![Content::Html(eval_result)])
+                }
+            }
+            Mode::XPath => {
+                if self.content.is_html() {
+                    let elements = XPathAnalyzer::new(self.content.as_str()).get_elements(&source_rule.rule);
+                    if elements.is_empty() {
+                        None
+                    } else {
+                        Some(elements.into_iter().map(Content::Html).collect())
+                    }
+                } else {
+                    None
+                }
             }
         }
     }

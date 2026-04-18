@@ -2,11 +2,14 @@
 
 pub mod analyzer;
 pub mod css;
+pub mod js_engine;
 pub mod json_path;
 pub mod pipeline;
 pub mod regex;
 pub mod replace;
 pub mod rule_parser;
+pub mod rule_split;
+pub mod xpath;
 
 use yeader_models::{SearchQuery, SearchResult};
 
