@@ -1,99 +1,230 @@
-export type AppRuntimeSnapshot = {
-  mode: "mock";
-  note: string;
-};
+import { invoke } from "@tauri-apps/api/core";
+import type {
+  LegacyBookSource,
+  LegacyRssSource,
+  LegacyReplaceRule,
+  Book,
+  SearchResult,
+  Chapter,
+  BookInfo,
+  ReadingProgress,
+  ImportSummary,
+} from "./types.ts";
 
-export type ImportChannel = {
-  id: string;
-  name: string;
-  description: string;
-};
+// ---------------------------------------------------------------------------
+// Book Sources
+// ---------------------------------------------------------------------------
 
-export type BookshelfItem = {
-  title: string;
-  author: string;
-  progressLabel: string;
-};
+export async function listBookSources(): Promise<LegacyBookSource[]> {
+  try {
+    return await invoke<LegacyBookSource[]>("list_book_sources");
+  } catch {
+    return mockBookSources();
+  }
+}
 
-export type ApiCapability = {
-  id: string;
-  label: string;
-  status: "reserved";
-};
+export async function deleteBookSource(url: string): Promise<boolean> {
+  try {
+    return await invoke<boolean>("delete_book_source", { url });
+  } catch {
+    return false;
+  }
+}
 
-export type AppShellSnapshot = {
-  runtime: AppRuntimeSnapshot;
-  importChannels: ImportChannel[];
-  bookshelf: BookshelfItem[];
-  apiCapabilities: ApiCapability[];
-};
+export async function toggleBookSource(
+  _url: string,
+  _enabled: boolean,
+): Promise<boolean> {
+  return true;
+}
 
-const appShellSnapshot: AppShellSnapshot = {
-  runtime: {
-    mode: "mock",
-    note: "后端接口已预留，当前展示的是工作台骨架。",
-  },
-  importChannels: [
+// ---------------------------------------------------------------------------
+// RSS Sources
+// ---------------------------------------------------------------------------
+
+export async function listRssSources(): Promise<LegacyRssSource[]> {
+  try {
+    return await invoke<LegacyRssSource[]>("list_rss_sources");
+  } catch {
+    return [];
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Replace Rules
+// ---------------------------------------------------------------------------
+
+export async function listReplaceRules(): Promise<LegacyReplaceRule[]> {
+  try {
+    return await invoke<LegacyReplaceRule[]>("list_replace_rules");
+  } catch {
+    return [];
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Books / Library
+// ---------------------------------------------------------------------------
+
+export async function listBooks(): Promise<Book[]> {
+  try {
+    return await invoke<Book[]>("list_books");
+  } catch {
+    return mockBooks();
+  }
+}
+
+export async function addBookToShelf(book: Book): Promise<boolean> {
+  try {
+    return await invoke<boolean>("add_book_to_shelf", { book });
+  } catch {
+    return false;
+  }
+}
+
+export async function removeBook(url: string): Promise<boolean> {
+  try {
+    return await invoke<boolean>("remove_book", { url });
+  } catch {
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Search
+// ---------------------------------------------------------------------------
+
+export async function searchBooks(
+  sourceUrl: string,
+  keyword: string,
+  page: number = 1,
+): Promise<SearchResult[]> {
+  try {
+    return await invoke<SearchResult[]>("search_books", {
+      sourceUrl,
+      keyword,
+      page,
+    });
+  } catch {
+    return [];
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Reader
+// ---------------------------------------------------------------------------
+
+export async function fetchBookInfo(
+  bookUrl: string,
+  sourceUrl: string,
+): Promise<BookInfo> {
+  try {
+    return await invoke<BookInfo>("fetch_book_info", { bookUrl, sourceUrl });
+  } catch {
+    return { name: "", author: "" };
+  }
+}
+
+export async function fetchToc(
+  tocUrl: string,
+  sourceUrl: string,
+): Promise<Chapter[]> {
+  try {
+    return await invoke<Chapter[]>("fetch_toc", { tocUrl, sourceUrl });
+  } catch {
+    return [];
+  }
+}
+
+export async function fetchContent(
+  chapterUrl: string,
+  sourceUrl: string,
+): Promise<string> {
+  try {
+    return await invoke<string>("fetch_content", { chapterUrl, sourceUrl });
+  } catch {
+    return "";
+  }
+}
+
+export async function getReadingProgress(
+  bookId: string,
+): Promise<ReadingProgress | null> {
+  try {
+    return await invoke<ReadingProgress | null>("get_reading_progress", {
+      bookId,
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function saveReadingProgress(
+  progress: ReadingProgress,
+): Promise<void> {
+  try {
+    await invoke<void>("save_reading_progress", { progress });
+  } catch {
+    // ignore
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Backup
+// ---------------------------------------------------------------------------
+
+export async function importBackup(path: string): Promise<ImportSummary> {
+  try {
+    return await invoke<ImportSummary>("import_backup", { path });
+  } catch {
+    return { book_sources_count: 0, rss_sources_count: 0, replace_rules_count: 0 };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Mock data
+// ---------------------------------------------------------------------------
+
+function mockBookSources(): LegacyBookSource[] {
+  return [
     {
-      id: "book-sources",
-      name: "书源管理",
-      description: "导入与维护 legado 书源，兼容后续 Rust 规则执行引擎。",
+      book_source_url: "https://example.com/source1",
+      book_source_name: "示例书源1",
+      book_source_group: "默认",
+      enabled: true,
     },
     {
-      id: "rss-feeds",
-      name: "RSS 聚合",
-      description: "统一管理订阅源并为桌面端与移动端同步保留接口。",
+      book_source_url: "https://example.com/source2",
+      book_source_name: "示例书源2",
+      book_source_group: "默认",
+      enabled: false,
     },
+  ];
+}
+
+function mockBooks(): Book[] {
+  return [
     {
-      id: "cloud-backups",
-      name: "备份恢复",
-      description: "支持 legado 备份文件导入，为迁移与恢复流程预留入口。",
-    },
-  ],
-  bookshelf: [
-    {
-      title: "三体",
+      url: "https://example.com/book1",
+      name: "三体",
       author: "刘慈欣",
-      progressLabel: "阅读至第 18 章",
+      source_url: "https://example.com/source1",
+      reading_progress: 45,
+      total_chapters: 80,
     },
     {
-      title: "雪中悍刀行",
+      url: "https://example.com/book2",
+      name: "雪中悍刀行",
       author: "烽火戏诸侯",
-      progressLabel: "阅读至第 102 章",
+      source_url: "https://example.com/source1",
+      reading_progress: 102,
+      total_chapters: 300,
     },
     {
-      title: "置身事内",
+      url: "https://example.com/book3",
+      name: "置身事内",
       author: "兰小欢",
-      progressLabel: "加入书架，待开始",
+      source_url: "https://example.com/source2",
     },
-  ],
-  apiCapabilities: [
-    {
-      id: "library-sync",
-      label: "书架同步",
-      status: "reserved",
-    },
-    {
-      id: "search-aggregation",
-      label: "搜索聚合",
-      status: "reserved",
-    },
-    {
-      id: "reader-session",
-      label: "阅读会话",
-      status: "reserved",
-    },
-  ],
-};
-
-export type AppApi = {
-  getAppShellSnapshot(): Promise<AppShellSnapshot>;
-};
-
-export function createAppApi(): AppApi {
-  return {
-    async getAppShellSnapshot() {
-      return appShellSnapshot;
-    },
-  };
+  ];
 }

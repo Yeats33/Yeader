@@ -1,16 +1,29 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { matchRoute } from "./router.ts";
 
-import { createAppApi } from "./api.ts";
-import { renderAppShell } from "./render.ts";
+test("matchRoute matches root path", () => {
+  const result = matchRoute("/", { path: "/" });
+  assert.equal(result === null, false);
+});
 
-test("renderAppShell includes the reserved backend modules and bookshelf preview", async () => {
-  const snapshot = await createAppApi().getAppShellSnapshot();
-  const html = renderAppShell(snapshot);
+test("matchRoute matches simple path", () => {
+  const result = matchRoute("/search", { path: "/search" });
+  assert.equal(result === null, false);
+});
 
-  assert.match(html, /Yeader Workbench/);
-  assert.match(html, /书架预览/);
-  assert.match(html, /书源管理/);
-  assert.match(html, /搜索聚合/);
-  assert.match(html, /后端接口已预留/);
+test("matchRoute extracts params", () => {
+  const result = matchRoute("/reader/:bookId", { path: "/reader/https%3A%2F%2Fexample.com%2Fbook1" });
+  assert.equal(result === null, false);
+  assert.equal(result!["bookId"], "https%3A%2F%2Fexample.com%2Fbook1");
+});
+
+test("matchRoute returns null on mismatch", () => {
+  const result = matchRoute("/search", { path: "/settings" });
+  assert.equal(result, null);
+});
+
+test("matchRoute returns null on different segment count", () => {
+  const result = matchRoute("/reader/:bookId", { path: "/reader" });
+  assert.equal(result, null);
 });
