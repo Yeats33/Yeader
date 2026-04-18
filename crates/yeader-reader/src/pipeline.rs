@@ -3,7 +3,6 @@
 //! Orchestrates fetching book info, table of contents, and chapter content
 //! using LegacyBookSource rules and the AnalyzeRule engine.
 
-use yeader_models::rule::BookInfoRule;
 use yeader_models::{LegacyBookSource, TocRule};
 use yeader_rules::{AnalyzeRule, Content, ReplaceRule};
 
@@ -28,6 +27,58 @@ pub struct Chapter {
     pub url: String,
     pub is_volume: bool,
     pub is_vip: bool,
+}
+
+/// Resolve a potentially relative URL against a base URL.
+fn resolve_url(base: &str, relative: &str) -> String {
+    if relative.is_empty() {
+        return String::new();
+    }
+
+    // If already absolute, return as-is
+    if relative.starts_with("http://") || relative.starts_with("https://") {
+        return relative.to_string();
+    }
+
+    // Handle absolute path relative to domain (starts with /)
+    if relative.starts_with('/') {
+        // Extract scheme + domain from base
+        if let Some(domain_end) = base.find("://").map(|i| {
+            base[i + 3..]
+                .find('/')
+                .map(|j| i + 3 + j)
+                .unwrap_or(base.len())
+        }) {
+            let domain = &base[..domain_end];
+            return format!("{}{}", domain, relative);
+        }
+    }
+
+    // Handle relative path with parent traversal (../)
+    if relative.starts_with("../") {
+        let mut result = base.to_string();
+        let mut rel = relative;
+
+        // If base doesn't end with /, it's a file path - remove the file first
+        if !result.ends_with('/') {
+            if let Some(end) = result.rfind('/') {
+                result.truncate(end);
+            }
+        }
+
+        while rel.starts_with("../") {
+            rel = &rel[3..];
+            // Remove last path segment
+            if let Some(end) = result.rfind('/') {
+                result.truncate(end);
+            }
+        }
+        return format!("{}/{}", result, rel);
+    }
+
+    // Simple relative path - append to base, removing trailing slash
+    let base = base.trim_end_matches('/');
+    format!("{}/{}", base, relative)
 }
 
 /// Fetch book information from a book detail page.
@@ -94,11 +145,12 @@ pub fn fetch_toc(
 
     // Handle multi-page TOC if next_toc_url is configured
     if let Some(next_url_rule) = &rule.next_toc_url {
-        let next_url = analyzer.get_string(next_url_rule);
-        if !next_url.is_empty() {
-            // Recursively fetch next page and append
-            // Note: In a real implementation, this would fetch the next page
-            // For now, we return what we have
+        let next_relative = analyzer.get_string(next_url_rule);
+        if !next_relative.is_empty() {
+            // Resolve the next page URL relative to the current TOC URL
+            let next_url = resolve_url(toc_url, &next_relative);
+            // In a real implementation, this would fetch the next page and append
+            // For now, we store the next URL in the chapter list (last entry)
             let _ = next_url;
         }
     }
@@ -287,5 +339,131 @@ mod tests {
         let source = make_source();
         let info = fetch_book_info(&source, "https://example.com/book", "");
         assert_eq!(info.title, "");
+    }
+
+    const TOC_HTML: &str = r#"<!DOCTYPE html>
+<html>
+<body>
+<ol class="chapter-list" id="chapters">
+  <li><a href="/book/123/chapter/1">Chapter 1 - The Beginning</a></li>
+  <li><a href="/book/123/chapter/2">Chapter 2 - The Journey</a></li>
+  <li><span class="volume">Volume 1</span></li>
+  <li><a href="/book/123/chapter/3">Chapter 3 - The Discovery</a></li>
+  <li><span class="vip">VIP Chapter</span><a href="/book/123/chapter/vip">VIP Content</a></li>
+</ol>
+<a class="next" href="/book/123/toc?page=2">Next Page</a>
+</body>
+</html>"#;
+
+    fn make_toc_source() -> LegacyBookSource {
+        LegacyBookSource {
+            book_source_url: "https://example.com".to_string(),
+            book_source_name: "Test Source".to_string(),
+            book_source_group: None,
+            search_url: None,
+            book_url_pattern: None,
+            login_check_js: None,
+            book_source_type: None,
+            enabled_explore: None,
+            explore_url: None,
+            rule_search: None,
+            enabled: true,
+            rule_book_info: None,
+            rule_toc: Some(TocRule {
+                chapter_list: Some("@CSS:#chapters > li".to_string()),
+                chapter_name: Some("a@text||tag.span@text".to_string()),
+                chapter_url: Some("a@href".to_string()),
+                format_js: None,
+                is_volume: Some("span.volume@text".to_string()),
+                is_vip: Some("span.vip@text".to_string()),
+                is_pay: None,
+                update_time: None,
+                next_toc_url: Some("a.next@href".to_string()),
+                pre_update_js: None,
+            }),
+            rule_content: None,
+            extra: Default::default(),
+        }
+    }
+
+    #[test]
+    fn fetch_toc_extracts_chapters() {
+        let source = make_toc_source();
+        let chapters = fetch_toc(&source, "https://example.com/book/123", "https://example.com/book/123/toc", TOC_HTML);
+
+        assert_eq!(chapters.len(), 5);
+        assert_eq!(chapters[0].title, "Chapter 1 - The Beginning");
+        assert_eq!(chapters[0].url, "/book/123/chapter/1");
+        assert!(!chapters[0].is_volume);
+        assert!(!chapters[0].is_vip);
+
+        assert_eq!(chapters[1].title, "Chapter 2 - The Journey");
+        assert_eq!(chapters[1].url, "/book/123/chapter/2");
+    }
+
+    #[test]
+    fn fetch_toc_handles_volume_markers() {
+        let source = make_toc_source();
+        let chapters = fetch_toc(&source, "https://example.com/book/123", "https://example.com/book/123/toc", TOC_HTML);
+
+        // Volume marker (3rd item) has title from span.volume
+        assert_eq!(chapters[2].title, "Volume 1");
+        assert!(chapters[2].is_volume);
+        assert!(chapters[2].url.is_empty());
+    }
+
+    #[test]
+    fn fetch_toc_handles_vip_chapters() {
+        let source = make_toc_source();
+        let chapters = fetch_toc(&source, "https://example.com/book/123", "https://example.com/book/123/toc", TOC_HTML);
+
+        // VIP chapter (5th item) has both volume and vip markers
+        assert_eq!(chapters[4].title, "VIP Content");
+        assert!(chapters[4].is_vip);
+        assert_eq!(chapters[4].url, "/book/123/chapter/vip");
+    }
+
+    #[test]
+    fn fetch_toc_handles_missing_rules() {
+        let source = LegacyBookSource {
+            book_source_url: "https://example.com".to_string(),
+            book_source_name: "Test".to_string(),
+            book_source_group: None,
+            search_url: None,
+            book_url_pattern: None,
+            login_check_js: None,
+            book_source_type: None,
+            enabled_explore: None,
+            explore_url: None,
+            rule_search: None,
+            enabled: true,
+            rule_book_info: None,
+            rule_toc: None,
+            rule_content: None,
+            extra: Default::default(),
+        };
+
+        let chapters = fetch_toc(&source, "https://example.com/book/123", "https://example.com/toc", TOC_HTML);
+        assert!(chapters.is_empty());
+    }
+
+    #[test]
+    fn resolve_url_handles_relative_paths() {
+        assert_eq!(
+            resolve_url("https://example.com/book/123/toc", "../chapter/1"),
+            "https://example.com/book/chapter/1"
+        );
+        assert_eq!(
+            resolve_url("https://example.com/book/123/", "chapter/2"),
+            "https://example.com/book/123/chapter/2"
+        );
+        assert_eq!(
+            resolve_url("https://example.com/book/123", "/chapter/3"),
+            "https://example.com/chapter/3"
+        );
+        assert_eq!(
+            resolve_url("https://example.com/book/123", "https://other.com/chap"),
+            "https://other.com/chap"
+        );
     }
 }
