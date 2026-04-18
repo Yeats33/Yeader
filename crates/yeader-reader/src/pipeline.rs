@@ -466,4 +466,97 @@ mod tests {
             "https://other.com/chap"
         );
     }
+
+    const CHAPTER_HTML: &str = r#"<!DOCTYPE html>
+<html>
+<body>
+<h1 class="chapter-title">Chapter 1 - The Beginning</h1>
+<div id="content">
+  <p>First paragraph of the chapter.</p>
+  <p>Second paragraph with some  extra   spacing.</p>
+  <p>Third paragraph.</p>
+</div>
+<a class="next-page" href="/book/123/chapter/2">Next Chapter</a>
+</body>
+</html>"#;
+
+    fn make_content_source() -> LegacyBookSource {
+        use yeader_models::rule::ContentRule;
+        LegacyBookSource {
+            book_source_url: "https://example.com".to_string(),
+            book_source_name: "Test Source".to_string(),
+            book_source_group: None,
+            search_url: None,
+            book_url_pattern: None,
+            login_check_js: None,
+            book_source_type: None,
+            enabled_explore: None,
+            explore_url: None,
+            rule_search: None,
+            enabled: true,
+            rule_book_info: None,
+            rule_toc: None,
+            rule_content: Some(ContentRule {
+                content: Some("@CSS:#content@html".to_string()),
+                title: Some("tag.h1@text".to_string()),
+                next_content_url: Some("a.next-page@href".to_string()),
+                web_js: None,
+                source_regex: None,
+                replace_regex: None,
+                image_style: None,
+                image_decode: None,
+                pay_action: None,
+            }),
+            extra: Default::default(),
+        }
+    }
+
+    #[test]
+    fn fetch_content_extracts_html() {
+        let source = make_content_source();
+        let content = fetch_content(&source, "https://example.com/book/123/chapter/1", CHAPTER_HTML, &[]);
+
+        assert!(content.contains("<p>First paragraph"));
+        assert!(content.contains("<p>Second paragraph"));
+        assert!(content.contains("<p>Third paragraph.</p>"));
+    }
+
+    #[test]
+    fn fetch_content_applies_replace_rules() {
+        let source = make_content_source();
+        let rules = vec![
+            ReplaceRule::new("\\s+".to_string(), " ".to_string(), true, false), // normalize whitespace
+            ReplaceRule::new("<[^>]+>".to_string(), "".to_string(), true, false), // strip HTML tags
+        ];
+        let content = fetch_content(&source, "https://example.com/book/123/chapter/1", CHAPTER_HTML, &rules);
+
+        // HTML tags should be stripped
+        assert!(!content.contains("<p>"));
+        // Text content should be present
+        assert!(content.contains("First paragraph"));
+    }
+
+    #[test]
+    fn fetch_content_handles_missing_rules() {
+        let source = LegacyBookSource {
+            book_source_url: "https://example.com".to_string(),
+            book_source_name: "Test".to_string(),
+            book_source_group: None,
+            search_url: None,
+            book_url_pattern: None,
+            login_check_js: None,
+            book_source_type: None,
+            enabled_explore: None,
+            explore_url: None,
+            rule_search: None,
+            enabled: true,
+            rule_book_info: None,
+            rule_toc: None,
+            rule_content: None,
+            extra: Default::default(),
+        };
+
+        let content = fetch_content(&source, "https://example.com/chapter", CHAPTER_HTML, &[]);
+        assert_eq!(content, "");
+    }
 }
