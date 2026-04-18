@@ -1,6 +1,8 @@
-//! Networking helpers will live here.
+//! Networking helpers for Yeader.
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SourceRequest {
-    pub url: String,
-}
+pub mod client;
+pub mod encoding;
+pub mod url_analyzer;
+
+pub use client::{HttpClient, HttpError, HttpResponse};
+pub use url_analyzer::{analyze_url, AnalyzedUrl, Method};
