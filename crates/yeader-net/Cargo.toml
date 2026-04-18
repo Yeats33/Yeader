@@ -8,7 +8,10 @@ version.workspace = true
 chardetng = "0.1"
 encoding_rs = "0.8"
 http = "1"
+percent-encoding = "2"
+regex = "1"
 reqwest = { version = "0.12", features = ["cookies", "gzip", "json"] }
+rhai = "1"
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = "1"
