@@ -57,13 +57,9 @@ function getSubscriptionUrl(source: LegacyBookSource): string | null {
 
 function describeEnabledSummary(sources: LegacyBookSource[]): string {
   const enabledCount = sources.filter((source) => source.enabled).length;
-  return `${enabledCount}/${sources.length} 启用`;
-}
-
-function describeAvailabilitySummary(sources: LegacyBookSource[]): string {
   const tested = sources.filter((s) => typeof s.lastTestAvailable === "boolean");
   const availableCount = tested.filter((s) => s.lastTestAvailable).length;
-  return `${availableCount}/${tested.length} 可用`;
+  return `启用:${enabledCount} 可用:${availableCount} 全部:${sources.length}`;
 }
 
 export function describeLastTestedText(testedAt: string, now: Date = new Date()): string {
@@ -309,8 +305,7 @@ function describeSourceGroups(sources: LegacyBookSource[]): string {
       <details class="source-group">
         <summary class="source-group-summary">
           <span class="source-group-title">${escapeText(groupName)}</span>
-          <span class="source-summary-chip">${describeEnabledSummary(groupSources)}</span>
-          <span class="source-summary-chip available">${describeAvailabilitySummary(groupSources)}</span>
+          <span class="source-summary-chip available">${describeEnabledSummary(groupSources)}</span>
           <span class="source-summary-actions">
             ${describeAvailabilityTestButton("测试本组", groupSources)}
             ${describeBulkToggleButton("group", groupSources)}
@@ -348,11 +343,10 @@ export function describeBookSourceTree(bookSources: LegacyBookSource[]): string 
 
   if (directSources.length > 0) {
     sections.push(`
-      <details class="source-tier">
+      <details class="source-tier" data-tier="local">
         <summary class="source-tier-summary">
           <span class="source-tier-title">本地书源</span>
-          <span class="source-summary-chip">${describeEnabledSummary(directSources)}</span>
-          <span class="source-summary-chip available">${describeAvailabilitySummary(directSources)}</span>
+          <span class="source-summary-chip available">${describeEnabledSummary(directSources)}</span>
           <span class="source-summary-actions">
             ${describeAvailabilityTestButton("测试此层", directSources)}
           </span>
@@ -369,12 +363,11 @@ export function describeBookSourceTree(bookSources: LegacyBookSource[]): string 
     const subscriptionNodes = Array.from(subscriptionSources.entries())
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([subscriptionUrl, groupedSources]) => `
-        <details class="source-subscription">
+        <details class="source-subscription" data-subscription-url="${escapeAttr(subscriptionUrl)}">
           <summary class="source-subscription-summary">
             <span class="source-subscription-title">订阅链接</span>
             <code class="source-subscription-url">${escapeText(subscriptionUrl)}</code>
-            <span class="source-summary-chip">${describeEnabledSummary(groupedSources)}</span>
-            <span class="source-summary-chip available">${describeAvailabilitySummary(groupedSources)}</span>
+            <span class="source-summary-chip available">${describeEnabledSummary(groupedSources)}</span>
             <span class="source-summary-actions">
               ${describeAvailabilityTestButton("测试订阅", groupedSources)}
               ${describeSubscriptionRefreshButton(groupedSources, subscriptionUrl)}
@@ -389,11 +382,10 @@ export function describeBookSourceTree(bookSources: LegacyBookSource[]): string 
       .join("");
 
     sections.push(`
-      <details class="source-tier">
+      <details class="source-tier" data-tier="subscription">
         <summary class="source-tier-summary">
           <span class="source-tier-title">订阅源</span>
-          <span class="source-summary-chip">${describeEnabledSummary(allSubscriptionSources)}</span>
-          <span class="source-summary-chip available">${describeAvailabilitySummary(allSubscriptionSources)}</span>
+          <span class="source-summary-chip available">${describeEnabledSummary(allSubscriptionSources)}</span>
           <span class="source-summary-actions">
             ${describeAvailabilityTestButton("测试此层", allSubscriptionSources)}
           </span>
@@ -407,6 +399,7 @@ export function describeBookSourceTree(bookSources: LegacyBookSource[]): string 
 
   return `
     <div class="source-toolbar">
+      <button class="btn-secondary" id="filter-available-btn">只显示可用</button>
       <button class="btn-secondary" id="test-availability-btn">测试可用性</button>
       <button class="btn-secondary" id="disable-unavailable-btn">禁用不可用</button>
       <button class="btn-secondary" id="enable-all-sources-btn">启用全部</button>
@@ -414,7 +407,7 @@ export function describeBookSourceTree(bookSources: LegacyBookSource[]): string 
       <button class="btn-danger" id="dev-delete-all-sources-btn">${getDeleteAllButtonLabel(false)}</button>
     </div>
     <div id="source-action-result" class="import-result"></div>
-    <div class="source-tree">${sections.join("")}</div>
+    <div class="source-tree" id="source-tree" data-filter="all">${sections.join("")}</div>
   `;
 }
 
@@ -541,6 +534,7 @@ export function initSettingsHandlers(container: HTMLElement) {
   const disableUnavailableBtn = $<HTMLButtonElement>(container, "#disable-unavailable-btn");
   const enableAllSourcesBtn = $<HTMLButtonElement>(container, "#enable-all-sources-btn");
   const deleteDisabledSourcesBtn = $<HTMLButtonElement>(container, "#delete-disabled-sources-btn");
+  const filterAvailableBtn = $<HTMLButtonElement>(container, "#filter-available-btn");
   const devDeleteAllSourcesBtn = $<HTMLButtonElement>(container, "#dev-delete-all-sources-btn");
   const availabilityResults = new Map<string, PersistedBookSourceAvailability>();
 
@@ -812,6 +806,40 @@ export function initSettingsHandlers(container: HTMLElement) {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       renderSourceActionResult("error", `删除全部失败：${msg}`);
+    }
+  });
+
+  filterAvailableBtn.addEventListener("click", () => {
+    const sourceTree = $<HTMLElement>(container, "#source-tree");
+    const isFiltered = sourceTree.dataset.filter === "available";
+
+    if (isFiltered) {
+      sourceTree.dataset.filter = "all";
+      filterAvailableBtn.textContent = "只显示可用";
+      filterAvailableBtn.classList.remove("active");
+      sourceTree.querySelectorAll<HTMLElement>(".source-item").forEach((item) => {
+        item.hidden = false;
+      });
+      sourceTree.querySelectorAll<HTMLElement>(".source-group, .source-tier, .source-subscription").forEach((details) => {
+        details.hidden = false;
+      });
+    } else {
+      sourceTree.dataset.filter = "available";
+      filterAvailableBtn.textContent = "显示全部";
+      filterAvailableBtn.classList.add("active");
+      sourceTree.querySelectorAll<HTMLElement>(".source-item").forEach((item) => {
+        const url = item.dataset.url ?? "";
+        const status = availabilityResults.get(url);
+        item.hidden = !(status && status.available);
+      });
+      sourceTree.querySelectorAll<HTMLElement>(".source-group").forEach((group) => {
+        const visibleItems = group.querySelectorAll<HTMLElement>(".source-item:not([hidden])");
+        group.hidden = visibleItems.length === 0;
+      });
+      sourceTree.querySelectorAll<HTMLElement>(".source-tier, .source-subscription").forEach((details) => {
+        const visibleChildren = details.querySelectorAll<HTMLElement>(".source-group:not([hidden]), .source-item:not([hidden])");
+        details.hidden = visibleChildren.length === 0;
+      });
     }
   });
 
