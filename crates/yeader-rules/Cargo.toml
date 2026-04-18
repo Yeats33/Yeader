@@ -8,4 +8,6 @@ version.workspace = true
 regex.workspace = true
 scraper.workspace = true
 serde_json.workspace = true
+thiserror = "1"
 yeader-models.workspace = true
+yeader-net.workspace = true
