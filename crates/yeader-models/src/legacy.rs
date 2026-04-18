@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
+use crate::rule::{BookInfoRule, ContentRule, SearchRule, TocRule};
+
 /// Parse a Legado book source export payload.
 pub fn parse_book_sources(json: &str) -> Result<Vec<LegacyBookSource>, serde_json::Error> {
     serde_json::from_str(json)
@@ -25,6 +27,24 @@ pub struct LegacyBookSource {
     pub book_source_group: Option<String>,
     #[serde(default)]
     pub search_url: Option<String>,
+    #[serde(default)]
+    pub book_url_pattern: Option<String>,
+    #[serde(default)]
+    pub login_check_js: Option<String>,
+    #[serde(default)]
+    pub book_source_type: Option<i32>,
+    #[serde(default)]
+    pub enabled_explore: Option<bool>,
+    #[serde(default)]
+    pub explore_url: Option<String>,
+    #[serde(default)]
+    pub rule_search: Option<SearchRule>,
+    #[serde(default)]
+    pub rule_book_info: Option<BookInfoRule>,
+    #[serde(default)]
+    pub rule_toc: Option<TocRule>,
+    #[serde(default)]
+    pub rule_content: Option<ContentRule>,
     #[serde(default = "default_true")]
     pub enabled: bool,
     #[serde(flatten, default)]
@@ -112,11 +132,19 @@ mod tests {
             Some("https://example.com/search?key={{key}}")
         );
         assert!(source.enabled);
+
+        // ruleSearch is now a first-class field, not in extra
+        assert!(source.rule_search.is_some());
+        let rule_search = source.rule_search.as_ref().unwrap();
+        assert_eq!(rule_search.book_list.as_deref(), Some("class.books@li"));
+        assert_eq!(rule_search.name.as_deref(), Some("tag.a@text"));
+
+        // Extra only keeps truly unknown fields
         assert_eq!(
             source.extra.get("customVariable"),
             Some(&Value::String("kept".to_string()))
         );
-        assert!(source.extra.contains_key("ruleSearch"));
+        assert!(!source.extra.contains_key("ruleSearch"));
     }
 
     #[test]

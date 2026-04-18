@@ -3,6 +3,7 @@
 pub mod compatibility;
 pub mod legacy;
 pub mod library;
+pub mod rule;
 pub mod search;
 
 pub use compatibility::{CompatImportArtifact, ImportArtifactKind};
@@ -11,4 +12,5 @@ pub use legacy::{
     parse_replace_rules, parse_rss_sources,
 };
 pub use library::{BookId, BookshelfEntry, ReadingProgress};
+pub use rule::{BookInfoRule, ContentRule, SearchRule, TocRule};
 pub use search::{SearchQuery, SearchResult};
