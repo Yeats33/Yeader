@@ -7,6 +7,36 @@ use yeader_models::{Book, BookGroup, Bookmark, LegacyBookSource, LegacyReplaceRu
 
 use crate::Database;
 
+fn row_to_source(row: &rusqlite::Row<'_>) -> rusqlite::Result<LegacyBookSource> {
+    let source_json: String = row.get(0)?;
+    if let Ok(src) = serde_json::from_str::<LegacyBookSource>(&source_json) {
+        return Ok(src);
+    }
+    let extra_str: String = row.get(6)?;
+    let extra: Map<String, serde_json::Value> =
+        serde_json::from_str(&extra_str).unwrap_or_default();
+    Ok(LegacyBookSource {
+        book_source_url: row.get(1)?,
+        book_source_name: row.get(2)?,
+        book_source_group: row.get(3)?,
+        search_url: row.get(4)?,
+        book_url_pattern: None,
+        login_check_js: None,
+        book_source_type: None,
+        enabled_explore: None,
+        explore_url: None,
+        rule_search: None,
+        rule_book_info: None,
+        rule_toc: None,
+        rule_content: None,
+        enabled: row.get::<_, i32>(5)? != 0,
+        last_test_available: None,
+        last_tested_at: None,
+        last_test_detail: None,
+        extra,
+    })
+}
+
 // ---------------------------------------------------------------------------
 // BookSourceRepo
 // ---------------------------------------------------------------------------
@@ -22,15 +52,17 @@ impl<'a> BookSourceRepo<'a> {
 
     pub fn upsert(&self, src: &LegacyBookSource) -> rusqlite::Result<()> {
         let extra = serde_json::to_string(&src.extra).unwrap_or_default();
+        let source_json = serde_json::to_string(src).unwrap_or_default();
         self.db.conn().execute(
-            "INSERT INTO book_sources (book_source_url, book_source_name, book_source_group, search_url, enabled, extra)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+            "INSERT INTO book_sources (book_source_url, book_source_name, book_source_group, search_url, enabled, extra, source_json)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
              ON CONFLICT(book_source_url) DO UPDATE SET
                 book_source_name = excluded.book_source_name,
                 book_source_group = excluded.book_source_group,
                 search_url = excluded.search_url,
                 enabled = excluded.enabled,
-                extra = excluded.extra",
+                extra = excluded.extra,
+                source_json = excluded.source_json",
             params![
                 src.book_source_url,
                 src.book_source_name,
@@ -38,6 +70,7 @@ impl<'a> BookSourceRepo<'a> {
                 src.search_url,
                 src.enabled as i32,
                 extra,
+                source_json,
             ],
         )?;
         Ok(())
@@ -47,15 +80,17 @@ impl<'a> BookSourceRepo<'a> {
         let tx = self.db.conn().unchecked_transaction()?;
         for src in sources {
             let extra = serde_json::to_string(&src.extra).unwrap_or_default();
+            let source_json = serde_json::to_string(src).unwrap_or_default();
             tx.execute(
-                "INSERT INTO book_sources (book_source_url, book_source_name, book_source_group, search_url, enabled, extra)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+                "INSERT INTO book_sources (book_source_url, book_source_name, book_source_group, search_url, enabled, extra, source_json)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
                  ON CONFLICT(book_source_url) DO UPDATE SET
                     book_source_name = excluded.book_source_name,
                     book_source_group = excluded.book_source_group,
                     search_url = excluded.search_url,
                     enabled = excluded.enabled,
-                    extra = excluded.extra",
+                    extra = excluded.extra,
+                    source_json = excluded.source_json",
                 params![
                     src.book_source_url,
                     src.book_source_name,
@@ -63,6 +98,7 @@ impl<'a> BookSourceRepo<'a> {
                     src.search_url,
                     src.enabled as i32,
                     extra,
+                    source_json,
                 ],
             )?;
         }
@@ -71,61 +107,19 @@ impl<'a> BookSourceRepo<'a> {
 
     pub fn list_all(&self) -> rusqlite::Result<Vec<LegacyBookSource>> {
         let mut stmt = self.db.conn().prepare(
-            "SELECT book_source_url, book_source_name, book_source_group, search_url, enabled, extra
+            "SELECT source_json, book_source_url, book_source_name, book_source_group, search_url, enabled, extra
              FROM book_sources ORDER BY book_source_name",
         )?;
-        let rows = stmt.query_map([], |row| {
-            let extra_str: String = row.get(5)?;
-            let extra: Map<String, serde_json::Value> =
-                serde_json::from_str(&extra_str).unwrap_or_default();
-            Ok(LegacyBookSource {
-                book_source_url: row.get(0)?,
-                book_source_name: row.get(1)?,
-                book_source_group: row.get(2)?,
-                search_url: row.get(3)?,
-                book_url_pattern: None,
-                login_check_js: None,
-                book_source_type: None,
-                enabled_explore: None,
-                explore_url: None,
-                rule_search: None,
-                rule_book_info: None,
-                rule_toc: None,
-                rule_content: None,
-                enabled: row.get::<_, i32>(4)? != 0,
-                extra,
-            })
-        })?;
+        let rows = stmt.query_map([], row_to_source)?;
         rows.collect()
     }
 
     pub fn find_by_url(&self, url: &str) -> rusqlite::Result<Option<LegacyBookSource>> {
         let mut stmt = self.db.conn().prepare(
-            "SELECT book_source_url, book_source_name, book_source_group, search_url, enabled, extra
+            "SELECT source_json, book_source_url, book_source_name, book_source_group, search_url, enabled, extra
              FROM book_sources WHERE book_source_url = ?1",
         )?;
-        let mut rows = stmt.query_map(params![url], |row| {
-            let extra_str: String = row.get(5)?;
-            let extra: Map<String, serde_json::Value> =
-                serde_json::from_str(&extra_str).unwrap_or_default();
-            Ok(LegacyBookSource {
-                book_source_url: row.get(0)?,
-                book_source_name: row.get(1)?,
-                book_source_group: row.get(2)?,
-                search_url: row.get(3)?,
-                book_url_pattern: None,
-                login_check_js: None,
-                book_source_type: None,
-                enabled_explore: None,
-                explore_url: None,
-                rule_search: None,
-                rule_book_info: None,
-                rule_toc: None,
-                rule_content: None,
-                enabled: row.get::<_, i32>(4)? != 0,
-                extra,
-            })
-        })?;
+        let mut rows = stmt.query_map(params![url], row_to_source)?;
         rows.next().transpose()
     }
 
@@ -135,6 +129,32 @@ impl<'a> BookSourceRepo<'a> {
             params![url],
         )?;
         Ok(count > 0)
+    }
+
+    pub fn set_enabled(&self, url: &str, enabled: bool) -> rusqlite::Result<bool> {
+        let Some(mut source) = self.find_by_url(url)? else {
+            return Ok(false);
+        };
+        source.enabled = enabled;
+        self.upsert(&source)?;
+        Ok(true)
+    }
+
+    pub fn set_test_result(
+        &self,
+        url: &str,
+        available: bool,
+        detail: Option<String>,
+        tested_at: &str,
+    ) -> rusqlite::Result<bool> {
+        let Some(mut source) = self.find_by_url(url)? else {
+            return Ok(false);
+        };
+        source.last_test_available = Some(available);
+        source.last_tested_at = Some(tested_at.to_string());
+        source.last_test_detail = detail;
+        self.upsert(&source)?;
+        Ok(true)
     }
 }
 
@@ -711,6 +731,9 @@ mod tests {
             rule_toc: None,
             rule_content: None,
             enabled: true,
+            last_test_available: None,
+            last_tested_at: None,
+            last_test_detail: None,
             extra: Map::new(),
         };
 
@@ -740,6 +763,9 @@ mod tests {
             rule_toc: None,
             rule_content: None,
             enabled: true,
+            last_test_available: None,
+            last_tested_at: None,
+            last_test_detail: None,
             extra: Map::new(),
         };
         repo.upsert(&src).unwrap();
@@ -777,6 +803,9 @@ mod tests {
             rule_toc: None,
             rule_content: None,
             enabled: true,
+            last_test_available: None,
+            last_tested_at: None,
+            last_test_detail: None,
             extra: Map::new(),
         };
         repo.upsert(&src).unwrap();
@@ -803,6 +832,9 @@ mod tests {
             rule_toc: None,
             rule_content: None,
             enabled: true,
+            last_test_available: None,
+            last_tested_at: None,
+            last_test_detail: None,
             extra: Map::new(),
         };
         repo.upsert(&src).unwrap();
@@ -832,6 +864,9 @@ mod tests {
                 rule_toc: None,
                 rule_content: None,
                 enabled: true,
+                last_test_available: None,
+                last_tested_at: None,
+                last_test_detail: None,
                 extra: Map::new(),
             })
             .collect();
@@ -863,6 +898,9 @@ mod tests {
             rule_toc: None,
             rule_content: None,
             enabled: true,
+            last_test_available: None,
+            last_tested_at: None,
+            last_test_detail: None,
             extra,
         };
         repo.upsert(&src).unwrap();

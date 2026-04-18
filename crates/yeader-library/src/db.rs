@@ -37,7 +37,8 @@ impl Database {
                 book_source_group TEXT,
                 search_url       TEXT,
                 enabled          INTEGER NOT NULL DEFAULT 1,
-                extra            TEXT NOT NULL DEFAULT '{}'
+                extra            TEXT NOT NULL DEFAULT '{}',
+                source_json      TEXT NOT NULL DEFAULT '{}'
             );
 
             CREATE TABLE IF NOT EXISTS rss_sources (
@@ -95,6 +96,28 @@ impl Database {
                 created_at     TEXT NOT NULL
             );
             ",
-        )
+        )?;
+        ensure_column(&self.conn, "book_sources", "source_json", "TEXT NOT NULL DEFAULT '{}'")?;
+        Ok(())
     }
+}
+
+fn ensure_column(
+    conn: &Connection,
+    table: &str,
+    column: &str,
+    decl: &str,
+) -> rusqlite::Result<()> {
+    let mut stmt = conn.prepare(&format!("PRAGMA table_info({})", table))?;
+    let exists = stmt
+        .query_map([], |row| row.get::<_, String>(1))?
+        .filter_map(Result::ok)
+        .any(|name| name == column);
+    if !exists {
+        conn.execute(
+            &format!("ALTER TABLE {} ADD COLUMN {} {}", table, column, decl),
+            [],
+        )?;
+    }
+    Ok(())
 }

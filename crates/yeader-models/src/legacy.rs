@@ -47,6 +47,12 @@ pub struct LegacyBookSource {
     pub rule_content: Option<ContentRule>,
     #[serde(default = "default_true")]
     pub enabled: bool,
+    #[serde(default)]
+    pub last_test_available: Option<bool>,
+    #[serde(default)]
+    pub last_tested_at: Option<String>,
+    #[serde(default)]
+    pub last_test_detail: Option<String>,
     #[serde(flatten, default)]
     pub extra: Map<String, Value>,
 }

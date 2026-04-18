@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"cargo test -p yeader-rules js_engine 2>&1\",\"timeout\":120000,\"description\":\"Run js_engine tests\"}",
+  "error": "Exit code 101\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.26s\n     Running unittests src/lib.rs (/Users/fwmbam4/CodeHub/Yeats/Yeader/target/debug/deps/yeader_rules-d1b9defd7785be87)\n\nrunning 7 tests\ntest js_engine::tests::template_expander_preserves_plain_text ... ok\ntest js_engine::tests::eval_js_returns_empty_on_error ... ok\ntest js_engine::tests::template_expander_local_vars_override ... FAILED\ntest js_engine::tests::template_expander_handles_multiple_expressions ... ...",
+  "timestamp": "2026-04-18T15:16:07.356Z",
+  "retry_count": 1
+}

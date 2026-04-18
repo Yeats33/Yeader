@@ -11,7 +11,12 @@ pub struct SearchQuery {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SearchResult {
     pub source_id: String,
-    pub title: String,
+    pub name: String,
     pub author: String,
-    pub detail_url: String,
+    pub book_url: String,
+    pub cover_url: Option<String>,
+    pub intro: Option<String>,
+    pub kind: Option<String>,
+    pub last_chapter: Option<String>,
+    pub word_count: Option<String>,
 }

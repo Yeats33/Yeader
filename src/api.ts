@@ -9,149 +9,178 @@ import type {
   BookInfo,
   ReadingProgress,
   ImportSummary,
+  BookSourceAvailability,
 } from "./types.ts";
 
-// ---------------------------------------------------------------------------
-// Book Sources
-// ---------------------------------------------------------------------------
+type InvokeAdapter = typeof invoke;
+
+let invokeAdapter: InvokeAdapter = invoke;
+
+export function setInvokeAdapterForTests(adapter: InvokeAdapter): void {
+  invokeAdapter = adapter;
+}
+
+export function resetInvokeAdapterForTests(): void {
+  invokeAdapter = invoke;
+}
 
 export async function listBookSources(): Promise<LegacyBookSource[]> {
-  try {
-    return await invoke<LegacyBookSource[]>("list_book_sources");
-  } catch {
-    return mockBookSources();
-  }
+  return await invokeAdapter<LegacyBookSource[]>("list_book_sources");
+}
+
+export async function loadBookSourcesFromFile(): Promise<LegacyBookSource[]> {
+  return await invokeAdapter<LegacyBookSource[]>("load_book_sources_from_file");
+}
+
+export async function importBookSourcesJson(
+  json: string,
+): Promise<LegacyBookSource[]> {
+  return await invokeAdapter<LegacyBookSource[]>("import_book_sources_json", { json });
+}
+
+export async function importBookSourcesUrl(
+  url: string,
+): Promise<LegacyBookSource[]> {
+  return await invokeAdapter<LegacyBookSource[]>("import_book_sources_url", { url });
+}
+
+export async function importBookSourcesSubscription(
+  url: string,
+): Promise<LegacyBookSource[]> {
+  return await invokeAdapter<LegacyBookSource[]>("import_book_sources_subscription", { url });
+}
+
+export async function testBookSourcesAvailability(
+  sourceUrls?: string[],
+): Promise<BookSourceAvailability[]> {
+  return await invokeAdapter<BookSourceAvailability[]>("test_book_sources_availability", {
+    sourceUrls,
+  });
 }
 
 export async function deleteBookSource(url: string): Promise<boolean> {
-  try {
-    return await invoke<boolean>("delete_book_source", { url });
-  } catch {
-    return false;
-  }
+  return await invokeAdapter<boolean>("delete_book_source", { url });
 }
 
 export async function toggleBookSource(
-  _url: string,
-  _enabled: boolean,
+  url: string,
+  enabled: boolean,
 ): Promise<boolean> {
-  return true;
+  return await invokeAdapter<boolean>("toggle_book_source", { url, enabled });
 }
 
-// ---------------------------------------------------------------------------
-// RSS Sources
-// ---------------------------------------------------------------------------
+export async function setBookSourcesEnabled(
+  sourceUrls: string[],
+  enabled: boolean,
+): Promise<number> {
+  let changed = 0;
+  for (const sourceUrl of sourceUrls) {
+    if (await toggleBookSource(sourceUrl, enabled)) {
+      changed += 1;
+    }
+  }
+  return changed;
+}
+
+export async function enableAllBookSources(): Promise<number> {
+  const sources = await listBookSources();
+  return await setBookSourcesEnabled(
+    sources.filter((source) => !source.enabled).map((source) => source.bookSourceUrl),
+    true,
+  );
+}
+
+export async function deleteBookSources(sourceUrls: string[]): Promise<number> {
+  let deleted = 0;
+  for (const sourceUrl of sourceUrls) {
+    if (await deleteBookSource(sourceUrl)) {
+      deleted += 1;
+    }
+  }
+  return deleted;
+}
+
+export async function deleteDisabledBookSources(): Promise<number> {
+  const sources = await listBookSources();
+  return await deleteBookSources(
+    sources.filter((source) => !source.enabled).map((source) => source.bookSourceUrl),
+  );
+}
 
 export async function listRssSources(): Promise<LegacyRssSource[]> {
   try {
-    return await invoke<LegacyRssSource[]>("list_rss_sources");
+    return await invokeAdapter<LegacyRssSource[]>("list_rss_sources");
   } catch {
     return [];
   }
 }
-
-// ---------------------------------------------------------------------------
-// Replace Rules
-// ---------------------------------------------------------------------------
 
 export async function listReplaceRules(): Promise<LegacyReplaceRule[]> {
   try {
-    return await invoke<LegacyReplaceRule[]>("list_replace_rules");
+    return await invokeAdapter<LegacyReplaceRule[]>("list_replace_rules");
   } catch {
     return [];
   }
 }
 
-// ---------------------------------------------------------------------------
-// Books / Library
-// ---------------------------------------------------------------------------
-
 export async function listBooks(): Promise<Book[]> {
+  return await invokeAdapter<Book[]>("list_books");
+}
+
+export async function getBook(url: string): Promise<Book | null> {
   try {
-    return await invoke<Book[]>("list_books");
+    return await invokeAdapter<Book | null>("get_book", { url });
   } catch {
-    return mockBooks();
+    return null;
   }
 }
 
 export async function addBookToShelf(book: Book): Promise<boolean> {
-  try {
-    return await invoke<boolean>("add_book_to_shelf", { book });
-  } catch {
-    return false;
-  }
+  return await invokeAdapter<boolean>("add_book_to_shelf", { book });
 }
 
 export async function removeBook(url: string): Promise<boolean> {
-  try {
-    return await invoke<boolean>("remove_book", { url });
-  } catch {
-    return false;
-  }
+  return await invokeAdapter<boolean>("remove_book", { url });
 }
-
-// ---------------------------------------------------------------------------
-// Search
-// ---------------------------------------------------------------------------
 
 export async function searchBooks(
   sourceUrl: string,
   keyword: string,
   page: number = 1,
 ): Promise<SearchResult[]> {
-  try {
-    return await invoke<SearchResult[]>("search_books", {
-      sourceUrl,
-      keyword,
-      page,
-    });
-  } catch {
-    return [];
-  }
+  return await invokeAdapter<SearchResult[]>("search_books", {
+    sourceUrl,
+    keyword,
+    page,
+  });
 }
-
-// ---------------------------------------------------------------------------
-// Reader
-// ---------------------------------------------------------------------------
 
 export async function fetchBookInfo(
   bookUrl: string,
   sourceUrl: string,
 ): Promise<BookInfo> {
-  try {
-    return await invoke<BookInfo>("fetch_book_info", { bookUrl, sourceUrl });
-  } catch {
-    return { name: "", author: "" };
-  }
+  return await invokeAdapter<BookInfo>("fetch_book_info", { bookUrl, sourceUrl });
 }
 
 export async function fetchToc(
   tocUrl: string,
   sourceUrl: string,
 ): Promise<Chapter[]> {
-  try {
-    return await invoke<Chapter[]>("fetch_toc", { tocUrl, sourceUrl });
-  } catch {
-    return [];
-  }
+  return await invokeAdapter<Chapter[]>("fetch_toc", { tocUrl, sourceUrl });
 }
 
 export async function fetchContent(
   chapterUrl: string,
   sourceUrl: string,
 ): Promise<string> {
-  try {
-    return await invoke<string>("fetch_content", { chapterUrl, sourceUrl });
-  } catch {
-    return "";
-  }
+  return await invokeAdapter<string>("fetch_content", { chapterUrl, sourceUrl });
 }
 
 export async function getReadingProgress(
   bookId: string,
 ): Promise<ReadingProgress | null> {
   try {
-    return await invoke<ReadingProgress | null>("get_reading_progress", {
+    return await invokeAdapter<ReadingProgress | null>("get_reading_progress", {
       bookId,
     });
   } catch {
@@ -162,69 +191,9 @@ export async function getReadingProgress(
 export async function saveReadingProgress(
   progress: ReadingProgress,
 ): Promise<void> {
-  try {
-    await invoke<void>("save_reading_progress", { progress });
-  } catch {
-    // ignore
-  }
+  await invokeAdapter<void>("save_reading_progress", { progress });
 }
-
-// ---------------------------------------------------------------------------
-// Backup
-// ---------------------------------------------------------------------------
 
 export async function importBackup(path: string): Promise<ImportSummary> {
-  try {
-    return await invoke<ImportSummary>("import_backup", { path });
-  } catch {
-    return { book_sources_count: 0, rss_sources_count: 0, replace_rules_count: 0 };
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Mock data
-// ---------------------------------------------------------------------------
-
-function mockBookSources(): LegacyBookSource[] {
-  return [
-    {
-      book_source_url: "https://example.com/source1",
-      book_source_name: "示例书源1",
-      book_source_group: "默认",
-      enabled: true,
-    },
-    {
-      book_source_url: "https://example.com/source2",
-      book_source_name: "示例书源2",
-      book_source_group: "默认",
-      enabled: false,
-    },
-  ];
-}
-
-function mockBooks(): Book[] {
-  return [
-    {
-      url: "https://example.com/book1",
-      name: "三体",
-      author: "刘慈欣",
-      source_url: "https://example.com/source1",
-      reading_progress: 45,
-      total_chapters: 80,
-    },
-    {
-      url: "https://example.com/book2",
-      name: "雪中悍刀行",
-      author: "烽火戏诸侯",
-      source_url: "https://example.com/source1",
-      reading_progress: 102,
-      total_chapters: 300,
-    },
-    {
-      url: "https://example.com/book3",
-      name: "置身事内",
-      author: "兰小欢",
-      source_url: "https://example.com/source2",
-    },
-  ];
+  return await invokeAdapter<ImportSummary>("import_backup", { path });
 }

@@ -1,6 +1,7 @@
-import { listBooks } from "../api.ts";
+import { listBooks, removeBook } from "../api.ts";
 import { navigate } from "../router.ts";
 import type { Book } from "../types.ts";
+import { ask } from "@tauri-apps/plugin-dialog";
 
 export type BookViewMode = "grid" | "list";
 
@@ -46,7 +47,7 @@ function describeBookCard(book: Book): string {
   const url = escapeHtml(book.url);
 
   return `
-    <li class="book-card" data-book-url="${url}" tabindex="0" role="button">
+    <li class="book-card" data-book-url="${url}" data-book-name="${name}" data-book-author="${author}" tabindex="0" role="button">
       <div class="book-cover">
         ${coverHtml}
       </div>
@@ -55,6 +56,7 @@ function describeBookCard(book: Book): string {
         <p class="book-author">${author}</p>
         <p class="book-progress">${progressText}</p>
       </div>
+      <button class="book-delete-btn" data-delete-book="${url}" title="删除">&#x2715;</button>
     </li>
   `;
 }
@@ -79,13 +81,14 @@ function describeBookListItem(book: Book): string {
   const url = escapeHtml(book.url);
 
   return `
-    <li class="book-list-item" data-book-url="${url}" tabindex="0" role="button">
+    <li class="book-list-item" data-book-url="${url}" data-book-name="${name}" data-book-author="${author}" tabindex="0" role="button">
       <div class="list-cover">${coverHtml}</div>
       <div class="list-info">
         <h3 class="list-title">${name}</h3>
         <p class="list-author">${author}</p>
         <p class="list-progress">${progressText}</p>
       </div>
+      <button class="book-delete-btn" data-delete-book="${url}" title="删除">&#x2715;</button>
     </li>
   `;
 }
@@ -117,6 +120,7 @@ export async function renderBookshelfPage(): Promise<string> {
           <button class="btn-toggle" data-view="list" title="列表视图">&#x2630;</button>
         </div>
         <button class="btn-icon" data-nav="/search" title="搜索">&#x1F50D;</button>
+        <button class="btn-icon" data-nav="/settings" title="设置">&#x2699;</button>
       </header>
       ${books.length === 0 ? `
         <div class="empty-state">
@@ -150,12 +154,14 @@ export function initBookshelfHandlers(container: HTMLElement) {
       bookContainer.innerHTML = describeBookCards(books, mode);
       pageEl.dataset["viewMode"] = mode;
 
-      // Re-attach book click handlers
+      // Re-attach handlers
       attachBookHandlers(container);
+      attachDeleteHandlers(container);
     });
   });
 
   attachBookHandlers(container);
+  attachDeleteHandlers(container);
 
   // Nav handlers
   container.querySelectorAll<HTMLElement>("[data-nav]").forEach((el) => {
@@ -169,7 +175,12 @@ export function initBookshelfHandlers(container: HTMLElement) {
 function attachBookHandlers(container: HTMLElement) {
   const selectors = "[data-book-url]";
   container.querySelectorAll<HTMLElement>(selectors).forEach((el) => {
-    el.addEventListener("click", () => {
+    el.addEventListener("click", (e) => {
+      // Don't navigate if clicking on delete button
+      const target = e.target as HTMLElement;
+      if (target.closest("[data-delete-book]")) {
+        return;
+      }
       const bookUrl = el.dataset.bookUrl!;
       navigate(`/reader/${encodeURIComponent(bookUrl)}`);
     });
@@ -177,6 +188,53 @@ function attachBookHandlers(container: HTMLElement) {
       if (e.key === "Enter" || e.key === " ") {
         const bookUrl = el.dataset.bookUrl!;
         navigate(`/reader/${encodeURIComponent(bookUrl)}`);
+      }
+    });
+  });
+}
+
+function attachDeleteHandlers(container: HTMLElement) {
+  container.querySelectorAll<HTMLButtonElement>("[data-delete-book]").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+
+      if (btn.disabled) return;
+      btn.disabled = true;
+      const originalText = btn.innerHTML;
+      btn.innerHTML = "⏳";
+
+      const bookUrl = btn.dataset.deleteBook!;
+      const bookItem = btn.closest<HTMLElement>("[data-book-url]");
+      const bookName = bookItem?.dataset.bookName || "此书";
+
+      try {
+        const userConfirmed = await ask(`确定要从书架删除《${bookName}》吗？`, {
+          title: "确认删除",
+          kind: "warning",
+          okLabel: "删除",
+          cancelLabel: "取消"
+        });
+
+        if (!userConfirmed) {
+          btn.disabled = false;
+          btn.innerHTML = originalText;
+          return;
+        }
+
+        const success = await removeBook(bookUrl);
+        if (success) {
+          bookItem?.remove();
+        } else {
+          alert("删除失败");
+          btn.disabled = false;
+          btn.innerHTML = originalText;
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        alert(`删除失败：${msg}`);
+        btn.disabled = false;
+        btn.innerHTML = originalText;
       }
     });
   });

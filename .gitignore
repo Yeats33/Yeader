@@ -20,3 +20,4 @@ target/
 #samples
 sample/
 .worktrees/
+.omx/

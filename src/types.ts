@@ -1,30 +1,35 @@
 export interface LegacyBookSource {
-  book_source_url: string;
-  book_source_name: string;
-  book_source_group: string;
+  bookSourceUrl: string;
+  bookSourceName: string;
+  bookSourceGroup?: string;
+  subscriptionUrl?: string;
+  searchUrl?: string;
   enabled: boolean;
-  enabled_explore?: boolean;
-  explore_url?: string;
-  login_check_js?: string;
-  book_source_type?: number;
-  rule_search?: SearchRule;
-  rule_book_info?: BookInfoRule;
-  rule_toc?: TocRule;
-  rule_content?: ContentRule;
+  lastTestAvailable?: boolean;
+  lastTestedAt?: string;
+  lastTestDetail?: string;
+  enabledExplore?: boolean;
+  exploreUrl?: string;
+  loginCheckJs?: string;
+  bookSourceType?: number;
+  ruleSearch?: SearchRule;
+  ruleBookInfo?: BookInfoRule;
+  ruleToc?: TocRule;
+  ruleContent?: ContentRule;
 }
 
 export interface SearchRule {
-  book_list?: string;
+  bookList?: string;
   name?: string;
   author?: string;
   intro?: string;
   kind?: string;
-  last_chapter?: string;
-  update_time?: string;
-  book_url?: string;
-  cover_url?: string;
-  word_count?: string;
-  check_key_word?: string;
+  lastChapter?: string;
+  updateTime?: string;
+  bookUrl?: string;
+  coverUrl?: string;
+  wordCount?: string;
+  checkKeyWord?: string;
 }
 
 export interface BookInfoRule {
@@ -33,55 +38,52 @@ export interface BookInfoRule {
   author?: string;
   intro?: string;
   kind?: string;
-  last_chapter?: string;
-  update_time?: string;
-  cover_url?: string;
-  toc_url?: string;
-  word_count?: string;
-  can_re_name?: string;
-  download_urls?: string;
+  lastChapter?: string;
+  updateTime?: string;
+  coverUrl?: string;
+  tocUrl?: string;
+  wordCount?: string;
+  canReName?: string;
+  downloadUrls?: string;
 }
 
 export interface TocRule {
-  chapter_list?: string;
-  chapter_name?: string;
-  chapter_url?: string;
-  format_js?: string;
-  is_volume?: string;
-  is_vip?: string;
-  is_pay?: string;
-  update_time?: string;
-  next_toc_url?: string;
-  pre_update_js?: string;
+  chapterList?: string;
+  chapterName?: string;
+  chapterUrl?: string;
+  formatJs?: string;
+  isVolume?: string;
+  isVip?: string;
+  isPay?: string;
+  updateTime?: string;
+  nextTocUrl?: string;
+  preUpdateJs?: string;
 }
 
 export interface ContentRule {
   content?: string;
   title?: string;
-  next_content_url?: string;
-  web_js?: string;
-  source_regex?: string;
-  replace_regex?: string;
-  image_style?: string;
-  image_decode?: string;
-  pay_action?: string;
+  nextContentUrl?: string;
+  webJs?: string;
+  sourceRegex?: string;
+  replaceRegex?: string;
+  imageStyle?: string;
+  imageDecode?: string;
+  payAction?: string;
 }
 
 export interface LegacyRssSource {
-  rss_source_url: string;
-  rss_source_name: string;
-  rss_source_group: string;
+  sourceUrl: string;
+  sourceName: string;
+  sourceIcon: string;
   enabled: boolean;
-  rule_articles?: string;
-  rule_title?: string;
-  rule_link?: string;
-  rule_content?: string;
+  ruleArticles?: string;
 }
 
 export interface LegacyReplaceRule {
   id: number;
   name: string;
-  enabled: boolean;
+  isEnabled: boolean;
   pattern: string;
   replacement: string;
 }
@@ -110,6 +112,7 @@ export interface Chapter {
 }
 
 export interface SearchResult {
+  source_id: string;
   name: string;
   author: string;
   book_url: string;
@@ -144,4 +147,11 @@ export interface ImportSummary {
   book_sources_count: number;
   rss_sources_count: number;
   replace_rules_count: number;
+}
+
+export interface BookSourceAvailability {
+  sourceUrl: string;
+  available: boolean;
+  detail?: string;
+  testedAt?: string;
 }

@@ -29,24 +29,24 @@ const MOCK_BOOKS = [
 
 test("describeBookshelfEmpty renders empty state", () => {
   const html = describeBookshelfEmpty();
-  assert.ok(html.includes("书架为空"), "should show empty message");
-  assert.ok(html.includes('data-nav="/search"'), "should link to search");
+  assert.equal(html.includes("书架为空"), true, "should show empty message");
+  assert.equal(html.includes('data-nav="/search"'), true, "should link to search");
 });
 
 test("describeBookCards renders all books in grid mode", () => {
   const html = describeBookCards(MOCK_BOOKS, "grid");
-  assert.ok(html.includes("book-grid"), "should use grid class");
-  assert.ok(html.includes("三体"), "should render book name");
-  assert.ok(html.includes("刘慈欣"), "should render author");
-  assert.ok(html.includes("data-book-url"), "should have book URL");
-  assert.ok(html.includes("阅读至第 45 章"), "should show progress");
+  assert.equal(html.includes("book-grid"), true, "should use grid class");
+  assert.equal(html.includes("三体"), true, "should render book name");
+  assert.equal(html.includes("刘慈欣"), true, "should render author");
+  assert.equal(html.includes("data-book-url"), true, "should have book URL");
+  assert.equal(html.includes("阅读至第 45 章"), true, "should show progress");
 });
 
 test("describeBookCards renders all books in list mode", () => {
   const html = describeBookCards(MOCK_BOOKS, "list");
-  assert.ok(html.includes("book-list"), "should use list class");
-  assert.ok(html.includes("三体"), "should render book name");
-  assert.ok(html.includes("刘慈欣"), "should render author");
+  assert.equal(html.includes("book-list"), true, "should use list class");
+  assert.equal(html.includes("三体"), true, "should render book name");
+  assert.equal(html.includes("刘慈欣"), true, "should render author");
 });
 
 test("describeBookCards shows progress text correctly", () => {
@@ -57,7 +57,7 @@ test("describeBookCards shows progress text correctly", () => {
     author: "Author",
     source_url: "https://x.com",
   }], "grid");
-  assert.ok(noProgress.includes("待阅读"), "should show 待阅读 for new book");
+  assert.equal(noProgress.includes("待阅读"), true, "should show 待阅读 for new book");
 
   // With total chapters
   const withProgress = describeBookCards([{
@@ -68,7 +68,7 @@ test("describeBookCards shows progress text correctly", () => {
     reading_progress: 10,
     total_chapters: 50,
   }], "grid");
-  assert.ok(withProgress.includes("阅读至第 10 章"), "should show chapter progress");
+  assert.equal(withProgress.includes("阅读至第 10 章"), true, "should show chapter progress");
 
   // No total chapters = percentage
   const withPercent = describeBookCards([{
@@ -78,7 +78,7 @@ test("describeBookCards shows progress text correctly", () => {
     source_url: "https://x.com",
     reading_progress: 75,
   }], "grid");
-  assert.ok(withPercent.includes("阅读 75%"), "should show percentage");
+  assert.equal(withPercent.includes("阅读 75%"), true, "should show percentage");
 });
 
 test("describeBookCards renders cover or placeholder", () => {
@@ -89,8 +89,8 @@ test("describeBookCards renders cover or placeholder", () => {
     source_url: "https://x.com",
     cover_url: "https://x.com/cover.jpg",
   }], "grid");
-  assert.ok(withCover.includes('<img'), "should render cover image");
-  assert.ok(!withCover.includes("book-cover-placeholder"), "should not show placeholder");
+  assert.equal(withCover.includes('<img'), true, "should render cover image");
+  assert.equal(withCover.includes("book-cover-placeholder"), false, "should not show placeholder");
 
   const noCover = describeBookCards([{
     url: "https://x.com/b",
@@ -98,8 +98,8 @@ test("describeBookCards renders cover or placeholder", () => {
     author: "Author",
     source_url: "https://x.com",
   }], "grid");
-  assert.ok(noCover.includes("book-cover-placeholder"), "should show placeholder");
-  assert.ok(noCover.includes("测"), "placeholder should show first char of name");
+  assert.equal(noCover.includes("book-cover-placeholder"), true, "should show placeholder");
+  assert.equal(noCover.includes("测"), true, "placeholder should show first char of name");
 });
 
 test("describeBookCards escapes HTML in book data", () => {
@@ -111,7 +111,6 @@ test("describeBookCards escapes HTML in book data", () => {
   }];
   const html = describeBookCards(xssBook, "grid");
   // Should not contain unescaped script tag
-  assert.ok(!html.includes("<script>"), "should escape script tag");
-  // Should contain escaped version
-  assert.ok(html.includes("&lt;script&gt;"), "should contain escaped version");
+  assert.equal(html.includes("<script>"), false, "should escape script tag");
+  assert.equal(html.includes("&lt;script&gt;"), true, "should contain escaped version");
 });
