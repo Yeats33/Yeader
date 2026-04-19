@@ -37,7 +37,8 @@ pub async fn fetch_book_info(
         })?;
 
     info!("fetch_book_info: got body len={}", response.body.len());
-    info!("fetch_book_info: body preview: {}", &response.body[..response.body.len().min(500)]);
+    let preview: String = response.body.chars().take(200).collect();
+    info!("fetch_book_info: body preview: {}", preview);
     let info = yeader_reader::fetch_book_info(&source, &book_url, &response.body);
     info!("fetch_book_info: parsed info: title={}, toc_url={}", info.title, info.toc_url);
 
