@@ -1120,7 +1120,7 @@ export function initSettingsHandlers(container: HTMLElement) {
           logViewer.innerHTML = lines
             .map(
               (line) =>
-                `<div class="log-line log-${escapeAttr(line.level.toLowerCase())}"><span class="log-ts">${escapeText(line.timestamp)}</span> <span class="log-level">[${escapeText(line.level)}]</span> <span class="log-msg">${escapeText(line.message)}</span></div>`,
+                `<div class="log-line log-${escapeAttr(line.level.toLowerCase())}"><span class="log-ts">${escapeText(line.timestamp)}</span> <span class="log-level">[${escapeText(line.level)}]</span> <span class="log-module">${escapeText(line.target)}</span> <span class="log-msg">${escapeText(line.message)}</span></div>`,
             )
             .join("");
         }

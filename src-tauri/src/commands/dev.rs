@@ -53,8 +53,9 @@ pub fn open_log_file(state: State<'_, AppState>) -> Result<(), String> {
 }
 
 fn log_file_path(log_dir: &PathBuf) -> Result<PathBuf, String> {
+    // tracing-appender rolling::daily writes to yeader.log.YYYY-MM-DD
     let today = chrono_lite_date();
-    let log_file = log_dir.join(format!("{}.log", today));
+    let log_file = log_dir.join(format!("yeader.log.{}", today));
     Ok(log_file)
 }
 

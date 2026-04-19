@@ -164,6 +164,6 @@ export interface DevModeStatus {
 export interface LogLine {
   timestamp: string;
   level: string;
-  module: string;
+  target: string;
   message: string;
 }

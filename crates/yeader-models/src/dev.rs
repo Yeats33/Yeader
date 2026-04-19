@@ -1,17 +1,17 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
-/// A single log entry, matching the JSON Lines format written to the log file.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+/// A single log entry parsed from tracing-subscriber JSON Lines output.
+#[derive(Debug, Clone, Deserialize)]
 pub struct LogLine {
     pub timestamp: String,
     pub level: String,
-    pub module: String,
+    /// Maps from tracing-subscriber's "target" field.
+    pub target: String,
     pub message: String,
 }
 
 /// Dev mode status returned to the frontend.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DevModeStatus {
     pub enabled: bool,
