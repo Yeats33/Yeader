@@ -61,9 +61,12 @@ jobs:
       - name: Build (Windows)
         if: matrix.platform == 'windows-latest'
         run: |
-          $version = (Get-Content src-tauri/tauri.conf.json | Select-String '"version": "([^"]+)"' | ForEach-Object { $_.Matches.Groups[1].Value })
-          $numericVersion = $version -replace '-.*', ''
-          (Get-Content src-tauri/tauri.conf.json) -replace "\"version\": ""$version""", "\"version"": ""$numericVersion""" | Set-Content src-tauri/tauri.conf.json
+          node -e "
+            const fs = require('fs');
+            const cfg = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
+            cfg.version = cfg.version.replace(/-.*$/, '');
+            fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(cfg, null, 2));
+          "
           npm run tauri build
 
       - name: Upload artifacts (macOS)
