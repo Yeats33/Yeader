@@ -1,31 +1,43 @@
 //! Tauri application entry point.
 
 mod commands;
+mod logging;
 mod state;
 
-use commands::{library, reader, search};
-use log::info;
+use commands::{dev, library, reader, search};
 use state::AppState;
 use tauri::Manager;
+use tracing_appender::non_blocking::WorkerGuard;
 use yeader_library::Database;
+
+/// Keep the WorkerGuard alive for the entire program lifetime.
+/// Leaking is intentional — the guard must not be dropped until exit.
+static LOG_GUARD: std::sync::OnceLock<Box<WorkerGuard>> = std::sync::OnceLock::new();
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
-    info!("Yeader starting...");
-
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let app_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&app_dir)?;
+
+            // Initialize logging first — must happen before any other logging.
+            let log_dir = logging::log_dir(&app_dir);
+            let guard = logging::init_logging(log_dir.clone())?;
+            // Leak the guard so it lives for the entire program duration.
+            let _ = LOG_GUARD.set(Box::new(guard));
+
             let db_path = app_dir.join("yeader.db");
             let db = Database::open(db_path.to_str().unwrap())
                 .map_err(|e| format!("Failed to open database: {}", e))?;
-            app.manage(AppState::new(db));
 
-            info!("Yeader initialized successfully");
+            let state = AppState::new(db, log_dir);
+            app.manage(state);
+
+            tracing::info!("Yeader initialized successfully");
+
             #[cfg(debug_assertions)]
             {
                 let window = app.get_webview_window("main").unwrap();
@@ -35,6 +47,10 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             parse_legado_import_uri,
+            dev::get_dev_mode_status,
+            dev::toggle_dev_mode,
+            dev::get_log_lines,
+            dev::open_log_file,
             library::list_book_sources,
             library::load_book_sources_from_file,
             library::import_book_sources_json,

@@ -1312,6 +1312,75 @@ body.dark-mode,
 }
 
 /* ---------------------------------------------------------------------------
+   Dev Mode Panel
+   --------------------------------------------------------------------------- */
+.dev-mode-panel {
+  padding: 1rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dev-mode-panel .setting-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.dev-mode-panel .setting-label {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  min-width: 80px;
+}
+
+.log-viewer {
+  max-height: 300px;
+  overflow-y: auto;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-medium);
+  border-radius: var(--radius-md, 8px);
+  padding: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.log-line {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.125rem 0.25rem;
+  border-radius: 2px;
+  line-height: 1.4;
+}
+
+.log-line:hover {
+  background: var(--color-border);
+}
+
+.log-ts {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.log-level {
+  flex-shrink: 0;
+  font-weight: 600;
+}
+
+.log-level[\[INFO\]] { color: var(--color-info); }
+.log-level[\[DEBUG\]] { color: var(--color-text-muted); }
+.log-level[\[WARN\]] { color: var(--color-warning); }
+.log-level[\[ERROR\]] { color: var(--color-danger); }
+.log-level[\[TRACE\]] { color: var(--color-text-placeholder); }
+
+.log-error { background: rgba(212, 86, 86, 0.06); }
+.log-warn { background: rgba(195, 125, 13, 0.06); }
+
+.log-msg {
+  color: var(--color-text);
+  word-break: break-all;
+}
+
+/* ---------------------------------------------------------------------------
    Utilities
    --------------------------------------------------------------------------- */
 .hidden { display: none !important; }
