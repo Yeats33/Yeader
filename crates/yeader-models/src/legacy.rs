@@ -331,3 +331,66 @@ mod tests {
         assert_eq!(LEGADO_BACKUP_FILES, expected);
     }
 }
+
+/// Reader style configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReaderStyle {
+    pub font_family: String,
+    pub font_size: u32,
+    pub line_height: f32,
+    pub theme: String,
+}
+
+impl Default for ReaderStyle {
+    fn default() -> Self {
+        ReaderStyle {
+            font_family: "Noto Serif".to_string(),
+            font_size: 18,
+            line_height: 1.4,
+            theme: "light".to_string(),
+        }
+    }
+}
+
+/// A single bookmark within a book
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Mark {
+    pub page: u32,
+    pub content: String,
+    pub width: u32,
+    pub height: u32,
+    pub cfi: String,
+}
+
+/// All bookmarks for a single book
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BookMark {
+    pub book_path: String,
+    pub list: Vec<Mark>,
+}
+
+impl BookMark {
+    pub fn new(book_path: String) -> Self {
+        BookMark {
+            book_path,
+            list: Vec::new(),
+        }
+    }
+
+    /// Add or update a bookmark for a page
+    pub fn add_mark(&mut self, page: u32, content: String, width: u32, height: u32, cfi: String) {
+        if let Some(existing) = self.list.iter_mut().find(|m| m.page == page) {
+            existing.content = content;
+            existing.width = width;
+            existing.height = height;
+            existing.cfi = cfi;
+        } else {
+            self.list.push(Mark { page, content, width, height, cfi });
+        }
+    }
+
+    /// Remove bookmark for a page
+    pub fn remove_mark(&mut self, page: u32) {
+        self.list.retain(|m| m.page != page);
+    }
+}
