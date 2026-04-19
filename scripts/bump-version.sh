@@ -81,6 +81,7 @@ fi
 echo ""
 echo "Committing and tagging..."
 
+git add Cargo.lock
 git add -A
 git commit -m "chore: bump version to v$NEW_VERSION"
 git tag "v$NEW_VERSION"
