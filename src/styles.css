@@ -717,6 +717,30 @@ body.dark-mode,
   border-bottom: 1px solid var(--color-border);
 }
 
+.source-tag-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0 1.5rem 1rem;
+}
+
+.source-tag-filter {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-medium);
+  border-radius: var(--radius-pill);
+  padding: 0.35rem 0.75rem;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.source-tag-filter.active {
+  background: var(--color-brand-light);
+  border-color: var(--color-brand);
+  color: var(--color-brand-deep);
+}
+
 .source-tree { display: flex; flex-direction: column; }
 
 /* Source tier */
@@ -787,6 +811,51 @@ body.dark-mode,
   gap: 0.375rem;
 }
 
+.source-list-card {
+  margin: 1rem 1.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg, 16px);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.source-list-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.875rem 1.25rem;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.source-list-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.source-item-virtual-list {
+  display: block;
+  overflow-x: hidden;
+  overflow-y: hidden;
+  padding-top: 0.5rem;
+  contain: content;
+}
+
+.source-item-virtual-list.is-scrollable {
+  overflow-y: auto;
+}
+
+.source-virtual-canvas {
+  position: relative;
+  width: 100%;
+}
+
+.source-virtual-items {
+  will-change: transform;
+}
+
 /* Source item */
 .source-item {
   display: flex;
@@ -797,6 +866,7 @@ body.dark-mode,
   transition: background 0.15s, border-color 0.15s;
   background: var(--color-bg);
   border: 1px solid transparent;
+  min-height: 84px;
 }
 
 .source-item:hover {
@@ -827,6 +897,28 @@ body.dark-mode,
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
+}
+
+.source-tag-list {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.source-tag-chip {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-brand-light);
+  color: var(--color-brand-deep);
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.source-tag-chip.is-muted {
+  background: var(--color-bg);
+  color: var(--color-text-muted);
 }
 
 .source-meta-tag {

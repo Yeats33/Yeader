@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  computeVirtualWindow,
+  describeFilteredEnabledSummary,
+  parseSourceTags,
   runAvailabilityChecksIncrementally,
   describeLastTestedText,
   describeBookSourceTree,
@@ -15,46 +18,110 @@ const MOCK_SOURCES = [
   {
     bookSourceUrl: "https://example.com/direct-a.json",
     bookSourceName: "直连-A",
-    bookSourceGroup: "男频",
+    bookSourceGroup: "男频,笔趣阁",
     enabled: true,
   },
   {
     bookSourceUrl: "https://example.com/direct-b.json",
     bookSourceName: "直连-B",
-    bookSourceGroup: "女频",
+    bookSourceGroup: "女频,漫画",
     enabled: false,
   },
   {
     bookSourceUrl: "https://example.com/sub-a.json",
     bookSourceName: "订阅-A",
-    bookSourceGroup: "精选",
+    bookSourceGroup: "精选,漫画",
     subscriptionUrl: "https://sub.example.com/all.json",
     enabled: true,
   },
   {
     bookSourceUrl: "https://example.com/sub-b.json",
     bookSourceName: "订阅-B",
-    bookSourceGroup: "精选",
+    bookSourceGroup: "精选,笔趣阁",
     subscriptionUrl: "https://sub.example.com/all.json",
     enabled: false,
   },
 ];
 
+test("parseSourceTags splits comma-separated labels and removes duplicates", () => {
+  assert.equal(
+    JSON.stringify(parseSourceTags("笔趣阁, 漫画，精选,漫画")),
+    JSON.stringify(["笔趣阁", "漫画", "精选"]),
+  );
+  assert.equal(JSON.stringify(parseSourceTags("")), JSON.stringify([]));
+});
+
+test("describeFilteredEnabledSummary respects tag and availability filters", () => {
+  const availabilityResults = new Map([
+    ["https://example.com/direct-a.json", { sourceUrl: "https://example.com/direct-a.json", available: true, testedAt: "1" }],
+    ["https://example.com/direct-b.json", { sourceUrl: "https://example.com/direct-b.json", available: false, testedAt: "1" }],
+    ["https://example.com/sub-a.json", { sourceUrl: "https://example.com/sub-a.json", available: true, testedAt: "1" }],
+    ["https://example.com/sub-b.json", { sourceUrl: "https://example.com/sub-b.json", available: true, testedAt: "1" }],
+  ]);
+
+  assert.equal(
+    describeFilteredEnabledSummary(MOCK_SOURCES, "笔趣阁", "all", availabilityResults),
+    "启用:1 可用:2 全部:2",
+  );
+  assert.equal(
+    describeFilteredEnabledSummary(MOCK_SOURCES, "漫画", "available", availabilityResults),
+    "启用:1 可用:1 全部:1",
+  );
+});
+
+test("computeVirtualWindow returns overscanned slice bounds", () => {
+  assert.equal(
+    JSON.stringify(computeVirtualWindow(100, 240, 480)),
+    JSON.stringify({
+      startIndex: 0,
+      endIndex: 10,
+      offsetTop: 0,
+      offsetBottom: 8640,
+    }),
+  );
+
+  assert.equal(
+    JSON.stringify(computeVirtualWindow(100, 960, 480)),
+    JSON.stringify({
+      startIndex: 8,
+      endIndex: 18,
+      offsetTop: 768,
+      offsetBottom: 7872,
+    }),
+  );
+});
+
+test("describeBookSourceTree renders virtual list shells instead of all source rows", () => {
+  const manySources = Array.from({ length: 120 }, (_, index) => ({
+    bookSourceUrl: `https://example.com/source-${index}.json`,
+    bookSourceName: `超大书源-${index}`,
+    bookSourceGroup: "海量",
+    enabled: index % 2 === 0,
+  }));
+
+  const html = describeBookSourceTree(manySources);
+
+  assert.equal(html.includes("data-source-virtual-list"), true, "should render virtual list shell");
+  assert.equal(html.includes("source-virtual-canvas"), true, "should render virtual list canvas");
+  assert.equal(html.includes("超大书源-119"), false, "should not inline offscreen source rows");
+  assert.equal(html.includes('data-total-count="120"'), true, "should expose group size for virtualization");
+});
+
 test("describeBookSourceTree renders direct and subscription tiers", () => {
   const html = describeBookSourceTree(MOCK_SOURCES);
 
-  assert.equal(html.includes("直接导入"), true, "should render direct tier");
+  assert.equal(html.includes("本地书源"), true, "should render direct tier");
   assert.equal(html.includes("订阅源"), true, "should render subscription tier");
   assert.equal(html.includes("https://sub.example.com/all.json"), true, "should render subscription URL");
-  assert.equal(html.includes("男频"), true, "should render direct group");
-  assert.equal(html.includes("精选"), true, "should render subscription group");
+  assert.equal(html.includes("笔趣阁"), true, "should render split tag label");
+  assert.equal(html.includes("漫画"), true, "should render second split tag label");
 });
 
-test("describeBookSourceTree renders group and subscription bulk toggles", () => {
+test("describeBookSourceTree renders tag filter bar and subscription bulk toggles", () => {
   const html = describeBookSourceTree(MOCK_SOURCES);
 
-  assert.equal(html.includes("启用本组"), true, "should render group-level enable toggle");
-  assert.equal(html.includes("删除本组"), true, "should render group-level delete action");
+  assert.equal(html.includes("全部标签"), true, "should render all-tags option");
+  assert.equal(html.includes('data-tag-filter="笔趣阁"'), true, "should render tag filter hook");
   assert.equal(html.includes("启用订阅"), true, "should render subscription-level enable toggle");
   assert.equal(html.includes("data-bulk-toggle"), true, "should render bulk toggle hooks");
 });
@@ -62,26 +129,23 @@ test("describeBookSourceTree renders group and subscription bulk toggles", () =>
 test("describeBookSourceTree shows enabled summaries at multiple levels", () => {
   const html = describeBookSourceTree(MOCK_SOURCES);
 
-  assert.equal(html.includes("1/2 启用"), true, "should render summary chips");
-  assert.equal(html.includes("已启用"), true, "should render leaf enabled state");
-  assert.equal(html.includes("已禁用"), true, "should render leaf disabled state");
+  assert.equal(html.includes("启用:1 可用:0 全部:2"), true, "should render summary chips");
+  assert.equal(html.includes('data-total-count="2"'), true, "should expose virtual group sizes");
 });
 
-test("describeBookSourceTree renders quick actions and availability placeholders", () => {
+test("describeBookSourceTree renders quick actions and tag-aware virtualization hooks", () => {
   const html = describeBookSourceTree(MOCK_SOURCES);
 
   assert.equal(html.includes("测试可用性"), true, "should render availability test action");
   assert.equal(html.includes("测试此层"), true, "should render tier-level availability action");
   assert.equal(html.includes("测试订阅"), true, "should render subscription-level availability action");
-  assert.equal(html.includes("测试本组"), true, "should render group-level availability action");
-  assert.equal(html.includes("测试书源"), true, "should render source-level availability action");
   assert.equal(html.includes("禁用不可用"), true, "should render disable unavailable action");
   assert.equal(html.includes("启用全部"), true, "should render enable all action");
   assert.equal(html.includes("删除已禁用"), true, "should render delete disabled action");
   assert.equal(html.includes("开发专用：删除全部"), true, "should render dev delete all action");
-  assert.equal(html.includes("未测试"), true, "should render default availability state");
-  assert.equal(html.includes("data-availability-status"), true, "should render availability chip hooks");
   assert.equal(html.includes("data-availability-test"), true, "should render scoped availability hooks");
+  assert.equal(html.includes("data-source-virtual-list"), true, "should render source virtualization hooks");
+  assert.equal(html.includes("source-tag-chip"), true, "should render row tag chips in virtualized content shell");
 });
 
 test("delete confirmation labels switch to explicit second-step copy", () => {
@@ -182,6 +246,6 @@ test("describeBookSourceTree escapes unsafe values", () => {
   ]);
 
   assert.equal(html.includes("<script>"), false, "should escape script tag");
-  assert.equal(html.includes("&lt;script&gt;"), true, "should keep escaped script text");
+  assert.equal(html.includes("&lt;script&gt;alert('xss')&lt;/script&gt;"), true, "should keep escaped script text");
   assert.equal(html.includes("&lt;x&gt;"), true, "should escape subscription URL");
 });

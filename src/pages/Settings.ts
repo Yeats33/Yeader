@@ -42,6 +42,140 @@ type PersistedBookSourceAvailability = BookSourceAvailability & {
 
 type PersistedBookSourceAvailabilityMap = Record<string, PersistedBookSourceAvailability>;
 
+type VirtualWindow = {
+  startIndex: number;
+  endIndex: number;
+  offsetTop: number;
+  offsetBottom: number;
+};
+
+const SOURCE_ROW_HEIGHT = 96;
+const SOURCE_ROW_OVERSCAN = 2;
+const SOURCE_LIST_MAX_VISIBLE_ROWS = 6;
+
+const sourceListRegistry = new Map<string, LegacyBookSource[]>();
+let sourceListSequence = 0;
+let latestBookSourcesSnapshot: LegacyBookSource[] = [];
+
+function resetSourceListRegistry(): void {
+  sourceListRegistry.clear();
+  sourceListSequence = 0;
+}
+
+function registerSourceList(sources: LegacyBookSource[]): string {
+  const listId = `source-list-${sourceListSequence}`;
+  sourceListSequence += 1;
+  sourceListRegistry.set(listId, sources);
+  return listId;
+}
+
+function replaceBookSourceSnapshot(bookSources: LegacyBookSource[]): LegacyBookSource[] {
+  latestBookSourcesSnapshot = bookSources.map((source) => ({ ...source }));
+  return latestBookSourcesSnapshot;
+}
+
+function applyAvailabilityToSourceSnapshot(status: PersistedBookSourceAvailability): void {
+  const source = latestBookSourcesSnapshot.find((item) => item.bookSourceUrl === status.sourceUrl);
+  if (!source) {
+    return;
+  }
+
+  source.lastTestAvailable = status.available;
+  source.lastTestedAt = status.testedAt;
+  source.lastTestDetail = status.detail;
+}
+
+function getFilteredSources(
+  sources: LegacyBookSource[],
+  filterMode: string,
+  selectedTag: string,
+  availabilityResults: Map<string, PersistedBookSourceAvailability>,
+): LegacyBookSource[] {
+  return sources.filter((source) => {
+    if (filterMode === "available" && !availabilityResults.get(source.bookSourceUrl)?.available) {
+      return false;
+    }
+
+    if (selectedTag && !getSourceTags(source).includes(selectedTag)) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
+export function describeFilteredEnabledSummary(
+  sources: LegacyBookSource[],
+  selectedTag: string,
+  filterMode: string,
+  availabilityResults: Map<string, PersistedBookSourceAvailability>,
+): string {
+  const filteredSources = getFilteredSources(sources, filterMode, selectedTag, availabilityResults);
+  const enabledCount = filteredSources.filter((source) => source.enabled).length;
+  const availableCount = filteredSources.filter(
+    (source) => availabilityResults.get(source.bookSourceUrl)?.available,
+  ).length;
+  return `启用:${enabledCount} 可用:${availableCount} 全部:${filteredSources.length}`;
+}
+
+function getViewportHeight(itemCount: number): number {
+  return Math.max(SOURCE_ROW_HEIGHT, Math.min(itemCount, SOURCE_LIST_MAX_VISIBLE_ROWS) * SOURCE_ROW_HEIGHT);
+}
+
+export function parseSourceTags(rawValue?: string): string[] {
+  if (!rawValue) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  const tags: string[] = [];
+
+  rawValue
+    .split(/[,\uff0c]/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .forEach((tag) => {
+      if (seen.has(tag)) {
+        return;
+      }
+      seen.add(tag);
+      tags.push(tag);
+    });
+
+  return tags;
+}
+
+export function computeVirtualWindow(
+  totalCount: number,
+  scrollTop: number,
+  viewportHeight: number,
+  rowHeight: number = SOURCE_ROW_HEIGHT,
+  overscan: number = SOURCE_ROW_OVERSCAN,
+): VirtualWindow {
+  if (totalCount <= 0 || viewportHeight <= 0) {
+    return {
+      startIndex: 0,
+      endIndex: 0,
+      offsetTop: 0,
+      offsetBottom: 0,
+    };
+  }
+
+  const safeScrollTop = Math.max(0, scrollTop);
+  const startIndex = Math.max(0, Math.floor(safeScrollTop / rowHeight) - overscan);
+  const endIndex = Math.min(
+    totalCount,
+    Math.floor((safeScrollTop + viewportHeight) / rowHeight) + overscan + 1,
+  );
+
+  return {
+    startIndex,
+    endIndex,
+    offsetTop: startIndex * rowHeight,
+    offsetBottom: Math.max(0, (totalCount - endIndex) * rowHeight),
+  };
+}
+
 function escapeAttr(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 }
@@ -50,8 +184,8 @@ function escapeText(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-function getSourceGroupName(source: LegacyBookSource): string {
-  return source.bookSourceGroup?.trim() || "未分组";
+function getSourceTags(source: LegacyBookSource): string[] {
+  return parseSourceTags(source.bookSourceGroup);
 }
 
 function getSubscriptionUrl(source: LegacyBookSource): string | null {
@@ -59,11 +193,28 @@ function getSubscriptionUrl(source: LegacyBookSource): string | null {
   return value ? value : null;
 }
 
+function collectSourceTags(sources: LegacyBookSource[]): string[] {
+  const tags = new Set<string>();
+
+  sources.forEach((source) => {
+    getSourceTags(source).forEach((tag) => {
+      tags.add(tag);
+    });
+  });
+
+  return Array.from(tags).sort((left, right) => left.localeCompare(right, "zh-Hans-CN"));
+}
+
 function describeEnabledSummary(sources: LegacyBookSource[]): string {
   const enabledCount = sources.filter((source) => source.enabled).length;
   const tested = sources.filter((s) => typeof s.lastTestAvailable === "boolean");
   const availableCount = tested.filter((s) => s.lastTestAvailable).length;
   return `启用:${enabledCount} 可用:${availableCount} 全部:${sources.length}`;
+}
+
+function describeSummaryChip(sources: LegacyBookSource[]): string {
+  const encodedUrls = escapeAttr(JSON.stringify(sources.map((source) => source.bookSourceUrl)));
+  return `<span class="source-summary-chip available" data-source-summary="${encodedUrls}">${describeEnabledSummary(sources)}</span>`;
 }
 
 export function describeLastTestedText(testedAt: string, now: Date = new Date()): string {
@@ -214,21 +365,6 @@ function describeAvailabilityTestButton(
   `;
 }
 
-function describeGroupDeleteButton(sources: LegacyBookSource[]): string {
-  const encodedUrls = escapeAttr(JSON.stringify(sources.map((source) => source.bookSourceUrl)));
-
-  return `
-    <button
-      type="button"
-      class="btn-danger"
-      data-group-delete="true"
-      data-source-urls="${encodedUrls}"
-    >
-      删除本组
-    </button>
-  `;
-}
-
 function getSourceAvailabilityState(source: LegacyBookSource): PersistedBookSourceAvailability | null {
   if (typeof source.lastTestAvailable !== "boolean" || !source.lastTestedAt) {
     return null;
@@ -247,7 +383,7 @@ function describeSourceItems(sources: LegacyBookSource[]): string {
     .map((source) => {
       const url = escapeAttr(source.bookSourceUrl);
       const name = escapeText(source.bookSourceName ?? "");
-      const group = escapeText(getSourceGroupName(source));
+      const tags = getSourceTags(source);
       const sourceUrl = escapeText(source.bookSourceUrl);
       const stateLabel = source.enabled ? "已启用" : "已禁用";
       const availabilityState = getSourceAvailabilityState(source);
@@ -265,9 +401,12 @@ function describeSourceItems(sources: LegacyBookSource[]): string {
           )
         : "";
       const lastTestedText = availabilityState ? describeLastTestedText(availabilityState.testedAt) : "";
+      const tagHtml = tags.length > 0
+        ? tags.map((tag) => `<span class="source-tag-chip">${escapeText(tag)}</span>`).join("")
+        : '<span class="source-tag-chip is-muted">未标记</span>';
 
       return `
-        <li class="source-item source-row" data-url="${url}">
+        <div class="source-item source-row" data-url="${url}">
           <div class="source-item-main">
             <div class="source-item-header">
               <strong class="source-item-name">${name}</strong>
@@ -275,7 +414,7 @@ function describeSourceItems(sources: LegacyBookSource[]): string {
               <span class="source-availability-chip ${availabilityClass}" data-availability-status data-source-url="${url}" title="${availabilityTitle}">${availabilityLabel}</span>
             </div>
             <div class="source-item-meta">
-              <span class="source-meta-tag">${group}</span>
+              <span class="source-tag-list">${tagHtml}</span>
               <code>${sourceUrl}</code>
               <span class="source-last-tested" data-last-tested data-source-url="${url}">${escapeText(lastTestedText)}</span>
             </div>
@@ -287,41 +426,66 @@ function describeSourceItems(sources: LegacyBookSource[]): string {
             </button>
             <button class="btn-danger" data-delete="source" data-url="${url}">${getSourceDeleteButtonLabel(false)}</button>
           </div>
-        </li>
+        </div>
       `;
     })
     .join("");
 }
 
-function describeSourceGroups(sources: LegacyBookSource[]): string {
-  const groups = new Map<string, LegacyBookSource[]>();
+function describeVirtualSourceList(listId: string, sources: LegacyBookSource[]): string {
+  const totalCount = sources.length;
+  const viewportHeight = getViewportHeight(totalCount || 1);
+  const initialWindow = computeVirtualWindow(totalCount, 0, viewportHeight);
+  const initialSources = sources.slice(initialWindow.startIndex, initialWindow.endIndex);
 
-  for (const source of sources) {
-    const groupName = getSourceGroupName(source);
-    const groupSources = groups.get(groupName) ?? [];
-    groupSources.push(source);
-    groups.set(groupName, groupSources);
-  }
+  return `
+    <div
+      class="source-item-list source-item-virtual-list"
+      data-source-virtual-list="${escapeAttr(listId)}"
+      data-total-count="${String(totalCount)}"
+      data-row-height="${String(SOURCE_ROW_HEIGHT)}"
+      style="height:${viewportHeight}px;"
+    >
+      <div class="source-virtual-canvas" style="height:${String(totalCount * SOURCE_ROW_HEIGHT)}px;">
+        <div class="source-virtual-items" style="transform: translateY(${String(initialWindow.offsetTop)}px);">
+          ${describeSourceItems(initialSources)}
+        </div>
+      </div>
+    </div>
+  `;
+}
 
-  return Array.from(groups.entries())
-    .sort(([left], [right]) => left.localeCompare(right, "zh-Hans-CN"))
-    .map(([groupName, groupSources]) => `
-      <details class="source-group">
-        <summary class="source-group-summary">
-          <span class="source-group-title">${escapeText(groupName)}</span>
-          <span class="source-summary-chip available">${describeEnabledSummary(groupSources)}</span>
-          <span class="source-summary-actions">
-            ${describeAvailabilityTestButton("测试本组", groupSources)}
-            ${describeBulkToggleButton("group", groupSources)}
-            ${describeGroupDeleteButton(groupSources)}
-          </span>
-        </summary>
-        <ul class="source-item-list">
-          ${describeSourceItems(groupSources)}
-        </ul>
-      </details>
-    `)
-    .join("");
+function describeTagFilterBar(tags: string[]): string {
+  return `
+    <div class="source-tag-filters" id="source-tag-filters">
+      <button class="source-tag-filter active" data-tag-filter="">全部标签</button>
+      ${tags.map((tag) => `
+        <button class="source-tag-filter" data-tag-filter="${escapeAttr(tag)}">${escapeText(tag)}</button>
+      `).join("")}
+    </div>
+  `;
+}
+
+function describeSourceListSection(
+  title: string,
+  sources: LegacyBookSource[],
+  extraActions: string = "",
+): string {
+  const listId = registerSourceList(sources);
+
+  return `
+    <section class="source-list-card">
+      <div class="source-list-card-header">
+        <span class="source-list-card-title">${escapeText(title)}</span>
+        ${describeSummaryChip(sources)}
+        <span class="source-summary-actions">
+          ${describeAvailabilityTestButton("测试此层", sources)}
+          ${extraActions}
+        </span>
+      </div>
+      ${describeVirtualSourceList(listId, sources)}
+    </section>
+  `;
 }
 
 export function describeBookSourceTree(bookSources: LegacyBookSource[]): string {
@@ -329,10 +493,14 @@ export function describeBookSourceTree(bookSources: LegacyBookSource[]): string 
     return '<p class="empty-state">暂无书源</p>';
   }
 
+  resetSourceListRegistry();
+  const snapshot = replaceBookSourceSnapshot(bookSources);
+  const allTags = collectSourceTags(snapshot);
+
   const directSources: LegacyBookSource[] = [];
   const subscriptionSources = new Map<string, LegacyBookSource[]>();
 
-  for (const source of bookSources) {
+  for (const source of snapshot) {
     const subscriptionUrl = getSubscriptionUrl(source);
     if (subscriptionUrl) {
       const bucket = subscriptionSources.get(subscriptionUrl) ?? [];
@@ -350,13 +518,13 @@ export function describeBookSourceTree(bookSources: LegacyBookSource[]): string 
       <details class="source-tier" data-tier="local">
         <summary class="source-tier-summary">
           <span class="source-tier-title">本地书源</span>
-          <span class="source-summary-chip available">${describeEnabledSummary(directSources)}</span>
+          ${describeSummaryChip(directSources)}
           <span class="source-summary-actions">
             ${describeAvailabilityTestButton("测试此层", directSources)}
           </span>
         </summary>
         <div class="source-tier-body">
-          ${describeSourceGroups(directSources)}
+          ${describeSourceListSection("本地书源列表", directSources)}
         </div>
       </details>
     `);
@@ -367,21 +535,21 @@ export function describeBookSourceTree(bookSources: LegacyBookSource[]): string 
     const subscriptionNodes = Array.from(subscriptionSources.entries())
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([subscriptionUrl, groupedSources]) => `
-        <details class="source-subscription" data-subscription-url="${escapeAttr(subscriptionUrl)}">
-          <summary class="source-subscription-summary">
+        <section class="source-subscription" data-subscription-url="${escapeAttr(subscriptionUrl)}">
+          <div class="source-subscription-summary">
             <span class="source-subscription-title">订阅链接</span>
             <code class="source-subscription-url">${escapeText(subscriptionUrl)}</code>
-            <span class="source-summary-chip available">${describeEnabledSummary(groupedSources)}</span>
+            ${describeSummaryChip(groupedSources)}
             <span class="source-summary-actions">
               ${describeAvailabilityTestButton("测试订阅", groupedSources)}
               ${describeSubscriptionRefreshButton(groupedSources, subscriptionUrl)}
               ${describeBulkToggleButton("subscription", groupedSources)}
             </span>
-          </summary>
-          <div class="source-tier-body">
-            ${describeSourceGroups(groupedSources)}
           </div>
-        </details>
+          <div class="source-tier-body">
+            ${describeSourceListSection("订阅书源列表", groupedSources)}
+          </div>
+        </section>
       `)
       .join("");
 
@@ -389,7 +557,7 @@ export function describeBookSourceTree(bookSources: LegacyBookSource[]): string 
       <details class="source-tier" data-tier="subscription">
         <summary class="source-tier-summary">
           <span class="source-tier-title">订阅源</span>
-          <span class="source-summary-chip available">${describeEnabledSummary(allSubscriptionSources)}</span>
+          ${describeSummaryChip(allSubscriptionSources)}
           <span class="source-summary-actions">
             ${describeAvailabilityTestButton("测试此层", allSubscriptionSources)}
           </span>
@@ -410,8 +578,9 @@ export function describeBookSourceTree(bookSources: LegacyBookSource[]): string 
       <button class="btn-secondary" id="delete-disabled-sources-btn">删除已禁用</button>
       <button class="btn-danger" id="dev-delete-all-sources-btn">${getDeleteAllButtonLabel(false)}</button>
     </div>
+    ${describeTagFilterBar(allTags)}
     <div id="source-action-result" class="import-result"></div>
-    <div class="source-tree" id="source-tree" data-filter="all">${sections.join("")}</div>
+    <div class="source-tree" id="source-tree" data-filter="all" data-tag-filter="">${sections.join("")}</div>
   `;
 }
 
@@ -543,6 +712,7 @@ export function initSettingsHandlers(container: HTMLElement) {
     el.addEventListener("click", () => navigate(el.dataset.nav!));
   });
 
+  const sourceTree = $<HTMLElement>(container, "#source-tree");
   const importBackupBtn = $<HTMLButtonElement>(container, "#import-backup-btn");
   const importResult = $<HTMLElement>(container, "#import-result");
   const exportBackupBtn = $<HTMLButtonElement>(container, "#export-backup-btn");
@@ -558,7 +728,9 @@ export function initSettingsHandlers(container: HTMLElement) {
   const deleteDisabledSourcesBtn = $<HTMLButtonElement>(container, "#delete-disabled-sources-btn");
   const filterAvailableBtn = $<HTMLButtonElement>(container, "#filter-available-btn");
   const devDeleteAllSourcesBtn = $<HTMLButtonElement>(container, "#dev-delete-all-sources-btn");
+  const tagFilterBar = $<HTMLElement>(container, "#source-tag-filters");
   const availabilityResults = new Map<string, PersistedBookSourceAvailability>();
+  const virtualListRenderers = new Map<string, () => void>();
 
   function renderSourceActionResult(kind: "loading" | "success" | "error", text: string) {
     sourceActionResult.innerHTML = `<div class="${kind === "loading" ? "loading" : `${kind}-msg`}">${escapeText(text)}</div>`;
@@ -602,6 +774,7 @@ export function initSettingsHandlers(container: HTMLElement) {
     availabilityResults.clear();
     for (const [sourceUrl, status] of Object.entries(merged)) {
       availabilityResults.set(sourceUrl, status);
+      applyAvailabilityToSourceSnapshot(status);
     }
 
     return merged;
@@ -633,31 +806,122 @@ export function initSettingsHandlers(container: HTMLElement) {
     );
   }
 
-  listBookSources()
-    .then((sources) => {
-      for (const source of sources) {
-        const status = getSourceAvailabilityState(source);
-        if (!status) {
-          continue;
-        }
-        availabilityResults.set(source.bookSourceUrl, status);
-        updateAvailabilityChip(status);
+  for (const source of latestBookSourcesSnapshot) {
+    const availabilityState = getSourceAvailabilityState(source);
+    if (!availabilityState) {
+      continue;
+    }
+    availabilityResults.set(source.bookSourceUrl, availabilityState);
+  }
+
+  function renderVirtualSourceList(listEl: HTMLElement, sources: LegacyBookSource[]): void {
+    const filterMode = sourceTree.dataset.filter ?? "all";
+    const selectedTag = sourceTree.dataset.tagFilter ?? "";
+    const filteredSources = getFilteredSources(sources, filterMode, selectedTag, availabilityResults);
+    const totalCount = filteredSources.length;
+
+    if (totalCount === 0) {
+      listEl.innerHTML = "";
+      listEl.style.height = "0px";
+      listEl.classList.remove("is-scrollable");
+      return;
+    }
+
+    const viewportHeight = getViewportHeight(totalCount || 1);
+    const maxScrollTop = Math.max(0, totalCount * SOURCE_ROW_HEIGHT - viewportHeight);
+    const scrollTop = Math.min(listEl.scrollTop, maxScrollTop);
+    const windowState = computeVirtualWindow(totalCount, scrollTop, viewportHeight);
+    const visibleSources = filteredSources.slice(windowState.startIndex, windowState.endIndex);
+
+    listEl.style.height = `${viewportHeight}px`;
+    listEl.classList.toggle("is-scrollable", totalCount > SOURCE_LIST_MAX_VISIBLE_ROWS);
+    listEl.innerHTML = `
+      <div class="source-virtual-canvas" style="height:${String(totalCount * SOURCE_ROW_HEIGHT)}px;">
+        <div class="source-virtual-items" style="transform: translateY(${String(windowState.offsetTop)}px);">
+          ${describeSourceItems(visibleSources)}
+        </div>
+      </div>
+    `;
+  }
+
+  function updateSourceSummaries(): void {
+    const filterMode = sourceTree.dataset.filter ?? "all";
+    const selectedTag = sourceTree.dataset.tagFilter ?? "";
+
+    sourceTree.querySelectorAll<HTMLElement>("[data-source-summary]").forEach((summaryEl) => {
+      const sourceUrls = JSON.parse(summaryEl.dataset.sourceSummary ?? "[]") as string[];
+      const sources = latestBookSourcesSnapshot.filter((source) => sourceUrls.includes(source.bookSourceUrl));
+      summaryEl.textContent = describeFilteredEnabledSummary(
+        sources,
+        selectedTag,
+        filterMode,
+        availabilityResults,
+      );
+    });
+  }
+
+  function syncSourceTreeVisibility(): void {
+    const filterMode = sourceTree.dataset.filter ?? "all";
+    const selectedTag = sourceTree.dataset.tagFilter ?? "";
+
+    sourceTree.querySelectorAll<HTMLElement>("[data-source-virtual-list]").forEach((listEl) => {
+      const listId = listEl.dataset.sourceVirtualList ?? "";
+      const sources = sourceListRegistry.get(listId) ?? [];
+      const visibleCount = getFilteredSources(sources, filterMode, selectedTag, availabilityResults).length;
+      const subscriptionCard = listEl.closest<HTMLElement>(".source-subscription");
+      const listCard = listEl.closest<HTMLElement>(".source-list-card");
+      const localTier = listEl.closest<HTMLElement>(".source-tier[data-tier='local']");
+
+      if (subscriptionCard) {
+        subscriptionCard.hidden = visibleCount === 0;
+      } else if (listCard && localTier) {
+        localTier.hidden = visibleCount === 0;
       }
-    })
-    .catch(() => {
-      // Ignore initialization failures.
     });
 
-  container.querySelectorAll<HTMLButtonElement>("[data-toggle='source']").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const url = btn.dataset.url!;
-      const currentState = btn.classList.contains("active");
-      const success = await toggleBookSource(url, !currentState);
-      if (success) {
-        window.location.reload();
-      }
+    sourceTree.querySelectorAll<HTMLElement>(".source-tier[data-tier='subscription']").forEach((tier) => {
+      const visibleSubscriptions = tier.querySelectorAll<HTMLElement>(".source-subscription:not([hidden])");
+      tier.hidden = visibleSubscriptions.length === 0;
     });
+  }
+
+  function rerenderVirtualSourceLists(): void {
+    for (const render of virtualListRenderers.values()) {
+      render();
+    }
+    updateSourceSummaries();
+    syncSourceTreeVisibility();
+  }
+
+  sourceTree.querySelectorAll<HTMLElement>("[data-source-virtual-list]").forEach((listEl) => {
+    const listId = listEl.dataset.sourceVirtualList ?? "";
+    const sources = sourceListRegistry.get(listId) ?? [];
+    let scheduled = false;
+    const scheduleFrame = typeof window.requestAnimationFrame === "function"
+      ? window.requestAnimationFrame.bind(window)
+      : (callback: FrameRequestCallback) => window.setTimeout(() => callback(0), 16);
+
+    const render = () => {
+      renderVirtualSourceList(listEl, sources);
+    };
+
+    listEl.addEventListener("scroll", () => {
+      if (scheduled) {
+        return;
+      }
+      scheduled = true;
+      scheduleFrame(() => {
+        scheduled = false;
+        render();
+      });
+    });
+
+    virtualListRenderers.set(listId, render);
+    render();
   });
+
+  updateSourceSummaries();
+  syncSourceTreeVisibility();
 
   container.querySelectorAll<HTMLButtonElement>("[data-bulk-toggle]").forEach((btn) => {
     btn.addEventListener("click", async (event) => {
@@ -677,52 +941,37 @@ export function initSettingsHandlers(container: HTMLElement) {
     });
   });
 
-  container.querySelectorAll<HTMLButtonElement>("[data-group-delete]").forEach((btn) => {
-    btn.addEventListener("click", async (event) => {
-      event.preventDefault();
-      event.stopPropagation();
+  tagFilterBar.addEventListener("click", (event) => {
+    const target = event.target as HTMLElement;
+    const btn = target.closest<HTMLButtonElement>("[data-tag-filter]");
+    if (!btn) {
+      return;
+    }
 
-      const sourceUrls = JSON.parse(btn.dataset.sourceUrls ?? "[]") as string[];
-      if (sourceUrls.length === 0) {
-        return;
-      }
-
-      if (btn.dataset.confirming !== "true") {
-        container.querySelectorAll<HTMLButtonElement>("[data-group-delete]").forEach((button) => {
-          button.dataset.confirming = "false";
-          button.textContent = "删除本组";
-        });
-        btn.dataset.confirming = "true";
-        btn.textContent = "确认删除本组";
-        renderSourceActionResult("error", "再次点击确认删除本组");
-        return;
-      }
-
-      try {
-        renderSourceActionResult("loading", "删除本组书源中...");
-        const deleted = await deleteBookSources(sourceUrls);
-        renderSourceActionResult("success", `已删除本组 ${deleted} 个书源`);
-        window.location.reload();
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        renderSourceActionResult("error", `删除本组失败：${msg}`);
-      }
+    sourceTree.dataset.tagFilter = btn.dataset.tagFilter ?? "";
+    tagFilterBar.querySelectorAll<HTMLElement>("[data-tag-filter]").forEach((node) => {
+      node.classList.toggle("active", node === btn);
     });
+    rerenderVirtualSourceLists();
   });
 
-  container.querySelectorAll<HTMLButtonElement>("[data-availability-test]").forEach((btn) => {
-    btn.addEventListener("click", async (event) => {
+  sourceTree.addEventListener("click", async (event) => {
+    const target = event.target as HTMLElement;
+
+    const availabilityBtn = target.closest<HTMLButtonElement>("[data-availability-test]");
+    if (availabilityBtn) {
       event.preventDefault();
       event.stopPropagation();
 
-      const sourceUrls = JSON.parse(btn.dataset.sourceUrls ?? "[]") as string[];
-      const label = btn.dataset.label ?? "测试范围";
+      const sourceUrls = JSON.parse(availabilityBtn.dataset.sourceUrls ?? "[]") as string[];
+      const label = availabilityBtn.dataset.label ?? "测试范围";
       if (sourceUrls.length === 0) {
         return;
       }
 
       try {
         const statuses = await testAvailabilityForScope(sourceUrls, `${label}中...`);
+        rerenderVirtualSourceLists();
         const unavailableCount = statuses.filter((status) => !status.available).length;
         renderSourceActionResult(
           unavailableCount === 0 ? "success" : "error",
@@ -732,17 +981,28 @@ export function initSettingsHandlers(container: HTMLElement) {
         const msg = err instanceof Error ? err.message : String(err);
         renderSourceActionResult("error", `${label}失败：${msg}`);
       }
-    });
-  });
+      return;
+    }
 
-  container.querySelectorAll<HTMLButtonElement>("[data-delete='source']").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const url = btn.dataset.url!;
+    const toggleBtn = target.closest<HTMLButtonElement>("[data-toggle='source']");
+    if (toggleBtn) {
+      const url = toggleBtn.dataset.url!;
+      const currentState = toggleBtn.classList.contains("active");
+      const success = await toggleBookSource(url, !currentState);
+      if (success) {
+        window.location.reload();
+      }
+      return;
+    }
+
+    const deleteBtn = target.closest<HTMLButtonElement>("[data-delete='source']");
+    if (deleteBtn) {
+      const url = deleteBtn.dataset.url!;
       const success = await deleteBookSource(url);
       if (success) {
         window.location.reload();
       }
-    });
+    }
   });
 
   async function runAvailabilityCheck(): Promise<BookSourceAvailability[]> {
@@ -751,6 +1011,7 @@ export function initSettingsHandlers(container: HTMLElement) {
       allSources.map((source) => source.bookSourceUrl),
       "测试书源可用性中...",
     );
+    rerenderVirtualSourceLists();
     const unavailableCount = statuses.filter((status) => !status.available).length;
     renderSourceActionResult(
       unavailableCount === 0 ? "success" : "error",
@@ -832,37 +1093,19 @@ export function initSettingsHandlers(container: HTMLElement) {
   });
 
   filterAvailableBtn.addEventListener("click", () => {
-    const sourceTree = $<HTMLElement>(container, "#source-tree");
     const isFiltered = sourceTree.dataset.filter === "available";
 
     if (isFiltered) {
       sourceTree.dataset.filter = "all";
       filterAvailableBtn.textContent = "只显示可用";
       filterAvailableBtn.classList.remove("active");
-      sourceTree.querySelectorAll<HTMLElement>(".source-item").forEach((item) => {
-        item.hidden = false;
-      });
-      sourceTree.querySelectorAll<HTMLElement>(".source-group, .source-tier, .source-subscription").forEach((details) => {
-        details.hidden = false;
-      });
     } else {
       sourceTree.dataset.filter = "available";
       filterAvailableBtn.textContent = "显示全部";
       filterAvailableBtn.classList.add("active");
-      sourceTree.querySelectorAll<HTMLElement>(".source-item").forEach((item) => {
-        const url = item.dataset.url ?? "";
-        const status = availabilityResults.get(url);
-        item.hidden = !(status && status.available);
-      });
-      sourceTree.querySelectorAll<HTMLElement>(".source-group").forEach((group) => {
-        const visibleItems = group.querySelectorAll<HTMLElement>(".source-item:not([hidden])");
-        group.hidden = visibleItems.length === 0;
-      });
-      sourceTree.querySelectorAll<HTMLElement>(".source-tier, .source-subscription").forEach((details) => {
-        const visibleChildren = details.querySelectorAll<HTMLElement>(".source-group:not([hidden]), .source-item:not([hidden])");
-        details.hidden = visibleChildren.length === 0;
-      });
     }
+
+    rerenderVirtualSourceLists();
   });
 
   importSourceBtn.addEventListener("click", async () => {
