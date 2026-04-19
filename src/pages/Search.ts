@@ -11,13 +11,29 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function getSourceGroupName(source: LegacyBookSource): string {
-  return source.bookSourceGroup?.trim() || "未分组";
-}
+const SEARCH_TAG_UNTAGGED = "__untagged";
 
-function getSubscriptionUrl(source: LegacyBookSource): string | null {
-  const value = source.subscriptionUrl?.trim();
-  return value ? value : null;
+export function parseSearchSourceTags(rawValue?: string): string[] {
+  if (!rawValue) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  const tags: string[] = [];
+
+  rawValue
+    .split(/[,\uff0c]/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .forEach((tag) => {
+      if (seen.has(tag)) {
+        return;
+      }
+      seen.add(tag);
+      tags.push(tag);
+    });
+
+  return tags;
 }
 
 export function resolveSearchSourceSelection(
@@ -30,14 +46,12 @@ export function resolveSearchSourceSelection(
     return enabledSources;
   }
 
-  if (value.startsWith("group:")) {
-    const groupName = value.slice("group:".length);
-    return enabledSources.filter((source) => getSourceGroupName(source) === groupName);
-  }
-
-  if (value.startsWith("subscription:")) {
-    const subscriptionUrl = value.slice("subscription:".length);
-    return enabledSources.filter((source) => getSubscriptionUrl(source) === subscriptionUrl);
+  if (value.startsWith("tag:")) {
+    const tag = value.slice("tag:".length);
+    if (tag === SEARCH_TAG_UNTAGGED) {
+      return enabledSources.filter((source) => parseSearchSourceTags(source.bookSourceGroup).length === 0);
+    }
+    return enabledSources.filter((source) => parseSearchSourceTags(source.bookSourceGroup).includes(tag));
   }
 
   if (value.startsWith("source:")) {
@@ -48,37 +62,71 @@ export function resolveSearchSourceSelection(
   return enabledSources.filter((source) => source.bookSourceUrl === value);
 }
 
-export function describeSearchSourceOptions(sources: LegacyBookSource[]): string {
+export function resolveSearchSources(
+  selectedTag: string,
+  selectedSource: string,
+  sources: LegacyBookSource[],
+): LegacyBookSource[] {
+  if (selectedSource) {
+    return resolveSearchSourceSelection(selectedSource, sources);
+  }
+
+  if (selectedTag) {
+    return resolveSearchSourceSelection(selectedTag, sources);
+  }
+
+  return resolveSearchSourceSelection("", sources);
+}
+
+function describeSearchScopeLabel(selectedTag: string, selectedSource: string): string {
+  const tagLabel = selectedTag.startsWith("tag:")
+    ? `标签：${selectedTag.slice("tag:".length)}`
+    : "标签：全部";
+  const sourceLabel = selectedSource.startsWith("source:")
+    ? "书源：单个"
+    : "书源：全部";
+  return `${tagLabel} · ${sourceLabel}`;
+}
+
+export function describeSearchSourceFilters(sources: LegacyBookSource[]): string {
   const enabledSources = sources.filter((source) => source.enabled);
-  const groupNames = Array.from(new Set(enabledSources.map((source) => getSourceGroupName(source))))
-    .sort((left, right) => left.localeCompare(right, "zh-Hans-CN"));
-  const subscriptionUrls = Array.from(
-    new Set(
-      enabledSources
-        .map((source) => getSubscriptionUrl(source))
-        .filter((value): value is string => Boolean(value)),
-    ),
-  ).sort((left, right) => left.localeCompare(right));
+  const tagNames = Array.from(
+    new Set(enabledSources.flatMap((source) => parseSearchSourceTags(source.bookSourceGroup))),
+  ).sort((left, right) => left.localeCompare(right, "zh-Hans-CN"));
 
-  const parentOptions = [
-    ...groupNames.map((groupName) =>
-      `<option value="group:${escapeHtml(groupName)}">分组：${escapeHtml(groupName)}</option>`
-    ),
-    ...subscriptionUrls.map((subscriptionUrl) =>
-      `<option value="subscription:${escapeHtml(subscriptionUrl)}">订阅：${escapeHtml(subscriptionUrl)}</option>`
-    ),
-  ].join("");
-
-  const leafOptions = enabledSources
-    .map((source) =>
-      `<option value="source:${escapeHtml(source.bookSourceUrl)}">${escapeHtml(source.bookSourceName)}</option>`
+  const tagChips = tagNames
+    .map((tagName) =>
+      `<button class="search-filter-chip" data-search-tag-value="tag:${escapeHtml(tagName)}">标签：${escapeHtml(tagName)}</button>`
     )
+    .join("");
+  const untaggedChip = enabledSources.some((source) => parseSearchSourceTags(source.bookSourceGroup).length === 0)
+    ? `<button class="search-filter-chip active" data-search-tag-value="tag:${SEARCH_TAG_UNTAGGED}">标签：未标记</button>`
+    : "";
+
+  const sourceChips = enabledSources
+    .map((source) => {
+      const tagPayload = escapeHtml(JSON.stringify(parseSearchSourceTags(source.bookSourceGroup)));
+      return `<button class="search-filter-chip search-filter-chip--source" data-search-source-value="source:${escapeHtml(source.bookSourceUrl)}" data-search-source-tags="${tagPayload}">${escapeHtml(source.bookSourceName)}</button>`;
+    })
     .join("");
 
   return `
-    <option value="">全部书源</option>
-    ${parentOptions ? `<optgroup label="父级分类">${parentOptions}</optgroup>` : ""}
-    ${leafOptions ? `<optgroup label="具体书源">${leafOptions}</optgroup>` : ""}
+    <div class="search-source-picker" id="search-source-picker" data-selected-tag="" data-selected-source="">
+      <div class="search-source-status" id="search-source-status">${describeSearchScopeLabel("", "")}</div>
+      <div class="search-filter-row">
+        <span class="search-filter-label">按标签筛选书源</span>
+        <button class="search-filter-chip active" data-search-tag-value="">全部标签</button>
+        ${untaggedChip}
+        ${tagChips}
+      </div>
+      ${sourceChips ? `
+        <div class="search-filter-row search-filter-row--sources">
+          <span class="search-filter-label">选择具体书源</span>
+          <button class="search-filter-chip search-filter-chip--source active" data-search-source-value="">全部书源</button>
+          ${sourceChips}
+        </div>
+      ` : ""}
+    </div>
   `;
 }
 
@@ -90,7 +138,7 @@ export async function renderSearchPage(): Promise<string> {
     sources = [];
   }
 
-  const sourceOptions = describeSearchSourceOptions(sources);
+  const sourceFilters = describeSearchSourceFilters(sources);
 
   return `
     <div class="page page-search">
@@ -99,9 +147,7 @@ export async function renderSearchPage(): Promise<string> {
         <button class="btn-icon" data-nav="/" title="返回书架">&#x2190;</button>
       </header>
       <div class="search-form">
-        <select id="search-source" class="search-select">
-          ${sourceOptions}
-        </select>
+        ${sourceFilters}
         <div class="search-input-row">
           <input
             id="search-keyword"
@@ -120,13 +166,64 @@ export async function renderSearchPage(): Promise<string> {
 
 export function initSearchHandlers(container: HTMLElement) {
   const keywordInput = $<HTMLInputElement>(container, "#search-keyword");
-  const sourceSelect = $<HTMLSelectElement>(container, "#search-source");
+  const sourcePicker = $<HTMLElement>(container, "#search-source-picker");
+  const sourceStatus = $<HTMLElement>(container, "#search-source-status");
   const searchBtn = $<HTMLButtonElement>(container, "#search-btn");
   const resultsEl = $<HTMLElement>(container, "#search-results");
+  let selectedTag = "";
+  let selectedSource = "";
+
+  function sourceMatchesSelectedTag(node: HTMLElement): boolean {
+    if (!selectedTag.startsWith("tag:")) {
+      return true;
+    }
+
+    const tagName = selectedTag.slice("tag:".length);
+    try {
+      const tags = JSON.parse(node.dataset.searchSourceTags ?? "[]") as string[];
+      return tags.includes(tagName);
+    } catch {
+      return false;
+    }
+  }
+
+  function updateSourceChipVisibility(): void {
+    sourcePicker.querySelectorAll<HTMLElement>("[data-search-source-value]").forEach((node) => {
+      const value = node.dataset.searchSourceValue ?? "";
+      if (!value) {
+        node.hidden = false;
+        return;
+      }
+      node.hidden = !sourceMatchesSelectedTag(node);
+    });
+
+    const sourceRow = sourcePicker.querySelector<HTMLElement>(".search-filter-row--sources");
+    if (sourceRow) {
+      const visibleSourceChips = sourceRow.querySelectorAll<HTMLElement>("[data-search-source-value]:not([hidden])");
+      sourceRow.hidden = visibleSourceChips.length <= 1;
+    }
+  }
+
+  function renderSourceSelection(): void {
+    updateSourceChipVisibility();
+    const selectedSourceChip = selectedSource
+      ? sourcePicker.querySelector<HTMLElement>(`[data-search-source-value="${CSS.escape(selectedSource)}"]`)
+      : null;
+    if (selectedSourceChip?.hidden) {
+      selectedSource = "";
+    }
+
+    sourcePicker.querySelectorAll<HTMLElement>("[data-search-tag-value]").forEach((node) => {
+      node.classList.toggle("active", (node.dataset.searchTagValue ?? "") === selectedTag);
+    });
+    sourcePicker.querySelectorAll<HTMLElement>("[data-search-source-value]").forEach((node) => {
+      node.classList.toggle("active", (node.dataset.searchSourceValue ?? "") === selectedSource);
+    });
+    sourceStatus.textContent = describeSearchScopeLabel(selectedTag, selectedSource);
+  }
 
   async function doSearch() {
     const keyword = keywordInput.value.trim();
-    const selectedValue = sourceSelect.value;
 
     if (!keyword) return;
 
@@ -135,10 +232,10 @@ export function initSearchHandlers(container: HTMLElement) {
 
     try {
       const allSources = await listBookSources();
-      const selectedSources = resolveSearchSourceSelection(selectedValue, allSources);
+      const selectedSources = resolveSearchSources(selectedTag, selectedSource, allSources);
       if (selectedSources.length === 0) {
         resultsEl.innerHTML =
-          '<div class="empty-state"><p>暂无匹配的启用书源，请先去设置检查分组或订阅状态。</p></div>';
+          '<div class="empty-state"><p>暂无匹配的启用书源，请先去设置检查标签或书源状态。</p></div>';
         return;
       }
 
@@ -214,6 +311,25 @@ export function initSearchHandlers(container: HTMLElement) {
       });
     });
   }
+
+  sourcePicker.addEventListener("click", (event) => {
+    const target = event.target as HTMLElement;
+    const tagBtn = target.closest<HTMLElement>("[data-search-tag-value]");
+    if (tagBtn) {
+      selectedTag = tagBtn.dataset.searchTagValue ?? "";
+      renderSourceSelection();
+      return;
+    }
+
+    const sourceBtn = target.closest<HTMLElement>("[data-search-source-value]");
+    if (!sourceBtn) {
+      return;
+    }
+    selectedSource = sourceBtn.dataset.searchSourceValue ?? "";
+    renderSourceSelection();
+  });
+
+  renderSourceSelection();
 
   searchBtn.addEventListener("click", doSearch);
   keywordInput.addEventListener("keydown", (e: KeyboardEvent) => {
