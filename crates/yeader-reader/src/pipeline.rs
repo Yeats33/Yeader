@@ -268,7 +268,7 @@ fn apply_format_js(chapters: Vec<Chapter>, format_js: &str) -> Vec<Chapter> {
     chapters
         .into_iter()
         .enumerate()
-        .map(|(i, mut ch)| {
+        .map(|(_i, mut ch)| {
             let title = yeader_rules::eval_js(format_js, Some(&ch.title));
             if !title.is_empty() {
                 ch.title = title;

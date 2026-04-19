@@ -1,6 +1,6 @@
 use tauri::State;
 use tracing::{info, warn};
-use yeader_models::{BookInfo as ModelBookInfo, Chapter as ModelChapter, LegacyBookSource};
+use yeader_models::{BookInfo as ModelBookInfo, Chapter as ModelChapter};
 
 use crate::state::AppState;
 
