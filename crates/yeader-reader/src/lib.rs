@@ -1,6 +1,7 @@
 //! Reader orchestration will live here.
 
 pub mod pipeline;
+pub mod epub;
 pub mod txt;
 
 use yeader_models::ReadingProgress;

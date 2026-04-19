@@ -5,6 +5,8 @@ import {
   getBook,
   getReadingProgress,
   saveReadingProgress,
+  listLocalEpubs,
+  readLocalEpub,
 } from "../api.ts";
 import { navigate } from "../router.ts";
 import { $, $$ } from "../query.ts";
@@ -35,6 +37,11 @@ const state: ReaderState = {
 export async function renderReaderPage(bookUrl: string): Promise<string> {
   state.bookUrl = decodeURIComponent(bookUrl);
   state.sourceUrl = "";
+  state.currentChapterIndex = 0;
+  state.bookInfo = null;
+  state.chapters = [];
+
+  const isLocalEpub = state.bookUrl.startsWith("local://epub/");
 
   // Look up the book from library to get source_url
   try {
@@ -45,30 +52,51 @@ export async function renderReaderPage(bookUrl: string): Promise<string> {
   } catch (e) {
     console.error("[Reader] getBook failed:", e);
   }
-  state.currentChapterIndex = 0;
-  state.bookInfo = null;
-  state.chapters = [];
 
   const savedProgress = await getReadingProgress(state.bookUrl);
   if (savedProgress) {
     state.currentChapterIndex = savedProgress.chapter_index;
   }
 
-  let bookInfo: BookInfo = { name: "", author: "" };
-  try {
-    bookInfo = await fetchBookInfo(state.bookUrl, state.sourceUrl);
-    state.bookInfo = bookInfo;
-  } catch (e) {
-    console.error("[Reader] fetchBookInfo failed:", e);
-    bookInfo = { name: "未知书籍", author: "未知作者" };
-  }
-
-  if (bookInfo.toc_url) {
+  if (isLocalEpub) {
+    // Load local epub chapters
     try {
-      state.chapters = await fetchToc(bookInfo.toc_url, state.sourceUrl);
+      const books = await listLocalEpubs();
+      const book = books.find(b => b.url === state.bookUrl);
+      if (book && book.extra) {
+        const chapterCount = (book.extra.chapter_count as number) || 0;
+        state.chapters = Array.from({ length: chapterCount }, (_, i) => ({
+          title: `Chapter ${i + 1}`,
+          url: String(i),
+          is_volume: false,
+          is_vip: false,
+        }));
+        state.bookInfo = {
+          name: book.name,
+          author: book.author,
+        };
+      }
     } catch (e) {
-      console.error("[Reader] fetchToc failed:", e);
-      state.chapters = [];
+      console.error("[Reader] listLocalEpubs failed:", e);
+    }
+  } else {
+    // Network book - existing logic
+    let bookInfo: BookInfo = { name: "", author: "" };
+    try {
+      bookInfo = await fetchBookInfo(state.bookUrl, state.sourceUrl);
+      state.bookInfo = bookInfo;
+    } catch (e) {
+      console.error("[Reader] fetchBookInfo failed:", e);
+      bookInfo = { name: "未知书籍", author: "未知作者" };
+    }
+
+    if (bookInfo.toc_url) {
+      try {
+        state.chapters = await fetchToc(bookInfo.toc_url, state.sourceUrl);
+      } catch (e) {
+        console.error("[Reader] fetchToc failed:", e);
+        state.chapters = [];
+      }
     }
   }
 
@@ -233,7 +261,14 @@ async function loadCurrentChapter(container: HTMLElement) {
   readerBody.innerHTML = '<div class="loading">加载中...</div>';
 
   try {
-    const content = await fetchContent(chapter.url, state.sourceUrl);
+    let content: string;
+    if (state.bookUrl.startsWith("local://epub/")) {
+      // Local epub chapter
+      content = await readLocalEpub(state.bookUrl, state.currentChapterIndex);
+    } else {
+      // Network chapter
+      content = await fetchContent(chapter.url, state.sourceUrl);
+    }
     readerBody.innerHTML = `<article class="chapter-content">${content}</article>`;
   } catch (e) {
     console.error("[Reader] fetchContent failed:", chapter.url, e);

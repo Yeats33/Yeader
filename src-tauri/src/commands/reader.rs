@@ -132,3 +132,145 @@ pub async fn fetch_content(
 
     Ok(content)
 }
+
+#[tauri::command]
+pub async fn import_epub(
+    state: State<'_, AppState>,
+    path: String,
+) -> Result<yeader_models::Book, String> {
+    use std::path::Path;
+    use yeader_reader::epub::read_epub;
+    use uuid::Uuid;
+
+    // Validate file exists
+    let source_path = Path::new(&path);
+    if !source_path.exists() {
+        return Err(format!("File not found: {}", path));
+    }
+
+    // Create epub_library directory
+    let epub_lib_dir = state.log_dir.join("epub_library");
+    std::fs::create_dir_all(&epub_lib_dir).map_err(|e| e.to_string())?;
+
+    // Read and parse EPUB
+    let epub_book = read_epub(source_path).map_err(|e| format!("Failed to parse EPUB: {}", e))?;
+
+    // Generate unique ID and copy file
+    let book_id = Uuid::new_v4().to_string();
+    let epub_file_name = format!("{}.epub", book_id);
+    let dest_path = epub_lib_dir.join(&epub_file_name);
+    std::fs::copy(&path, &dest_path).map_err(|e| format!("Failed to copy EPUB: {}", e))?;
+
+    // Create Book record
+    let book = yeader_models::Book {
+        url: format!("local://epub/{}", book_id),
+        name: epub_book.title,
+        author: epub_book.author,
+        cover_url: None,
+        source_url: "local://epub".to_string(),
+        toc_url: None,
+        last_read_at: Some(chrono::Utc::now().to_rfc3339()),
+        group_id: None,
+        book_type: Some("epub".to_string()),
+        intro: None,
+        extra: {
+            let mut map = serde_json::Map::new();
+            map.insert(
+                "epub_path".to_string(),
+                serde_json::json!(dest_path.to_string_lossy().to_string()),
+            );
+            map.insert(
+                "chapter_count".to_string(),
+                serde_json::json!(epub_book.chapters.len()),
+            );
+            map
+        },
+    };
+
+    // Save to database
+    {
+        let db = state.db.lock().unwrap();
+        let repo = yeader_library::BookRepo::new(&db);
+        repo.upsert(&book).map_err(|e| e.to_string())?;
+    }
+
+    Ok(book)
+}
+
+#[tauri::command]
+pub async fn list_local_epubs(
+    state: State<'_, AppState>,
+) -> Result<Vec<yeader_models::Book>, String> {
+    let db = state.db.lock().unwrap();
+    let repo = yeader_library::BookRepo::new(&db);
+    let all_books = repo.list_all().map_err(|e| e.to_string())?;
+    Ok(all_books
+        .into_iter()
+        .filter(|b| b.source_url == "local://epub")
+        .collect())
+}
+
+#[tauri::command]
+pub async fn read_local_epub(
+    state: State<'_, AppState>,
+    book_url: String,
+    chapter_index: usize,
+) -> Result<String, String> {
+    use yeader_reader::epub::read_epub;
+
+    // Find book in database
+    let book = {
+        let db = state.db.lock().unwrap();
+        let repo = yeader_library::BookRepo::new(&db);
+        repo.find_by_url(&book_url)
+            .map_err(|e| e.to_string())?
+            .ok_or("Book not found")?
+    };
+
+    // Get epub path from extra
+    let epub_path = book
+        .extra
+        .get("epub_path")
+        .and_then(|v| v.as_str())
+        .ok_or("EPUB path not found in book metadata")?;
+
+    // Read EPUB
+    let epub_book =
+        read_epub(std::path::Path::new(epub_path)).map_err(|e| format!("Failed to read EPUB: {}", e))?;
+
+    // Return chapter content
+    epub_book
+        .chapters
+        .get(chapter_index)
+        .map(|ch| ch.content.clone())
+        .ok_or_else(|| format!("Chapter {} not found", chapter_index))
+}
+
+#[tauri::command]
+pub async fn delete_local_epub(
+    state: State<'_, AppState>,
+    book_url: String,
+) -> Result<bool, String> {
+    // Find book
+    let book = {
+        let db = state.db.lock().unwrap();
+        let repo = yeader_library::BookRepo::new(&db);
+        repo.find_by_url(&book_url)
+            .map_err(|e| e.to_string())?
+            .ok_or("Book not found")?
+    };
+
+    // Delete EPUB file
+    if let Some(epub_path) = book.extra.get("epub_path").and_then(|v| v.as_str()) {
+        let _ = std::fs::remove_file(epub_path);
+    }
+
+    // Delete from database
+    {
+        let db = state.db.lock().unwrap();
+        let repo = yeader_library::BookRepo::new(&db);
+        repo.delete(&book_url).map_err(|e| e.to_string())?;
+    }
+
+    Ok(true)
+}
