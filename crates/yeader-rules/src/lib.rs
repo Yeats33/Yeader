@@ -15,6 +15,7 @@ use yeader_models::{SearchQuery, SearchResult};
 
 pub use analyzer::{AnalyzeRule, Content};
 pub use css::CssAnalyzer;
+pub use js_engine::eval_js;
 pub use json_path::{json_path_list, json_path_string, json_path_string_list};
 pub use pipeline::{BookSearchResult, PipelineError, search_books};
 pub use regex::{apply_replace, regex_get_elements};

@@ -27,6 +27,7 @@ pub struct Chapter {
     pub url: String,
     pub is_volume: bool,
     pub is_vip: bool,
+    pub is_pay: bool,
 }
 
 /// Resolve a potentially relative URL against a base URL.
@@ -189,9 +190,18 @@ pub fn fetch_toc(
 }
 
 fn extract_chapters(analyzer: &AnalyzeRule, rule: &TocRule) -> Vec<Chapter> {
-    let chapter_list_rule = match &rule.chapter_list {
+    let chapter_list_rule_raw = match &rule.chapter_list {
         Some(r) => r.as_str(),
         None => return Vec::new(),
+    };
+
+    // Handle reverse prefix: "-" reverses the final list, "+" means no reverse
+    let (reverse, chapter_list_rule) = if chapter_list_rule_raw.starts_with("-") {
+        (true, chapter_list_rule_raw.trim_start_matches('-'))
+    } else if chapter_list_rule_raw.starts_with("+") {
+        (false, chapter_list_rule_raw.trim_start_matches('+'))
+    } else {
+        (false, chapter_list_rule_raw)
     };
 
     let elements = analyzer.get_elements(chapter_list_rule);
@@ -203,8 +213,9 @@ fn extract_chapters(analyzer: &AnalyzeRule, rule: &TocRule) -> Vec<Chapter> {
     let chapter_url_rule = rule.chapter_url.as_deref().unwrap_or("");
     let is_volume_rule = rule.is_volume.as_deref().unwrap_or("");
     let is_vip_rule = rule.is_vip.as_deref().unwrap_or("");
+    let is_pay_rule = rule.is_pay.as_deref().unwrap_or("");
 
-    let mut chapters = Vec::new();
+    let mut chapters: Vec<Chapter> = Vec::new();
 
     for element in elements {
         // Create a sub-analyzer for each chapter element
@@ -214,9 +225,13 @@ fn extract_chapters(analyzer: &AnalyzeRule, rule: &TocRule) -> Vec<Chapter> {
         );
 
         let title = inner_analyzer.get_string(chapter_name_rule);
-        let url = inner_analyzer.get_string(chapter_url_rule);
+        let url_raw = inner_analyzer.get_string(chapter_url_rule);
         let is_volume = !inner_analyzer.get_string(is_volume_rule).is_empty();
         let is_vip = !inner_analyzer.get_string(is_vip_rule).is_empty();
+        let is_pay = !inner_analyzer.get_string(is_pay_rule).is_empty();
+
+        // Resolve URL relative to the base URL (TOC URL)
+        let url = resolve_url(analyzer.base_url(), &url_raw);
 
         if !title.is_empty() || !url.is_empty() {
             chapters.push(Chapter {
@@ -224,11 +239,43 @@ fn extract_chapters(analyzer: &AnalyzeRule, rule: &TocRule) -> Vec<Chapter> {
                 url,
                 is_volume,
                 is_vip,
+                is_pay,
             });
         }
     }
 
+    if reverse {
+        chapters.reverse();
+    }
+
+    // Apply formatJs post-processing if configured
+    if let Some(format_js) = &rule.format_js {
+        let format_js_str = format_js.trim();
+        if !format_js_str.is_empty() {
+            chapters = apply_format_js(chapters, format_js_str);
+        }
+    }
+
     chapters
+}
+
+/// Apply formatJs transformation to chapter titles.
+/// Each chapter's title is replaced by evaluating the JS expression with bindings:
+/// - index: 1-based chapter index
+/// - title: current chapter title
+/// - chapter: full chapter object
+fn apply_format_js(chapters: Vec<Chapter>, format_js: &str) -> Vec<Chapter> {
+    chapters
+        .into_iter()
+        .enumerate()
+        .map(|(i, mut ch)| {
+            let title = yeader_rules::eval_js(format_js, Some(&ch.title));
+            if !title.is_empty() {
+                ch.title = title;
+            }
+            ch
+        })
+        .collect()
 }
 
 /// Fetch chapter content from a chapter page.
@@ -432,12 +479,12 @@ mod tests {
 
         assert_eq!(chapters.len(), 5);
         assert_eq!(chapters[0].title, "Chapter 1 - The Beginning");
-        assert_eq!(chapters[0].url, "/book/123/chapter/1");
+        assert_eq!(chapters[0].url, "https://example.com/book/123/chapter/1");
         assert!(!chapters[0].is_volume);
         assert!(!chapters[0].is_vip);
 
         assert_eq!(chapters[1].title, "Chapter 2 - The Journey");
-        assert_eq!(chapters[1].url, "/book/123/chapter/2");
+        assert_eq!(chapters[1].url, "https://example.com/book/123/chapter/2");
     }
 
     #[test]
@@ -459,7 +506,7 @@ mod tests {
         // VIP chapter (5th item) has both volume and vip markers
         assert_eq!(chapters[4].title, "VIP Content");
         assert!(chapters[4].is_vip);
-        assert_eq!(chapters[4].url, "/book/123/chapter/vip");
+        assert_eq!(chapters[4].url, "https://example.com/book/123/chapter/vip");
     }
 
     #[test]
