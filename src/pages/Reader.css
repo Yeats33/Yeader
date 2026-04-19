@@ -1,0 +1,287 @@
+.page-reader {
+  --font-size: 18px;
+  --line-height: 1.6;
+  --app-background: #ffffff;
+  --app-surface: #f5f5f5;
+  --app-text-color: #303133;
+  --app-text-secondary: #606266;
+  --app-border: #e0e0e0;
+  --app-accent: #409eff;
+
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--app-background);
+  color: var(--app-text-color);
+  font-family: var(--font-family, "Noto Serif", serif);
+  font-size: var(--font-size);
+  line-height: var(--line-height);
+  outline: none;
+}
+
+.page-reader.theme-light { background: #ffffff; color: #303133; }
+.page-reader.theme-dark { background: #1a1a1a; color: #e5e5e5; }
+.page-reader.theme-sepia { background: #f4f1ea; color: #4a4a3a; }
+
+.reader-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--app-surface);
+  border-bottom: 1px solid var(--app-border);
+}
+
+.reader-title {
+  flex: 1;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-icon {
+  padding: 8px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--app-text-secondary);
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.btn-icon:hover {
+  background: var(--app-border);
+  color: var(--app-accent);
+}
+
+.reader-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.chapter-content {
+  max-width: 800px;
+  margin: 0 auto;
+  font-size: var(--font-size);
+  line-height: var(--line-height);
+}
+
+.chapter-content h1, .chapter-content h2, .chapter-content h3 {
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+
+.reader-toc {
+  position: fixed;
+  top: 60px;
+  right: 0;
+  bottom: 60px;
+  width: 300px;
+  background: var(--app-background);
+  border-left: 1px solid var(--app-border);
+  box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+  overflow-y: auto;
+  padding: 16px;
+  z-index: 100;
+}
+
+.reader-toc.hidden { display: none; }
+
+.toc-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.toc-item {
+  padding: 10px 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  color: var(--app-text-secondary);
+}
+
+.toc-item:hover {
+  background: var(--app-surface);
+  color: var(--app-accent);
+}
+
+.toc-item.active {
+  background: var(--app-accent);
+  color: white;
+}
+
+.reader-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 12px;
+  background: var(--app-surface);
+  border-top: 1px solid var(--app-border);
+}
+
+.ctrl-btn {
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid var(--app-border);
+  border-radius: 4px;
+  color: var(--app-text-color);
+  cursor: pointer;
+}
+
+.ctrl-btn:hover:not(:disabled) {
+  border-color: var(--app-accent);
+  color: var(--app-accent);
+}
+
+.ctrl-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.chapter-indicator {
+  color: var(--app-text-secondary);
+  font-size: 14px;
+}
+
+.reader-settings-panel {
+  position: fixed;
+  top: 60px;
+  right: 16px;
+  width: 280px;
+  background: var(--app-background);
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  padding: 16px;
+  z-index: 100;
+}
+
+.reader-settings-panel.hidden { display: none; }
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.setting-row label {
+  width: 50px;
+  color: var(--app-text-secondary);
+  font-size: 14px;
+}
+
+.setting-row input[type="range"] {
+  flex: 1;
+}
+
+.setting-row span {
+  width: 40px;
+  text-align: right;
+  font-size: 14px;
+  color: var(--app-text-color);
+}
+
+.btn-toggle {
+  padding: 6px 12px;
+  border: 1px solid var(--app-border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--app-text-color);
+  cursor: pointer;
+}
+
+.btn-toggle.active {
+  background: var(--app-accent);
+  border-color: var(--app-accent);
+  color: white;
+}
+
+.theme-selector {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.theme-btn {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid var(--app-border);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  text-align: center;
+}
+
+.theme-btn.active {
+  border-color: var(--app-accent);
+  background: var(--app-accent);
+  color: white;
+}
+
+.font-selector {
+  margin-top: 12px;
+}
+
+.font-selector select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--app-border);
+  border-radius: 4px;
+  background: var(--app-background);
+  color: var(--app-text-color);
+}
+
+/* Bookmark panel */
+.reader-bookmarks {
+  position: fixed;
+  top: 60px;
+  right: 0;
+  bottom: 60px;
+  width: 300px;
+  background: var(--app-background);
+  border-left: 1px solid var(--app-border);
+  box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+  overflow-y: auto;
+  padding: 16px;
+  z-index: 100;
+}
+
+.reader-bookmarks.hidden { display: none; }
+
+.bookmark-item {
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--app-border);
+  border-radius: 4px;
+}
+
+.bookmark-item:hover {
+  background: var(--app-surface);
+}
+
+.bookmark-page {
+  font-weight: 500;
+  color: var(--app-text-color);
+  margin-bottom: 4px;
+}
+
+.bookmark-content-text {
+  font-size: 12px;
+  color: var(--app-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bookmark-delete {
+  float: right;
+  color: #f56c6c;
+  cursor: pointer;
+}
