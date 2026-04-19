@@ -1,6 +1,6 @@
 {
   "name": "yeader",
-  "version": "0.1.3-beta4",
+  "version": "0.1.3-beta5",
   "description": "Rust+Tauri 三端重构 - 移动端/桌面端/Web端",
   "type": "module",
   "scripts": {
