@@ -12,4 +12,5 @@ anyhow.workspace = true
 chardetng = "0.1"
 encoding_rs = "0.8"
 regex.workspace = true
+epub-parser = "0.3"
 zip = { version = "2", default-features = false, features = ["deflate"] }
