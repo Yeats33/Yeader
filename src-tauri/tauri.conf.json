@@ -1,7 +1,7 @@
 {
   "$schema": "https://v2.tauri.app/schemas/config.schema.json",
   "productName": "Yeader",
-  "version": "0.1.2",
+  "version": "0.1.2-beta0",
   "identifier": "cc.yeats.yeader",
   "build": {
     "beforeDevCommand": "npm run dev",
