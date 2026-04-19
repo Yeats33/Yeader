@@ -274,7 +274,7 @@ fn parse_manifest(opf_xml: &str) -> std::collections::HashMap<String, String> {
 
     let mut search_pos = 0;
     while let Some(item_pos) = opf_xml[search_pos..].find("<item ") {
-        let chunk = &opffml[search_pos..];
+        let chunk = &opf_xml[search_pos..];
         let chunk_after_item = &chunk[item_pos..];
 
         if let (Some(id), Some(href)) = (extract_attr_val(chunk_after_item, "id"), extract_attr_val(chunk_after_item, "href")) {
