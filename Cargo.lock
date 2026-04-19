@@ -6258,6 +6258,7 @@ dependencies = [
 name = "yeader"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
  "chrono",
  "serde",
  "serde_json",
@@ -6335,6 +6336,7 @@ name = "yeader-reader"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "base64 0.22.1",
  "chardetng",
  "encoding_rs",
  "rbook",

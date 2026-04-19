@@ -127,8 +127,8 @@ export interface SearchResult {
 export interface ReadingProgress {
   book_id: string;
   chapter_index: number;
-  scroll_progress: number;
-  updated_at: string;
+  chapter_title: string;
+  offset: number;
 }
 
 export interface BookInfo {

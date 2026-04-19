@@ -73,6 +73,7 @@ pub fn run() {
             reader::list_local_epubs,
             reader::read_local_epub,
             reader::delete_local_epub,
+            reader::get_epub_toc,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

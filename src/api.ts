@@ -208,6 +208,10 @@ export async function importEpub(path: string): Promise<Book> {
   return await invokeAdapter<Book>("import_epub", { path });
 }
 
+export async function getEpubToc(bookUrl: string): Promise<Chapter[]> {
+  return await invokeAdapter<Chapter[]>("get_epub_toc", { bookUrl });
+}
+
 export async function listLocalEpubs(): Promise<Book[]> {
   return await invokeAdapter<Book[]>("list_local_epubs");
 }

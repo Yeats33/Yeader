@@ -5,7 +5,7 @@ import {
   getBook,
   getReadingProgress,
   saveReadingProgress,
-  listLocalEpubs,
+  getEpubToc,
   readLocalEpub,
 } from "../api.ts";
 import { navigate } from "../router.ts";
@@ -61,23 +61,10 @@ export async function renderReaderPage(bookUrl: string): Promise<string> {
   if (isLocalEpub) {
     // Load local epub chapters
     try {
-      const books = await listLocalEpubs();
-      const book = books.find(b => b.url === state.bookUrl);
-      if (book && book.extra) {
-        const chapterCount = (book.extra.chapter_count as number) || 0;
-        state.chapters = Array.from({ length: chapterCount }, (_, i) => ({
-          title: `Chapter ${i + 1}`,
-          url: String(i),
-          is_volume: false,
-          is_vip: false,
-        }));
-        state.bookInfo = {
-          name: book.name,
-          author: book.author,
-        };
-      }
+      const toc = await getEpubToc(state.bookUrl);
+      state.chapters = toc;
     } catch (e) {
-      console.error("[Reader] listLocalEpubs failed:", e);
+      console.error("[Reader] getEpubToc failed:", e);
     }
   } else {
     // Network book - existing logic
@@ -107,7 +94,7 @@ function renderReaderContent(): string {
   const { bookInfo, chapters, currentChapterIndex, fontSize, lineHeight, darkMode } = state;
 
   return `
-    <div class="page page-reader ${darkMode ? "dark-mode" : ""}" style="--font-size:${fontSize}px; --line-height:${lineHeight};">
+    <div class="page page-reader ${darkMode ? "dark-mode" : ""}" style="--font-size:${fontSize}px; --line-height:${lineHeight};" tabindex="-1">
       <header class="reader-header">
         <button class="btn-icon" data-nav="/" title="返回">&#x2190;</button>
         <h1 class="reader-title">${bookInfo?.name ?? ""}</h1>
@@ -242,6 +229,66 @@ export async function initReaderHandlers(container: HTMLElement) {
     });
   });
 
+  // Keyboard shortcuts
+  container.addEventListener("keydown", (e: KeyboardEvent) => {
+    // Ignore if focus is on an input element
+    if (document.activeElement?.tagName === "INPUT") return;
+
+    switch (e.key) {
+      case "ArrowLeft":
+      case "h":
+        if (state.currentChapterIndex > 0) {
+          state.currentChapterIndex--;
+          loadCurrentChapter(container);
+        }
+        break;
+      case "ArrowRight":
+      case "l":
+        if (state.currentChapterIndex < state.chapters.length - 1) {
+          state.currentChapterIndex++;
+          loadCurrentChapter(container);
+        }
+        break;
+      case "t":
+        tocEl?.classList.toggle("hidden");
+        break;
+      case "s":
+        settingsPanel.classList.toggle("hidden");
+        break;
+      case "d":
+        state.darkMode = !state.darkMode;
+        container.querySelector(".page-reader")?.classList.toggle("dark-mode", state.darkMode);
+        break;
+      case "+":
+      case "=":
+        if (state.fontSize < 32) {
+          state.fontSize += 2;
+          document.documentElement.style.setProperty("--font-size", `${state.fontSize}px`);
+          fontSizeSlider.value = String(state.fontSize);
+          fontSizeVal.textContent = String(state.fontSize);
+        }
+        break;
+      case "-":
+        if (state.fontSize > 12) {
+          state.fontSize -= 2;
+          document.documentElement.style.setProperty("--font-size", `${state.fontSize}px`);
+          fontSizeSlider.value = String(state.fontSize);
+          fontSizeVal.textContent = String(state.fontSize);
+        }
+        break;
+      case "Home":
+      case "g":
+        if (e.key === "g" && !e.shiftKey) break; // only "gg" case handled via two keystrokes
+        state.currentChapterIndex = 0;
+        loadCurrentChapter(container);
+        break;
+      case "End":
+        state.currentChapterIndex = state.chapters.length - 1;
+        loadCurrentChapter(container);
+        break;
+    }
+  });
+
   await loadCurrentChapter(container);
 }
 
@@ -287,7 +334,7 @@ async function loadCurrentChapter(container: HTMLElement) {
   await saveReadingProgress({
     book_id: state.bookUrl,
     chapter_index: state.currentChapterIndex,
-    scroll_progress: 0,
-    updated_at: new Date().toISOString(),
+    chapter_title: chapter.title ?? "",
+    offset: 0,
   });
 }
