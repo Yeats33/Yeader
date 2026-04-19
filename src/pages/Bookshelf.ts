@@ -1,4 +1,4 @@
-import { listBooks, removeBook } from "../api.ts";
+import { listBooks, removeBook, importEpub, deleteLocalEpub } from "../api.ts";
 import { navigate } from "../router.ts";
 import type { Book } from "../types.ts";
 import { ask } from "@tauri-apps/plugin-dialog";
@@ -111,8 +111,12 @@ export async function renderBookshelfPage(): Promise<string> {
     books = [];
   }
 
+  // Separate local epubs
+  const localBooks = books.filter(b => b.source_url === "local://epub");
+  const networkBooks = books.filter(b => b.source_url !== "local://epub");
+
   return `
-    <div class="page page-bookshelf" data-view-mode="grid">
+    <div class="page page-bookshelf" data-view-mode="grid" data-filter="all">
       <header class="page-header">
         <h1>书架</h1>
         <div class="view-toggle">
@@ -122,6 +126,15 @@ export async function renderBookshelfPage(): Promise<string> {
         <button class="btn-icon" data-nav="/search" title="搜索">&#x1F50D;</button>
         <button class="btn-icon" data-nav="/settings" title="设置">&#x2699;</button>
       </header>
+
+      <div class="shelf-tabs">
+        <button class="tab-btn active" data-filter="all">全部 (${books.length})</button>
+        <button class="tab-btn" data-filter="local">本地书籍 (${localBooks.length})</button>
+        <button class="tab-btn" data-filter="network">网络书籍 (${networkBooks.length})</button>
+      </div>
+
+      <button class="btn-primary" id="import-epub-btn" title="导入EPUB">+ 导入EPUB</button>
+
       ${books.length === 0 ? `
         <div class="empty-state">
           <p>书架为空</p>
@@ -158,6 +171,55 @@ export function initBookshelfHandlers(container: HTMLElement) {
       attachBookHandlers(container);
       attachDeleteHandlers(container);
     });
+  });
+
+  // Tab filtering
+  const tabBtns = container.querySelectorAll<HTMLButtonElement>(".tab-btn");
+  tabBtns.forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const filter = btn.dataset.filter!;
+      const pageEl = container.querySelector<HTMLElement>(".page-bookshelf");
+      if (pageEl) pageEl.dataset.filter = filter;
+
+      tabBtns.forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+
+      const allBooks = await listBooks().catch(() => [] as Book[]);
+      let filteredBooks = allBooks;
+      if (filter === "local") {
+        filteredBooks = allBooks.filter(b => b.source_url === "local://epub");
+      } else if (filter === "network") {
+        filteredBooks = allBooks.filter(b => b.source_url !== "local://epub");
+      }
+
+      const bookContainer = container.querySelector<HTMLElement>("#book-container");
+      if (bookContainer) {
+        bookContainer.innerHTML = describeBookCards(filteredBooks, "grid");
+      }
+
+      attachBookHandlers(container);
+      attachDeleteHandlers(container);
+    });
+  });
+
+  // EPUB Import
+  const importBtn = container.querySelector<HTMLButtonElement>("#import-epub-btn");
+  importBtn?.addEventListener("click", async () => {
+    try {
+      const { open } = await import("@tauri-apps/plugin-dialog");
+      const selected = await open({
+        multiple: false,
+        filters: [{ name: "EPUB", extensions: ["epub"] }],
+      });
+      if (selected) {
+        const book = await importEpub(selected as string);
+        alert(`导入成功: ${book.name}`);
+        window.location.reload();
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      alert(`导入失败: ${msg}`);
+    }
   });
 
   attachBookHandlers(container);
@@ -207,6 +269,7 @@ function attachDeleteHandlers(container: HTMLElement) {
       const bookUrl = btn.dataset.deleteBook!;
       const bookItem = btn.closest<HTMLElement>("[data-book-url]");
       const bookName = bookItem?.dataset.bookName || "此书";
+      const isLocal = bookUrl.startsWith("local://epub/");
 
       try {
         const userConfirmed = await ask(`确定要从书架删除《${bookName}》吗？`, {
@@ -222,7 +285,13 @@ function attachDeleteHandlers(container: HTMLElement) {
           return;
         }
 
-        const success = await removeBook(bookUrl);
+        let success = false;
+        if (isLocal) {
+          success = await deleteLocalEpub(bookUrl);
+        } else {
+          success = await removeBook(bookUrl);
+        }
+
         if (success) {
           bookItem?.remove();
         } else {
