@@ -221,11 +221,29 @@ impl AnalyzeRule {
         &self.base_url
     }
 
+    /// Expand `@get:{key}` references in a rule string.
+    /// Replaces `@get:{key}` with the stored variable value.
+    fn expand_get_variables(&self, rule: &str) -> String {
+        static RE: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
+        let regex = RE
+            .get_or_init(|| regex::Regex::new(r"@get:\{([^}]+)\}").expect("valid @get regex"));
+
+        regex
+            .replace_all(rule, |captures: &regex::Captures<'_>| {
+                let key = captures.get(1).map(|m| m.as_str()).unwrap_or_default();
+                self.variables.get(key).cloned().unwrap_or_default()
+            })
+            .to_string()
+    }
+
     /// Extract a single string using a rule.
     ///
     /// For chained rules (`&&`/`||`), only the first successful segment is returned.
     /// Within a segment, `||` acts as short-circuit: if first part returns empty, try second.
     pub fn get_string(&self, rule: &str) -> String {
+        // Expand @get:{key} variable references
+        let rule = self.expand_get_variables(rule);
+
         // Handle || short-circuit within segment
         if let Some((first, second)) = rule.split_once("||") {
             let first_result = self.get_string(first.trim());
@@ -235,7 +253,7 @@ impl AnalyzeRule {
             return self.get_string(second.trim());
         }
 
-        let segments = self.split_chained_rules(rule);
+        let segments = self.split_chained_rules(&rule);
         for seg in segments {
             if seg.starts_with("||") {
                 continue;
@@ -253,8 +271,11 @@ impl AnalyzeRule {
     /// Supports index selectors: `.0` returns first element, `.-1` returns last,
     /// `[n:m]` returns range.
     pub fn get_string_list(&self, rule: &str) -> Vec<String> {
+        // Expand @get:{key} variable references
+        let rule = self.expand_get_variables(rule);
+
         // Handle index selectors first (e.g., "items.0", "list[0:3]")
-        if let Some((base_rule, index_spec)) = extract_index_from_rule(rule) {
+        if let Some((base_rule, index_spec)) = extract_index_from_rule(&rule) {
             // For JSONPath with single index (not range), embed into path
             // e.g., $.items.0 -> $.items[0], $.items.-1 -> $.items[-1]
             if (base_rule.starts_with("$.") || base_rule.starts_with("$["))
@@ -281,7 +302,7 @@ impl AnalyzeRule {
             return self.get_string_list(second.trim());
         }
 
-        let segments = self.split_chained_rules(rule);
+        let segments = self.split_chained_rules(&rule);
         for seg in segments {
             if seg.starts_with("||") {
                 continue;
@@ -299,6 +320,9 @@ impl AnalyzeRule {
     /// For JSON: returns Json wrappers around each matched value.
     /// Supports `||` short-circuit within a segment.
     pub fn get_elements(&self, rule: &str) -> Vec<Content> {
+        // Expand @get:{key} variable references
+        let rule = self.expand_get_variables(rule);
+
         // Handle || short-circuit within segment
         if let Some((first, second)) = rule.split_once("||") {
             let first_result = self.get_elements(first.trim());
@@ -308,7 +332,7 @@ impl AnalyzeRule {
             return self.get_elements(second.trim());
         }
 
-        let segments = self.split_chained_rules(rule);
+        let segments = self.split_chained_rules(&rule);
         for seg in segments {
             if seg.starts_with("||") {
                 continue;

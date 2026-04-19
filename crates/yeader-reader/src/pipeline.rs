@@ -84,29 +84,59 @@ fn resolve_url(base: &str, relative: &str) -> String {
 /// Fetch book information from a book detail page.
 ///
 /// Uses the source's `rule_book_info` to extract fields from the HTML/JSON body.
+/// - Applies `init` rule to narrow content context before field extraction
+/// - Resolves `cover_url` and `toc_url` to absolute URLs relative to book_url
 pub fn fetch_book_info(source: &LegacyBookSource, book_url: &str, body: &str) -> BookInfo {
     let rule = match &source.rule_book_info {
         Some(r) => r,
         None => return BookInfo::default(),
     };
 
-    let analyzer = AnalyzeRule::new(body, book_url);
+    let base_analyzer = AnalyzeRule::new(body, book_url);
 
-    // Apply init rule if present (sets up context for subsequent extractions)
-    if let Some(init_rule) = &rule.init {
-        let _ = analyzer.get_string(init_rule);
-    }
+    // Apply init rule if present - narrows context for subsequent extractions
+    // If init matches, use that element's content as the new extraction context
+    let analyzer = if let Some(init_rule) = &rule.init {
+        let init_rule_str = init_rule.trim();
+        if !init_rule_str.is_empty() {
+            let elements = base_analyzer.get_elements(init_rule_str);
+            if let Some(first) = elements.first() {
+                AnalyzeRule::from_content(first.clone(), book_url)
+            } else {
+                base_analyzer
+            }
+        } else {
+            base_analyzer
+        }
+    } else {
+        base_analyzer
+    };
+
+    // Extract fields from the (potentially narrowed) context
+    let title = analyzer.get_string(rule.name.as_deref().unwrap_or(""));
+    let author = analyzer.get_string(rule.author.as_deref().unwrap_or(""));
+    let intro = analyzer.get_string(rule.intro.as_deref().unwrap_or(""));
+    let kind = analyzer.get_string(rule.kind.as_deref().unwrap_or(""));
+    let last_chapter = analyzer.get_string(rule.last_chapter.as_deref().unwrap_or(""));
+    let update_time = analyzer.get_string(rule.update_time.as_deref().unwrap_or(""));
+    let cover_url_raw = analyzer.get_string(rule.cover_url.as_deref().unwrap_or(""));
+    let toc_url_raw = analyzer.get_string(rule.toc_url.as_deref().unwrap_or(""));
+    let word_count = analyzer.get_string(rule.word_count.as_deref().unwrap_or(""));
+
+    // Resolve relative URLs to absolute (cover_url, toc_url) relative to book_url
+    let cover_url = resolve_url(book_url, &cover_url_raw);
+    let toc_url = resolve_url(book_url, &toc_url_raw);
 
     BookInfo {
-        title: analyzer.get_string(rule.name.as_deref().unwrap_or("")),
-        author: analyzer.get_string(rule.author.as_deref().unwrap_or("")),
-        intro: analyzer.get_string(rule.intro.as_deref().unwrap_or("")),
-        kind: analyzer.get_string(rule.kind.as_deref().unwrap_or("")),
-        last_chapter: analyzer.get_string(rule.last_chapter.as_deref().unwrap_or("")),
-        update_time: analyzer.get_string(rule.update_time.as_deref().unwrap_or("")),
-        cover_url: analyzer.get_string(rule.cover_url.as_deref().unwrap_or("")),
-        toc_url: analyzer.get_string(rule.toc_url.as_deref().unwrap_or("")),
-        word_count: analyzer.get_string(rule.word_count.as_deref().unwrap_or("")),
+        title,
+        author,
+        intro,
+        kind,
+        last_chapter,
+        update_time,
+        cover_url,
+        toc_url,
+        word_count,
     }
 }
 
@@ -308,8 +338,8 @@ mod tests {
         assert_eq!(info.kind, "Fantasy");
         assert_eq!(info.last_chapter, "Chapter 100");
         assert_eq!(info.update_time, "2024-01-15");
-        assert_eq!(info.cover_url, "/cover.jpg");
-        assert_eq!(info.toc_url, "/book/123/catalog");
+        assert_eq!(info.cover_url, "https://example.com/cover.jpg");
+        assert_eq!(info.toc_url, "https://example.com/book/123/catalog");
         assert_eq!(info.word_count, "1,234,567");
     }
 
