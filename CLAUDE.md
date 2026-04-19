@@ -59,6 +59,14 @@ yeader-rules, yeader-net → yeader-models
 - **Tauri commands**: Exposed in `src-tauri/src/lib.rs` via `#[tauri::command]` and registered in the `invoke_handler`. Currently only `parse_legado_import_uri`.
 - **Test fixtures**: Located in `fixtures/legado/` and embedded at compile time with `include_str!()`. Covers book sources, RSS sources, replace rules, sample backup (dir + zip).
 
+### EPUB Reader Features
+
+- **Bookmark system**: Bookmarks saved to `mark.json` alongside each EPUB file via `save_bookmark`/`get_bookmark` Tauri commands
+- **Three themes**: Light/dark/sepia modes via `ThemeManager` (`src/utils/themeManager.ts`) with CSS variable theming
+- **Reader style persistence**: Font family, size, line height, theme saved to `config/reader_style.json` via `save_reader_style`/`get_reader_style` commands
+- **Per-theme content styles**: EPUB content colors adapt to selected theme via `src/utils/bookContentThemes.ts`
+- **Keyboard shortcuts**: `b` toggle bookmarks, `m` save bookmark, `t` toggle TOC, `s` toggle settings, `d` cycle theme
+
 ### Upstream reference
 
 The upstream legado Kotlin source is cached at `.cache/legado-upstream/`. Key files for rule engine work:
