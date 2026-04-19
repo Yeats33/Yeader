@@ -755,6 +755,12 @@ mod tests {
             last_tested_at: None,
             last_test_detail: None,
             extra: Map::new(),
+            login_url: None,
+            header: None,
+            custom_order: None,
+            weight: None,
+            last_update_time: None,
+            book_source_comment: None,
         };
 
         repo.upsert(&src).unwrap();
@@ -787,6 +793,12 @@ mod tests {
             last_tested_at: None,
             last_test_detail: None,
             extra: Map::new(),
+            login_url: None,
+            header: None,
+            custom_order: None,
+            weight: None,
+            last_update_time: None,
+            book_source_comment: None,
         };
         repo.upsert(&src).unwrap();
 
@@ -827,6 +839,12 @@ mod tests {
             last_tested_at: None,
             last_test_detail: None,
             extra: Map::new(),
+            login_url: None,
+            header: None,
+            custom_order: None,
+            weight: None,
+            last_update_time: None,
+            book_source_comment: None,
         };
         repo.upsert(&src).unwrap();
         assert!(repo.find_by_url("https://a.com").unwrap().is_some());
@@ -856,6 +874,12 @@ mod tests {
             last_tested_at: None,
             last_test_detail: None,
             extra: Map::new(),
+            login_url: None,
+            header: None,
+            custom_order: None,
+            weight: None,
+            last_update_time: None,
+            book_source_comment: None,
         };
         repo.upsert(&src).unwrap();
         assert!(repo.delete("https://del.com").unwrap());
@@ -888,6 +912,12 @@ mod tests {
                 last_tested_at: None,
                 last_test_detail: None,
                 extra: Map::new(),
+                login_url: None,
+                header: None,
+                custom_order: None,
+                weight: None,
+                last_update_time: None,
+                book_source_comment: None,
             })
             .collect();
 
@@ -922,6 +952,12 @@ mod tests {
             last_tested_at: None,
             last_test_detail: None,
             extra,
+            login_url: None,
+            header: None,
+            custom_order: None,
+            weight: None,
+            last_update_time: None,
+            book_source_comment: None,
         };
         repo.upsert(&src).unwrap();
 
