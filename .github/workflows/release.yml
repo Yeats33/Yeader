@@ -55,7 +55,17 @@ jobs:
         run: npm ci
 
       - name: Build
+        if: matrix.platform != 'windows-latest'
         run: npm run tauri build
+
+      - name: Build (Windows)
+        if: matrix.platform == 'windows-latest'
+        run: |
+          # MSI doesn't support pre-release identifiers, strip them
+          VERSION=$(grep -oP '"version": "\K[^"]+' src-tauri/tauri.conf.json)
+          NUMERIC_VERSION=$(echo "$VERSION" | sed 's/-.*//')
+          sed -i "s/\"version\": \"$VERSION\"/\"version\": \"$NUMERIC_VERSION\"/" src-tauri/tauri.conf.json
+          npm run tauri build
 
       - name: Upload artifacts (macOS)
         if: matrix.platform == 'macos-latest'
