@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 pub struct LogLine {
     pub timestamp: String,
     pub level: String,
-    /// Maps from tracing-subscriber's "target" field.
     pub target: String,
+    #[serde(rename = "fields.message", default)]
     pub message: String,
 }
 
