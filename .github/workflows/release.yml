@@ -79,6 +79,7 @@ jobs:
           path: |
             target/release/bundle/deb/*.deb
             target/release/bundle/appimage/*.AppImage
+            target/release/bundle/rpm/*.rpm
 
   release:
     needs: [prepare, build]
@@ -105,5 +106,6 @@ jobs:
             artifacts/**/*.msi
             artifacts/**/*.deb
             artifacts/**/*.AppImage
+            artifacts/**/*.rpm
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
