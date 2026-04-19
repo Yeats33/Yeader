@@ -563,17 +563,17 @@ function describeSourceListSection(
   const listId = registerSourceList(sources);
 
   return `
-    <section class="source-list-card">
-      <div class="source-list-card-header">
+    <details class="source-list-card" open>
+      <summary class="source-list-card-header">
         <span class="source-list-card-title">${escapeText(title)}</span>
         ${describeSummaryChip(sources)}
         <span class="source-summary-actions">
           ${describeAvailabilityTestButton("测试此层", sources)}
           ${extraActions}
         </span>
-      </div>
+      </summary>
       ${describeVirtualSourceList(listId, sources)}
-    </section>
+    </details>
   `;
 }
 
@@ -624,8 +624,8 @@ export function describeBookSourceTree(bookSources: LegacyBookSource[]): string 
     const subscriptionNodes = Array.from(subscriptionSources.entries())
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([subscriptionUrl, groupedSources]) => `
-        <section class="source-subscription" data-subscription-url="${escapeAttr(subscriptionUrl)}">
-          <div class="source-subscription-summary">
+        <details class="source-subscription" data-subscription-url="${escapeAttr(subscriptionUrl)}">
+          <summary class="source-subscription-summary">
             <span class="source-subscription-title">订阅链接</span>
             <code class="source-subscription-url">${escapeText(subscriptionUrl)}</code>
             ${describeSummaryChip(groupedSources)}
@@ -634,11 +634,11 @@ export function describeBookSourceTree(bookSources: LegacyBookSource[]): string 
               ${describeSubscriptionRefreshButton(groupedSources, subscriptionUrl)}
               ${describeBulkToggleButton("subscription", groupedSources)}
             </span>
-          </div>
+          </summary>
           <div class="source-tier-body">
             ${describeSourceListSection("订阅书源列表", groupedSources)}
           </div>
-        </section>
+        </details>
       `)
       .join("");
 
