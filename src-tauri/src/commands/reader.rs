@@ -1,6 +1,12 @@
-use tauri::State;
+use tauri::{AppHandle, State};
 use tracing::{info, warn};
 use yeader_models::{BookInfo as ModelBookInfo, Chapter as ModelChapter};
+
+use crate::{
+    bookmark::{load_bookmark_from_local_storage, save_bookmark_to_local_storage},
+    model::{BookMark, ReaderStyle},
+    style::{load_style_from_local_storage, save_style_to_local_storage},
+};
 
 use crate::state::AppState;
 
@@ -150,7 +156,8 @@ pub async fn import_epub(
 
     // Generate unique ID and create per-book directory
     let book_id = Uuid::new_v4().to_string();
-    let book_dir = state.log_dir.join("epub_library").join(&book_id);
+    let app_dir = state.app_dir.clone();
+    let book_dir = app_dir.join("epub_library").join(&book_id);
     std::fs::create_dir_all(&book_dir).map_err(|e| e.to_string())?;
 
     // Read and parse EPUB
@@ -350,4 +357,58 @@ pub async fn get_epub_toc(
         .collect();
 
     Ok(chapters)
+}
+
+#[tauri::command]
+pub async fn save_reader_style(
+    app_handle: AppHandle,
+    font_family: String,
+    font_size: u32,
+    line_height: f32,
+    theme: String,
+) -> Result<String, String> {
+    let style = ReaderStyle {
+        font_family,
+        font_size,
+        line_height,
+        theme,
+    };
+    save_style_to_local_storage(&app_handle, &style).await
+}
+
+#[tauri::command]
+pub async fn get_reader_style(app_handle: AppHandle) -> Result<ReaderStyle, String> {
+    load_style_from_local_storage(&app_handle).await
+}
+
+#[tauri::command]
+pub async fn save_bookmark(
+    book_path: String,
+    page: u32,
+    content: String,
+    width: u32,
+    height: u32,
+    cfi: String,
+    action: Option<u32>,
+) -> Result<String, String> {
+    let mut bookmark = match load_bookmark_from_local_storage(&book_path).await {
+        Ok(bm) => bm,
+        Err(_) => BookMark::new(book_path.clone()),
+    };
+
+    match action {
+        Some(1) => {
+            bookmark.remove_mark(page);
+        }
+        _ => {
+            bookmark.add_mark(page, content, width, height, cfi);
+        }
+    }
+
+    save_bookmark_to_local_storage(&bookmark).await
+}
+
+#[tauri::command]
+pub async fn get_bookmark(book_path: String) -> Result<BookMark, String> {
+    load_bookmark_from_local_storage(&book_path).await
 }

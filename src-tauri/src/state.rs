@@ -10,13 +10,16 @@ pub struct AppState {
     /// Path to the log directory (e.g. ~/.yeader/logs).
     #[allow(dead_code)]
     pub log_dir: PathBuf,
+    /// Path to the app data directory (e.g. ~/.yeader/).
+    pub app_dir: PathBuf,
 }
 
 impl AppState {
-    pub fn new(db: Database, log_dir: PathBuf) -> Self {
+    pub fn new(db: Database, log_dir: PathBuf, app_dir: PathBuf) -> Self {
         Self {
             db: Arc::new(Mutex::new(db)),
             log_dir,
+            app_dir,
         }
     }
 }

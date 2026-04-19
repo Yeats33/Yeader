@@ -1,11 +1,17 @@
 //! Tauri application entry point.
 
+mod bookmark;
 mod commands;
 mod logging;
+mod model;
 mod state;
+mod style;
 
-use commands::{dev, library, reader, search};
+use bookmark::{load_bookmark_from_local_storage, save_bookmark_to_local_storage};
+use commands::{dev, integration, library, reader, search};
+use model::{BookMark, ReaderStyle};
 use state::AppState;
+use style::{load_style_from_local_storage, save_style_to_local_storage};
 use tauri::Manager;
 use yeader_library::Database;
 
@@ -33,7 +39,7 @@ pub fn run() {
             let db = Database::open(db_path.to_str().unwrap())
                 .map_err(|e| format!("Failed to open database: {}", e))?;
 
-            let state = AppState::new(db, log_dir);
+            let state = AppState::new(db, log_dir, app_dir);
             app.manage(state);
 
             tracing::info!("Yeader initialized successfully");
@@ -49,6 +55,8 @@ pub fn run() {
             parse_legado_import_uri,
             dev::get_dev_mode_status,
             dev::toggle_dev_mode,
+            integration::check_command_exists,
+            integration::open_url,
             library::list_book_sources,
             library::load_book_sources_from_file,
             library::import_book_sources_json,
@@ -74,6 +82,10 @@ pub fn run() {
             reader::read_local_epub,
             reader::delete_local_epub,
             reader::get_epub_toc,
+            reader::save_reader_style,
+            reader::get_reader_style,
+            reader::save_bookmark,
+            reader::get_bookmark,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
