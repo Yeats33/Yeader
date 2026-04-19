@@ -46,6 +46,15 @@ impl IndexSpec {
     }
 }
 
+/// A segment of a chained rule with its connector type.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ChainSegment<'a> {
+    /// Concatenated segment (&&)
+    And(&'a str),
+    /// Interleaved segment (%%)
+    Interleave(&'a str, &'a str),
+}
+
 /// Extract index specification from a rule suffix.
 /// Returns (base_rule, index_spec) if found, None otherwise.
 /// Examples:
@@ -236,13 +245,90 @@ impl AnalyzeRule {
             .to_string()
     }
 
+    /// Expand URL-style variables in a rule string: `{{key}}`, `{{page}}`, `{{(expr)}}`.
+    /// Also handles `<n,m>` page overrides used in legado URL options.
+    fn expand_url_variables(&self, rule: &str) -> String {
+        static RE: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
+        let regex = RE
+            .get_or_init(|| regex::Regex::new(r"\{\{([^}]+)\}\}").expect("valid {{}} regex"));
+
+        regex
+            .replace_all(rule, |captures: &regex::Captures<'_>| {
+                let expr = captures.get(1).map(|m| m.as_str()).unwrap_or_default();
+                // Arithmetic expression like (page-1)*20
+                if expr.starts_with('(') && expr.ends_with(')') {
+                    self.evaluate_arithmetic(expr)
+                } else {
+                    // Simple variable lookup
+                    self.variables.get(expr).cloned().unwrap_or_default()
+                }
+            })
+            .to_string()
+    }
+
+    /// Evaluate simple arithmetic expressions like `(page-1)*20` or `page+1`.
+    /// Returns the result as a string, or empty string if evaluation fails.
+    fn evaluate_arithmetic(&self, expr: &str) -> String {
+        // Strip parentheses
+        let inner = &expr[1..expr.len() - 1];
+        // Simple parser for加减乘除和数字/变量
+        let chars: Vec<char> = inner.chars().collect();
+        let mut i = 0;
+        let mut current_num = String::new();
+        let mut numbers: Vec<i64> = Vec::new();
+        let mut ops: Vec<char> = Vec::new();
+
+        while i < chars.len() {
+            let c = chars[i];
+            if c.is_ascii_digit() || c == '.' {
+                current_num.push(c);
+            } else if c == '+' || c == '-' || c == '*' || c == '/' {
+                if !current_num.is_empty() {
+                    if let Ok(n) = current_num.parse::<i64>() {
+                        numbers.push(n);
+                    } else if let Some(n) = self.variables.get(&*current_num).and_then(|s| s.parse::<i64>().ok()) {
+                        numbers.push(n);
+                    }
+                    current_num.clear();
+                }
+                ops.push(c);
+            }
+            i += 1;
+        }
+        if !current_num.is_empty() {
+            if let Ok(n) = current_num.parse::<i64>() {
+                numbers.push(n);
+            } else if let Some(n) = self.variables.get(&*current_num).and_then(|s| s.parse::<i64>().ok()) {
+                numbers.push(n);
+            }
+        }
+
+        if numbers.is_empty() {
+            return String::new();
+        }
+        let mut res = numbers[0];
+        for (j, op) in ops.iter().enumerate() {
+            if j + 1 < numbers.len() {
+                match op {
+                    '+' => res = res.wrapping_add(numbers[j + 1]),
+                    '-' => res = res.wrapping_sub(numbers[j + 1]),
+                    '*' => res = res.wrapping_mul(numbers[j + 1]),
+                    '/' => res = if numbers[j + 1] != 0 { res / numbers[j + 1] } else { 0 },
+                    _ => {}
+                }
+            }
+        }
+        res.to_string()
+    }
+
     /// Extract a single string using a rule.
     ///
     /// For chained rules (`&&`/`||`), only the first successful segment is returned.
     /// Within a segment, `||` acts as short-circuit: if first part returns empty, try second.
     pub fn get_string(&self, rule: &str) -> String {
-        // Expand @get:{key} variable references
-        let rule = self.expand_get_variables(rule);
+        // Expand URL variables first, then @get:{key}
+        let rule = self.expand_url_variables(rule);
+        let rule = self.expand_get_variables(&rule);
 
         // Handle || short-circuit within segment
         if let Some((first, second)) = rule.split_once("||") {
@@ -254,12 +340,19 @@ impl AnalyzeRule {
         }
 
         let segments = self.split_chained_rules(&rule);
-        for seg in segments {
-            if seg.starts_with("||") {
-                continue;
-            }
-            if let Some(result) = self.try_get_string(seg.trim()) {
-                return result;
+        for seg in &segments {
+            match seg {
+                ChainSegment::And(s) => {
+                    if let Some(result) = self.try_get_string(s.trim()) {
+                        return result;
+                    }
+                }
+                ChainSegment::Interleave(left, _right) => {
+                    // For single-result extraction, use first part of interleave
+                    if let Some(result) = self.try_get_string(left.trim()) {
+                        return result;
+                    }
+                }
             }
         }
         String::new()
@@ -271,8 +364,9 @@ impl AnalyzeRule {
     /// Supports index selectors: `.0` returns first element, `.-1` returns last,
     /// `[n:m]` returns range.
     pub fn get_string_list(&self, rule: &str) -> Vec<String> {
-        // Expand @get:{key} variable references
-        let rule = self.expand_get_variables(rule);
+        // Expand URL variables first, then @get:{key}
+        let rule = self.expand_url_variables(rule);
+        let rule = self.expand_get_variables(&rule);
 
         // Handle index selectors first (e.g., "items.0", "list[0:3]")
         if let Some((base_rule, index_spec)) = extract_index_from_rule(&rule) {
@@ -303,25 +397,43 @@ impl AnalyzeRule {
         }
 
         let segments = self.split_chained_rules(&rule);
-        for seg in segments {
-            if seg.starts_with("||") {
-                continue;
-            }
-            if let Some(result) = self.try_get_string_list(seg.trim()) {
-                return result;
+        for seg in &segments {
+            match seg {
+                ChainSegment::And(s) => {
+                    if let Some(result) = self.try_get_string_list(s.trim()) {
+                        return result;
+                    }
+                }
+                ChainSegment::Interleave(left, right) => {
+                    // Interleave: take one from each rule in rotation
+                    let left_results = self.get_string_list(left.trim());
+                    let right_results = self.get_string_list(right.trim());
+                    if !left_results.is_empty() || !right_results.is_empty() {
+                        let mut interleaved = Vec::new();
+                        let max_len = left_results.len().max(right_results.len());
+                        for i in 0..max_len {
+                            if i < left_results.len() {
+                                interleaved.push(left_results[i].clone());
+                            }
+                            if i < right_results.len() {
+                                interleaved.push(right_results[i].clone());
+                            }
+                        }
+                        return interleaved;
+                    }
+                }
             }
         }
         Vec::new()
     }
 
     /// Extract elements using a rule, returning raw content for each match.
-    ///
-    /// For HTML: returns Html wrappers around each matched element.
     /// For JSON: returns Json wrappers around each matched value.
     /// Supports `||` short-circuit within a segment.
     pub fn get_elements(&self, rule: &str) -> Vec<Content> {
-        // Expand @get:{key} variable references
-        let rule = self.expand_get_variables(rule);
+        // Expand URL variables first, then @get:{key}
+        let rule = self.expand_url_variables(rule);
+        let rule = self.expand_get_variables(&rule);
 
         // Handle || short-circuit within segment
         if let Some((first, second)) = rule.split_once("||") {
@@ -333,21 +445,36 @@ impl AnalyzeRule {
         }
 
         let segments = self.split_chained_rules(&rule);
-        for seg in segments {
-            if seg.starts_with("||") {
-                continue;
-            }
-            if let Some(result) = self.try_get_elements(seg.trim()) {
-                return result;
+        for seg in &segments {
+            match seg {
+                ChainSegment::And(s) => {
+                    if let Some(result) = self.try_get_elements(s.trim()) {
+                        return result;
+                    }
+                }
+                ChainSegment::Interleave(left, _right) => {
+                    // For element extraction, use first part of interleave
+                    if let Some(result) = self.try_get_elements(left.trim()) {
+                        return result;
+                    }
+                }
             }
         }
         Vec::new()
     }
 
-    fn split_chained_rules<'a>(&self, rule: &'a str) -> Vec<&'a str> {
-        rule.split("&&")
-            .map(|s| s.trim())
-            .collect::<Vec<_>>()
+    fn split_chained_rules<'a>(&self, rule: &'a str) -> Vec<ChainSegment<'a>> {
+        // Split by && first, then annotate each segment with its connector
+        let parts: Vec<&str> = rule.split("&&").map(|s| s.trim()).collect();
+        let mut segments = Vec::with_capacity(parts.len());
+        for part in parts {
+            if let Some((left, right)) = part.split_once("%%") {
+                segments.push(ChainSegment::Interleave(left.trim(), right.trim()));
+            } else {
+                segments.push(ChainSegment::And(part));
+            }
+        }
+        segments
     }
 
     fn try_get_string(&self, rule: &str) -> Option<String> {

@@ -38,6 +38,18 @@ pub struct LegacyBookSource {
     #[serde(default)]
     pub explore_url: Option<String>,
     #[serde(default)]
+    pub login_url: Option<String>,
+    #[serde(default)]
+    pub header: Option<String>,
+    #[serde(default)]
+    pub custom_order: Option<i32>,
+    #[serde(default)]
+    pub weight: Option<i32>,
+    #[serde(default)]
+    pub last_update_time: Option<i64>,
+    #[serde(default)]
+    pub book_source_comment: Option<String>,
+    #[serde(default)]
     pub rule_search: Option<SearchRule>,
     #[serde(default)]
     pub rule_book_info: Option<BookInfoRule>,

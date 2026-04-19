@@ -40,7 +40,13 @@ pub async fn fetch_book_info(
     let preview: String = response.body.chars().take(200).collect();
     info!("fetch_book_info: body preview: {}", preview);
     let info = yeader_reader::fetch_book_info(&source, &book_url, &response.body);
-    info!("fetch_book_info: parsed info: title={}, toc_url={}", info.title, info.toc_url);
+    info!("fetch_book_info: parsed info: title={}, toc_url={}, has_rule={}", info.title, info.toc_url, source.rule_book_info.is_some());
+    if source.rule_book_info.is_some() {
+        info!("fetch_book_info: rule init={:?}, name={:?}, toc_url={:?}",
+            source.rule_book_info.as_ref().and_then(|r| r.init.as_ref()),
+            source.rule_book_info.as_ref().and_then(|r| r.name.as_ref()),
+            source.rule_book_info.as_ref().and_then(|r| r.toc_url.as_ref()));
+    }
 
     Ok(ModelBookInfo {
         name: info.title,
