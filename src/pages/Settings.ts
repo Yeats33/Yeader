@@ -1089,14 +1089,24 @@ export function initSettingsHandlers(container: HTMLElement) {
       event.preventDefault();
       event.stopPropagation();
 
-      const sourceUrls = JSON.parse(availabilityBtn.dataset.sourceUrls ?? "[]") as string[];
+      const allSourceUrls = JSON.parse(availabilityBtn.dataset.sourceUrls ?? "[]") as string[];
       const label = availabilityBtn.dataset.label ?? "测试范围";
-      if (sourceUrls.length === 0) {
+
+      // Apply current filter to scope: only test sources visible under current filter
+      const selectedTags = getSelectedTagFilters();
+      const filterMode = sourceTree.dataset.filter ?? "all";
+      const filteredSources = getFilteredSources(latestBookSourcesSnapshot, filterMode, selectedTags, availabilityResults);
+      const filteredUrls = filteredSources
+        .filter((s) => allSourceUrls.includes(s.bookSourceUrl))
+        .map((s) => s.bookSourceUrl);
+
+      if (filteredUrls.length === 0) {
+        renderSourceActionResult("error", `${label}中没有可测试的书源`);
         return;
       }
 
       try {
-        const statuses = await testAvailabilityForScope(sourceUrls, `${label}中`);
+        const statuses = await testAvailabilityForScope(filteredUrls, `${label}中`);
         rerenderVirtualSourceLists();
         const unavailableCount = statuses.filter((status) => !status.available).length;
         renderSourceActionResult(
