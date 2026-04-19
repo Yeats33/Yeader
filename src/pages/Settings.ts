@@ -643,7 +643,7 @@ export function describeBookSourceTree(bookSources: LegacyBookSource[]): string 
     sections.push(`
       <details class="source-tier" data-tier="subscription">
         <summary class="source-tier-summary">
-          <span class="source-tier-title">订阅源</span>
+          <span class="source-tier-title">订阅书源</span>
           ${describeSummaryChip(allSubscriptionSources)}
           <span class="source-summary-actions">
             ${describeAvailabilityTestButton("测试此层", allSubscriptionSources)}

@@ -145,7 +145,7 @@ test("describeBookSourceTree renders direct and subscription tiers", () => {
   const html = describeBookSourceTree(MOCK_SOURCES);
 
   assert.equal(html.includes("本地书源"), true, "should render direct tier");
-  assert.equal(html.includes("订阅源"), true, "should render subscription tier");
+  assert.equal(html.includes("订阅书源"), true, "should render subscription tier");
   assert.equal(html.includes("https://sub.example.com/all.json"), true, "should render subscription URL");
   assert.equal(html.includes("笔趣阁"), true, "should render split tag label");
   assert.equal(html.includes("漫画"), true, "should render second split tag label");
