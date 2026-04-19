@@ -287,9 +287,19 @@ pub fn fetch_content(
     body: &str,
     replace_rules: &[ReplaceRule],
 ) -> String {
+    fetch_content_with_title(source, chapter_url, body, replace_rules).0
+}
+
+/// Fetch chapter content and optionally re-extract the title from the content page.
+pub fn fetch_content_with_title(
+    source: &LegacyBookSource,
+    chapter_url: &str,
+    body: &str,
+    replace_rules: &[ReplaceRule],
+) -> (String, Option<String>) {
     let rule = match &source.rule_content {
         Some(r) => r,
-        None => return String::new(),
+        None => return (String::new(), None),
     };
 
     let analyzer = AnalyzeRule::new(body, chapter_url);
@@ -298,10 +308,35 @@ pub fn fetch_content(
     let content_rule = rule.content.as_deref().unwrap_or("");
     let mut content = analyzer.get_string(content_rule);
 
+    // Apply source-level replaceRegex if configured (legado-style single regex on content)
+    if let Some(replace_regex) = &rule.replace_regex {
+        let regex_str = replace_regex.trim();
+        if !regex_str.is_empty() {
+            content = yeader_rules::regex::apply_replace(&content, regex_str, "", false);
+        }
+    }
+
     // Apply replace rules chain if available
     if !replace_rules.is_empty() {
         content = yeader_rules::apply_replace_rules(&content, replace_rules);
     }
+
+    // Optionally re-extract title from content page if title rule is configured
+    let title = if let Some(title_rule) = &rule.title {
+        let title_rule_str = title_rule.trim();
+        if !title_rule_str.is_empty() {
+            let extracted = analyzer.get_string(title_rule_str);
+            if !extracted.is_empty() {
+                Some(extracted)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    } else {
+        None
+    };
 
     // Handle next_content_url for pagination (if rule is configured)
     if let Some(next_url_rule) = &rule.next_content_url {
@@ -312,7 +347,7 @@ pub fn fetch_content(
         }
     }
 
-    content
+    (content, title)
 }
 
 #[cfg(test)]
