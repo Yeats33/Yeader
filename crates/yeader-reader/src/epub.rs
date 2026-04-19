@@ -128,7 +128,7 @@ pub fn read_epub_from_reader<R: Read + Seek>(reader: R) -> std::io::Result<EpubB
     })
 }
 
-fn get_file_str(archive: &mut ZipArchive<BufReader<File>>, name: &str) -> std::io::Result<String> {
+fn get_file_str<R: Read + Seek>(archive: &mut ZipArchive<R>, name: &str) -> std::io::Result<String> {
     let mut file = archive.by_name(name)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::NotFound, e))?;
     let mut s = String::new();
@@ -136,7 +136,7 @@ fn get_file_str(archive: &mut ZipArchive<BufReader<File>>, name: &str) -> std::i
     Ok(s)
 }
 
-fn get_file_bytes(archive: &mut ZipArchive<BufReader<File>>, name: &str) -> std::io::Result<Vec<u8>> {
+fn get_file_bytes<R: Read + Seek>(archive: &mut ZipArchive<R>, name: &str) -> std::io::Result<Vec<u8>> {
     let mut file = archive.by_name(name)
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::NotFound, e))?;
     let mut v = Vec::new();
