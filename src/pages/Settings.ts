@@ -52,6 +52,9 @@ type VirtualWindow = {
 const SOURCE_ROW_HEIGHT = 96;
 const SOURCE_ROW_OVERSCAN = 2;
 const SOURCE_LIST_MAX_VISIBLE_ROWS = 6;
+const SPECIAL_TAG_ENABLED = "__enabled";
+const SPECIAL_TAG_AVAILABLE = "__available";
+const SPECIAL_TAG_UNTAGGED = "__untagged";
 
 const sourceListRegistry = new Map<string, LegacyBookSource[]>();
 let sourceListSequence = 0;
@@ -88,16 +91,42 @@ function applyAvailabilityToSourceSnapshot(status: PersistedBookSourceAvailabili
 function getFilteredSources(
   sources: LegacyBookSource[],
   filterMode: string,
-  selectedTag: string,
+  selectedTags: string | string[],
   availabilityResults: Map<string, PersistedBookSourceAvailability>,
 ): LegacyBookSource[] {
+  const selectedFilters = Array.isArray(selectedTags)
+    ? selectedTags.filter(Boolean)
+    : selectedTags
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean);
+
   return sources.filter((source) => {
     if (filterMode === "available" && !availabilityResults.get(source.bookSourceUrl)?.available) {
       return false;
     }
 
-    if (selectedTag && !getSourceTags(source).includes(selectedTag)) {
-      return false;
+    for (const selectedTag of selectedFilters) {
+      if (selectedTag === SPECIAL_TAG_ENABLED && !source.enabled) {
+        return false;
+      }
+
+      if (selectedTag === SPECIAL_TAG_AVAILABLE && !availabilityResults.get(source.bookSourceUrl)?.available) {
+        return false;
+      }
+
+      if (selectedTag === SPECIAL_TAG_UNTAGGED && getSourceTags(source).length > 0) {
+        return false;
+      }
+
+      if (
+        selectedTag !== SPECIAL_TAG_ENABLED
+        && selectedTag !== SPECIAL_TAG_AVAILABLE
+        && selectedTag !== SPECIAL_TAG_UNTAGGED
+        && !getSourceTags(source).includes(selectedTag)
+      ) {
+        return false;
+      }
     }
 
     return true;
@@ -106,16 +135,33 @@ function getFilteredSources(
 
 export function describeFilteredEnabledSummary(
   sources: LegacyBookSource[],
-  selectedTag: string,
+  selectedTags: string | string[],
   filterMode: string,
   availabilityResults: Map<string, PersistedBookSourceAvailability>,
 ): string {
-  const filteredSources = getFilteredSources(sources, filterMode, selectedTag, availabilityResults);
+  const filteredSources = getFilteredSources(sources, filterMode, selectedTags, availabilityResults);
   const enabledCount = filteredSources.filter((source) => source.enabled).length;
   const availableCount = filteredSources.filter(
     (source) => availabilityResults.get(source.bookSourceUrl)?.available,
   ).length;
   return `启用:${enabledCount} 可用:${availableCount} 全部:${filteredSources.length}`;
+}
+
+export function describeSelectedFilterSummary(selectedTags: string[]): string {
+  return selectedTags
+    .map((tag) => {
+      if (tag === SPECIAL_TAG_AVAILABLE) {
+        return "可用";
+      }
+      if (tag === SPECIAL_TAG_ENABLED) {
+        return "启用";
+      }
+      if (tag === SPECIAL_TAG_UNTAGGED) {
+        return "未标记";
+      }
+      return tag;
+    })
+    .join(" + ");
 }
 
 function getViewportHeight(itemCount: number): number {
@@ -205,6 +251,10 @@ function collectSourceTags(sources: LegacyBookSource[]): string[] {
   return Array.from(tags).sort((left, right) => left.localeCompare(right, "zh-Hans-CN"));
 }
 
+function hasUntaggedSources(sources: LegacyBookSource[]): boolean {
+  return sources.some((source) => getSourceTags(source).length === 0);
+}
+
 function describeEnabledSummary(sources: LegacyBookSource[]): string {
   const enabledCount = sources.filter((source) => source.enabled).length;
   const tested = sources.filter((s) => typeof s.lastTestAvailable === "boolean");
@@ -214,7 +264,12 @@ function describeEnabledSummary(sources: LegacyBookSource[]): string {
 
 function describeSummaryChip(sources: LegacyBookSource[]): string {
   const encodedUrls = escapeAttr(JSON.stringify(sources.map((source) => source.bookSourceUrl)));
-  return `<span class="source-summary-chip available" data-source-summary="${encodedUrls}">${describeEnabledSummary(sources)}</span>`;
+  return `
+    <span class="source-summary-wrap">
+      <span class="source-summary-chip available" data-source-summary="${encodedUrls}">${describeEnabledSummary(sources)}</span>
+      <span class="source-summary-filter" data-source-summary-filter hidden></span>
+    </span>
+  `;
 }
 
 export function describeLastTestedText(testedAt: string, now: Date = new Date()): string {
@@ -401,7 +456,20 @@ function describeSourceItems(sources: LegacyBookSource[]): string {
           )
         : "";
       const lastTestedText = availabilityState ? describeLastTestedText(availabilityState.testedAt) : "";
-      const tagHtml = tags.length > 0
+      const availabilityTag = `
+        <span
+          class="source-tag-chip source-tag-chip--status source-tag-chip--availability ${availabilityClass}"
+          data-availability-status
+          data-source-url="${url}"
+          title="${availabilityTitle}"
+        >${availabilityLabel}</span>
+      `;
+      const enabledTag = `
+        <span class="source-tag-chip source-tag-chip--status ${source.enabled ? "source-tag-chip--enabled" : "source-tag-chip--disabled"}">
+          ${stateLabel}
+        </span>
+      `;
+      const normalTagHtml = tags.length > 0
         ? tags.map((tag) => `<span class="source-tag-chip">${escapeText(tag)}</span>`).join("")
         : '<span class="source-tag-chip is-muted">未标记</span>';
 
@@ -410,11 +478,9 @@ function describeSourceItems(sources: LegacyBookSource[]): string {
           <div class="source-item-main">
             <div class="source-item-header">
               <strong class="source-item-name">${name}</strong>
-              <span class="source-state-chip ${source.enabled ? "active" : ""}">${stateLabel}</span>
-              <span class="source-availability-chip ${availabilityClass}" data-availability-status data-source-url="${url}" title="${availabilityTitle}">${availabilityLabel}</span>
             </div>
             <div class="source-item-meta">
-              <span class="source-tag-list">${tagHtml}</span>
+              <span class="source-tag-list">${enabledTag}${availabilityTag}${normalTagHtml}</span>
               <code>${sourceUrl}</code>
               <span class="source-last-tested" data-last-tested data-source-url="${url}">${escapeText(lastTestedText)}</span>
             </div>
@@ -456,14 +522,35 @@ function describeVirtualSourceList(listId: string, sources: LegacyBookSource[]):
 }
 
 function describeTagFilterBar(tags: string[]): string {
+  const untaggedChip = hasUntaggedSources(latestBookSourcesSnapshot)
+    ? `<button class="source-tag-filter source-tag-filter--special" data-tag-filter="${SPECIAL_TAG_UNTAGGED}">未标记</button>`
+    : "";
+
   return `
     <div class="source-tag-filters" id="source-tag-filters">
+      <div class="source-filter-status" id="source-filter-status">已选 0 项</div>
       <button class="source-tag-filter active" data-tag-filter="">全部标签</button>
+      <button class="source-tag-filter source-tag-filter--special" data-tag-filter="${SPECIAL_TAG_ENABLED}">启用</button>
+      <button class="source-tag-filter source-tag-filter--special" data-tag-filter="${SPECIAL_TAG_AVAILABLE}">可用</button>
+      ${untaggedChip}
       ${tags.map((tag) => `
         <button class="source-tag-filter" data-tag-filter="${escapeAttr(tag)}">${escapeText(tag)}</button>
       `).join("")}
     </div>
   `;
+}
+
+function parseSelectedTagFilters(rawValue?: string): string[] {
+  if (!rawValue) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue) as string[];
+    return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+  } catch {
+    return [];
+  }
 }
 
 function describeSourceListSection(
@@ -580,7 +667,7 @@ export function describeBookSourceTree(bookSources: LegacyBookSource[]): string 
     </div>
     ${describeTagFilterBar(allTags)}
     <div id="source-action-result" class="import-result"></div>
-    <div class="source-tree" id="source-tree" data-filter="all" data-tag-filter="">${sections.join("")}</div>
+    <div class="source-tree" id="source-tree" data-filter="all" data-selected-tags="[]">${sections.join("")}</div>
   `;
 }
 
@@ -729,6 +816,7 @@ export function initSettingsHandlers(container: HTMLElement) {
   const filterAvailableBtn = $<HTMLButtonElement>(container, "#filter-available-btn");
   const devDeleteAllSourcesBtn = $<HTMLButtonElement>(container, "#dev-delete-all-sources-btn");
   const tagFilterBar = $<HTMLElement>(container, "#source-tag-filters");
+  const filterStatus = $<HTMLElement>(container, "#source-filter-status");
   const availabilityResults = new Map<string, PersistedBookSourceAvailability>();
   const virtualListRenderers = new Map<string, () => void>();
 
@@ -814,10 +902,26 @@ export function initSettingsHandlers(container: HTMLElement) {
     availabilityResults.set(source.bookSourceUrl, availabilityState);
   }
 
+  function getSelectedTagFilters(): string[] {
+    return parseSelectedTagFilters(sourceTree.dataset.selectedTags);
+  }
+
+  function renderTagFilterState(): void {
+    const selectedFilters = getSelectedTagFilters();
+    tagFilterBar.querySelectorAll<HTMLElement>("[data-tag-filter]").forEach((node) => {
+      const value = node.dataset.tagFilter ?? "";
+      node.classList.toggle("active", value === "" ? selectedFilters.length === 0 : selectedFilters.includes(value));
+    });
+    const selectedSummary = describeSelectedFilterSummary(selectedFilters);
+    filterStatus.textContent = selectedFilters.length === 0
+      ? "已选 0 项"
+      : `已选 ${selectedFilters.length} 项 · ${selectedSummary}`;
+  }
+
   function renderVirtualSourceList(listEl: HTMLElement, sources: LegacyBookSource[]): void {
     const filterMode = sourceTree.dataset.filter ?? "all";
-    const selectedTag = sourceTree.dataset.tagFilter ?? "";
-    const filteredSources = getFilteredSources(sources, filterMode, selectedTag, availabilityResults);
+    const selectedTags = getSelectedTagFilters();
+    const filteredSources = getFilteredSources(sources, filterMode, selectedTags, availabilityResults);
     const totalCount = filteredSources.length;
 
     if (totalCount === 0) {
@@ -846,28 +950,34 @@ export function initSettingsHandlers(container: HTMLElement) {
 
   function updateSourceSummaries(): void {
     const filterMode = sourceTree.dataset.filter ?? "all";
-    const selectedTag = sourceTree.dataset.tagFilter ?? "";
+    const selectedTags = getSelectedTagFilters();
 
     sourceTree.querySelectorAll<HTMLElement>("[data-source-summary]").forEach((summaryEl) => {
       const sourceUrls = JSON.parse(summaryEl.dataset.sourceSummary ?? "[]") as string[];
       const sources = latestBookSourcesSnapshot.filter((source) => sourceUrls.includes(source.bookSourceUrl));
       summaryEl.textContent = describeFilteredEnabledSummary(
         sources,
-        selectedTag,
+        selectedTags,
         filterMode,
         availabilityResults,
       );
+      const filterHintEl = summaryEl.parentElement?.querySelector<HTMLElement>("[data-source-summary-filter]");
+      const selectedSummary = describeSelectedFilterSummary(selectedTags);
+      if (filterHintEl) {
+        filterHintEl.hidden = selectedSummary.length === 0;
+        filterHintEl.textContent = selectedSummary ? `筛选: ${selectedSummary}` : "";
+      }
     });
   }
 
   function syncSourceTreeVisibility(): void {
     const filterMode = sourceTree.dataset.filter ?? "all";
-    const selectedTag = sourceTree.dataset.tagFilter ?? "";
+    const selectedTags = getSelectedTagFilters();
 
     sourceTree.querySelectorAll<HTMLElement>("[data-source-virtual-list]").forEach((listEl) => {
       const listId = listEl.dataset.sourceVirtualList ?? "";
       const sources = sourceListRegistry.get(listId) ?? [];
-      const visibleCount = getFilteredSources(sources, filterMode, selectedTag, availabilityResults).length;
+      const visibleCount = getFilteredSources(sources, filterMode, selectedTags, availabilityResults).length;
       const subscriptionCard = listEl.closest<HTMLElement>(".source-subscription");
       const listCard = listEl.closest<HTMLElement>(".source-list-card");
       const localTier = listEl.closest<HTMLElement>(".source-tier[data-tier='local']");
@@ -886,6 +996,7 @@ export function initSettingsHandlers(container: HTMLElement) {
   }
 
   function rerenderVirtualSourceLists(): void {
+    renderTagFilterState();
     for (const render of virtualListRenderers.values()) {
       render();
     }
@@ -921,6 +1032,7 @@ export function initSettingsHandlers(container: HTMLElement) {
   });
 
   updateSourceSummaries();
+  renderTagFilterState();
   syncSourceTreeVisibility();
 
   container.querySelectorAll<HTMLButtonElement>("[data-bulk-toggle]").forEach((btn) => {
@@ -948,10 +1060,21 @@ export function initSettingsHandlers(container: HTMLElement) {
       return;
     }
 
-    sourceTree.dataset.tagFilter = btn.dataset.tagFilter ?? "";
-    tagFilterBar.querySelectorAll<HTMLElement>("[data-tag-filter]").forEach((node) => {
-      node.classList.toggle("active", node === btn);
-    });
+    const value = btn.dataset.tagFilter ?? "";
+    if (value === "") {
+      sourceTree.dataset.selectedTags = "[]";
+      rerenderVirtualSourceLists();
+      return;
+    }
+
+    const selectedFilters = new Set(getSelectedTagFilters());
+    if (selectedFilters.has(value)) {
+      selectedFilters.delete(value);
+    } else {
+      selectedFilters.add(value);
+    }
+
+    sourceTree.dataset.selectedTags = JSON.stringify(Array.from(selectedFilters));
     rerenderVirtualSourceLists();
   });
 

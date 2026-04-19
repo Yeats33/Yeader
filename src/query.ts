@@ -3,3 +3,7 @@ export function $<T extends HTMLElement>(parent: HTMLElement, selector: string):
   if (!el) throw new Error(`Selector "${selector}" not found`);
   return el;
 }
+
+export function $$<T extends HTMLElement>(parent: HTMLElement, selector: string): T | null {
+  return parent.querySelector<T>(selector);
+}

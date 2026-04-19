@@ -168,14 +168,22 @@ export async function fetchToc(
   tocUrl: string,
   sourceUrl: string,
 ): Promise<Chapter[]> {
-  return await invokeAdapter<Chapter[]>("fetch_toc", { tocUrl, sourceUrl });
+  try {
+    return await invokeAdapter<Chapter[]>("fetch_toc", { tocUrl, sourceUrl });
+  } catch (e) {
+    throw new Error(`fetch_toc failed for ${tocUrl}: ${e instanceof Error ? e.message : String(e)}`);
+  }
 }
 
 export async function fetchContent(
   chapterUrl: string,
   sourceUrl: string,
 ): Promise<string> {
-  return await invokeAdapter<string>("fetch_content", { chapterUrl, sourceUrl });
+  try {
+    return await invokeAdapter<string>("fetch_content", { chapterUrl, sourceUrl });
+  } catch (e) {
+    throw new Error(`fetch_content failed for ${chapterUrl}: ${e instanceof Error ? e.message : String(e)}`);
+  }
 }
 
 export async function getReadingProgress(

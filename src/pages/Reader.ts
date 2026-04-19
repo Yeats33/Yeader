@@ -2,11 +2,12 @@ import {
   fetchBookInfo,
   fetchToc,
   fetchContent,
+  getBook,
   getReadingProgress,
   saveReadingProgress,
 } from "../api.ts";
 import { navigate } from "../router.ts";
-import { $ } from "../query.ts";
+import { $, $$ } from "../query.ts";
 import type { BookInfo, Chapter } from "../types.ts";
 
 interface ReaderState {
@@ -34,6 +35,16 @@ const state: ReaderState = {
 export async function renderReaderPage(bookUrl: string): Promise<string> {
   state.bookUrl = decodeURIComponent(bookUrl);
   state.sourceUrl = "";
+
+  // Look up the book from library to get source_url
+  try {
+    const book = await getBook(state.bookUrl);
+    if (book) {
+      state.sourceUrl = book.source_url;
+    }
+  } catch (e) {
+    console.error("[Reader] getBook failed:", e);
+  }
   state.currentChapterIndex = 0;
   state.bookInfo = null;
   state.chapters = [];
@@ -47,14 +58,16 @@ export async function renderReaderPage(bookUrl: string): Promise<string> {
   try {
     bookInfo = await fetchBookInfo(state.bookUrl, state.sourceUrl);
     state.bookInfo = bookInfo;
-  } catch {
+  } catch (e) {
+    console.error("[Reader] fetchBookInfo failed:", e);
     bookInfo = { name: "未知书籍", author: "未知作者" };
   }
 
   if (bookInfo.toc_url) {
     try {
       state.chapters = await fetchToc(bookInfo.toc_url, state.sourceUrl);
-    } catch {
+    } catch (e) {
+      console.error("[Reader] fetchToc failed:", e);
       state.chapters = [];
     }
   }
@@ -130,8 +143,8 @@ export async function initReaderHandlers(container: HTMLElement) {
     el.addEventListener("click", () => navigate(el.dataset.nav!));
   });
 
-  const tocEl = $<HTMLElement>(container, "#reader-toc");
-  const tocCloseBtn = $<HTMLButtonElement>(container, "#toc-close");
+  const tocEl = $$<HTMLElement>(container, "#reader-toc");
+  const tocCloseBtn = $$<HTMLButtonElement>(container, "#toc-close");
   const readerBody = $<HTMLElement>(container, "#reader-body");
   const settingsPanel = $<HTMLElement>(container, "#reader-settings");
   const settingsBtn = $<HTMLButtonElement>(container, "#reader-settings-btn");
@@ -143,12 +156,12 @@ export async function initReaderHandlers(container: HTMLElement) {
   const prevBtn = $<HTMLButtonElement>(container, "#prev-chapter");
   const nextBtn = $<HTMLButtonElement>(container, "#next-chapter");
 
-  tocCloseBtn.addEventListener("click", () => {
-    tocEl.classList.add("hidden");
+  tocCloseBtn?.addEventListener("click", () => {
+    tocEl?.classList.add("hidden");
   });
 
   readerBody.addEventListener("click", () => {
-    if (!tocEl.classList.contains("hidden")) {
+    if (tocEl && !tocEl.classList.contains("hidden")) {
       tocEl.classList.add("hidden");
     } else {
       settingsPanel.classList.toggle("hidden");
@@ -196,7 +209,7 @@ export async function initReaderHandlers(container: HTMLElement) {
     el.addEventListener("click", () => {
       const idx = parseInt(el.dataset.chapter!);
       state.currentChapterIndex = idx;
-      tocEl.classList.add("hidden");
+      tocEl?.classList.add("hidden");
       loadCurrentChapter(container);
     });
   });
@@ -222,8 +235,9 @@ async function loadCurrentChapter(container: HTMLElement) {
   try {
     const content = await fetchContent(chapter.url, state.sourceUrl);
     readerBody.innerHTML = `<article class="chapter-content">${content}</article>`;
-  } catch {
-    readerBody.innerHTML = '<div class="error-msg">加载内容失败</div>';
+  } catch (e) {
+    console.error("[Reader] fetchContent failed:", chapter.url, e);
+    readerBody.innerHTML = `<div class="error-msg">加载内容失败: ${e instanceof Error ? e.message : String(e)}</div>`;
   }
 
   tocItems.forEach((el) => {

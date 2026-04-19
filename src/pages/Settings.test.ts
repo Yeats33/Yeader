@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   computeVirtualWindow,
   describeFilteredEnabledSummary,
+  describeSelectedFilterSummary,
   parseSourceTags,
   runAvailabilityChecksIncrementally,
   describeLastTestedText,
@@ -67,6 +68,39 @@ test("describeFilteredEnabledSummary respects tag and availability filters", () 
     describeFilteredEnabledSummary(MOCK_SOURCES, "漫画", "available", availabilityResults),
     "启用:1 可用:1 全部:1",
   );
+  assert.equal(
+    describeFilteredEnabledSummary(MOCK_SOURCES, "__enabled", "all", availabilityResults),
+    "启用:2 可用:2 全部:2",
+  );
+  assert.equal(
+    describeFilteredEnabledSummary(MOCK_SOURCES, "__available", "all", availabilityResults),
+    "启用:2 可用:3 全部:3",
+  );
+  assert.equal(
+    describeFilteredEnabledSummary(MOCK_SOURCES, ["__enabled", "漫画"], "all", availabilityResults),
+    "启用:1 可用:1 全部:1",
+  );
+  assert.equal(
+    describeFilteredEnabledSummary(MOCK_SOURCES, ["__available", "笔趣阁"], "all", availabilityResults),
+    "启用:1 可用:2 全部:2",
+  );
+  assert.equal(
+    describeFilteredEnabledSummary(
+      [...MOCK_SOURCES, { bookSourceUrl: "https://example.com/untagged.json", bookSourceName: "未标记书源", enabled: true }],
+      "__untagged",
+      "all",
+      availabilityResults,
+    ),
+    "启用:1 可用:0 全部:1",
+  );
+});
+
+test("describeSelectedFilterSummary formats active multi-select filters", () => {
+  assert.equal(describeSelectedFilterSummary([]), "");
+  assert.equal(describeSelectedFilterSummary(["__enabled"]), "启用");
+  assert.equal(describeSelectedFilterSummary(["__enabled", "漫画"]), "启用 + 漫画");
+  assert.equal(describeSelectedFilterSummary(["__available", "__enabled", "笔趣阁"]), "可用 + 启用 + 笔趣阁");
+  assert.equal(describeSelectedFilterSummary(["__untagged"]), "未标记");
 });
 
 test("computeVirtualWindow returns overscanned slice bounds", () => {
@@ -118,9 +152,16 @@ test("describeBookSourceTree renders direct and subscription tiers", () => {
 });
 
 test("describeBookSourceTree renders tag filter bar and subscription bulk toggles", () => {
-  const html = describeBookSourceTree(MOCK_SOURCES);
+  const html = describeBookSourceTree([
+    ...MOCK_SOURCES,
+    { bookSourceUrl: "https://example.com/untagged.json", bookSourceName: "未标记书源", enabled: true },
+  ]);
 
   assert.equal(html.includes("全部标签"), true, "should render all-tags option");
+  assert.equal(html.includes("已选 0 项"), true, "should render selected-filter counter");
+  assert.equal(html.includes('data-tag-filter="__enabled"'), true, "should render enabled special filter");
+  assert.equal(html.includes('data-tag-filter="__available"'), true, "should render available special filter");
+  assert.equal(html.includes('data-tag-filter="__untagged"'), true, "should render untagged special filter");
   assert.equal(html.includes('data-tag-filter="笔趣阁"'), true, "should render tag filter hook");
   assert.equal(html.includes("启用订阅"), true, "should render subscription-level enable toggle");
   assert.equal(html.includes("data-bulk-toggle"), true, "should render bulk toggle hooks");
@@ -146,6 +187,23 @@ test("describeBookSourceTree renders quick actions and tag-aware virtualization 
   assert.equal(html.includes("data-availability-test"), true, "should render scoped availability hooks");
   assert.equal(html.includes("data-source-virtual-list"), true, "should render source virtualization hooks");
   assert.equal(html.includes("source-tag-chip"), true, "should render row tag chips in virtualized content shell");
+  assert.equal(html.includes("source-tag-chip--status"), true, "should render special status tags");
+  assert.equal(html.includes("data-availability-status"), true, "should keep availability update hooks");
+});
+
+test("describeBookSourceTree renders enabled and available as leading special tags", () => {
+  const html = describeBookSourceTree([
+    {
+      bookSourceUrl: "https://example.com/special.json",
+      bookSourceName: "特殊标签书源",
+      bookSourceGroup: "笔趣阁,漫画",
+      enabled: true,
+      lastTestAvailable: true,
+      lastTestedAt: "2026-04-18T12:00:00.000Z",
+    },
+  ]);
+
+  assert.equal(/已启用[\s\S]*可用[\s\S]*笔趣阁/.test(html), true, "special tags should lead normal tags");
 });
 
 test("delete confirmation labels switch to explicit second-step copy", () => {

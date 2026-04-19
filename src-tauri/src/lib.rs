@@ -7,12 +7,12 @@ mod state;
 use commands::{dev, library, reader, search};
 use state::AppState;
 use tauri::Manager;
-use tracing_appender::non_blocking::WorkerGuard;
 use yeader_library::Database;
 
-/// Keep the WorkerGuard alive for the entire program lifetime.
+/// Keep the log guard alive for the entire program lifetime.
 /// Leaking is intentional — the guard must not be dropped until exit.
-static LOG_GUARD: std::sync::OnceLock<Box<WorkerGuard>> = std::sync::OnceLock::new();
+static LOG_GUARD: std::sync::OnceLock<Box<dyn std::any::Any + Send + Sync>> =
+    std::sync::OnceLock::new();
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -49,8 +49,6 @@ pub fn run() {
             parse_legado_import_uri,
             dev::get_dev_mode_status,
             dev::toggle_dev_mode,
-            dev::get_log_lines,
-            dev::open_log_file,
             library::list_book_sources,
             library::load_book_sources_from_file,
             library::import_book_sources_json,
