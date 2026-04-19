@@ -874,6 +874,24 @@ body.dark-mode,
   overflow: hidden;
 }
 
+.source-list-card summary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.875rem 1.25rem;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
+  cursor: pointer;
+  list-style: none;
+}
+
+.source-list-card summary::-webkit-details-marker { display: none; }
+
+.source-list-card[open] summary {
+  border-bottom-width: 1px;
+}
+
 .source-list-card-header {
   display: flex;
   align-items: center;

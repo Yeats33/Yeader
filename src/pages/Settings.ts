@@ -340,16 +340,18 @@ export async function runAvailabilityChecksIncrementally(
   sourceUrls: string[],
   tester: (sourceUrl: string) => Promise<BookSourceAvailability>,
   onResult: (status: BookSourceAvailability) => void,
+  onProgress: (text: string) => void,
 ): Promise<BookSourceAvailability[]> {
   const results: BookSourceAvailability[] = [];
+  const total = sourceUrls.length;
 
-  await Promise.all(
-    sourceUrls.map(async (sourceUrl) => {
-      const status = await tester(sourceUrl);
-      results.push(status);
-      onResult(status);
-    }),
-  );
+  for (let i = 0; i < sourceUrls.length; i++) {
+    const sourceUrl = sourceUrls[i];
+    onProgress(`测试中 (${i + 1}/${total})`);
+    const status = await tester(sourceUrl);
+    results.push(status);
+    onResult(status);
+  }
 
   return results;
 }
@@ -561,17 +563,17 @@ function describeSourceListSection(
   const listId = registerSourceList(sources);
 
   return `
-    <section class="source-list-card">
-      <div class="source-list-card-header">
+    <details class="source-list-card" open>
+      <summary class="source-list-card-header">
         <span class="source-list-card-title">${escapeText(title)}</span>
         ${describeSummaryChip(sources)}
         <span class="source-summary-actions">
           ${describeAvailabilityTestButton("测试此层", sources)}
           ${extraActions}
         </span>
-      </div>
+      </summary>
       ${describeVirtualSourceList(listId, sources)}
-    </section>
+    </details>
   `;
 }
 
@@ -622,8 +624,8 @@ export function describeBookSourceTree(bookSources: LegacyBookSource[]): string 
     const subscriptionNodes = Array.from(subscriptionSources.entries())
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([subscriptionUrl, groupedSources]) => `
-        <section class="source-subscription" data-subscription-url="${escapeAttr(subscriptionUrl)}">
-          <div class="source-subscription-summary">
+        <details class="source-subscription" data-subscription-url="${escapeAttr(subscriptionUrl)}">
+          <summary class="source-subscription-summary">
             <span class="source-subscription-title">订阅链接</span>
             <code class="source-subscription-url">${escapeText(subscriptionUrl)}</code>
             ${describeSummaryChip(groupedSources)}
@@ -632,11 +634,11 @@ export function describeBookSourceTree(bookSources: LegacyBookSource[]): string 
               ${describeSubscriptionRefreshButton(groupedSources, subscriptionUrl)}
               ${describeBulkToggleButton("subscription", groupedSources)}
             </span>
-          </div>
+          </summary>
           <div class="source-tier-body">
             ${describeSourceListSection("订阅书源列表", groupedSources)}
           </div>
-        </section>
+        </details>
       `)
       .join("");
 
@@ -872,7 +874,7 @@ export function initSettingsHandlers(container: HTMLElement) {
     sourceUrls: string[],
     loadingLabel: string,
   ): Promise<BookSourceAvailability[]> {
-    renderSourceActionResult("loading", loadingLabel);
+    renderSourceActionResult("loading", `${loadingLabel} (0/${sourceUrls.length})`);
 
     return await runAvailabilityChecksIncrementally(
       sourceUrls,
@@ -891,6 +893,7 @@ export function initSettingsHandlers(container: HTMLElement) {
           updateAvailabilityChip(saved);
         }
       },
+      (text) => renderSourceActionResult("loading", text),
     );
   }
 
@@ -1086,14 +1089,24 @@ export function initSettingsHandlers(container: HTMLElement) {
       event.preventDefault();
       event.stopPropagation();
 
-      const sourceUrls = JSON.parse(availabilityBtn.dataset.sourceUrls ?? "[]") as string[];
+      const allSourceUrls = JSON.parse(availabilityBtn.dataset.sourceUrls ?? "[]") as string[];
       const label = availabilityBtn.dataset.label ?? "测试范围";
-      if (sourceUrls.length === 0) {
+
+      // Apply current filter to scope: only test sources visible under current filter
+      const selectedTags = getSelectedTagFilters();
+      const filterMode = sourceTree.dataset.filter ?? "all";
+      const filteredSources = getFilteredSources(latestBookSourcesSnapshot, filterMode, selectedTags, availabilityResults);
+      const filteredUrls = filteredSources
+        .filter((s) => allSourceUrls.includes(s.bookSourceUrl))
+        .map((s) => s.bookSourceUrl);
+
+      if (filteredUrls.length === 0) {
+        renderSourceActionResult("error", `${label}中没有可测试的书源`);
         return;
       }
 
       try {
-        const statuses = await testAvailabilityForScope(sourceUrls, `${label}中...`);
+        const statuses = await testAvailabilityForScope(filteredUrls, `${label}中`);
         rerenderVirtualSourceLists();
         const unavailableCount = statuses.filter((status) => !status.available).length;
         renderSourceActionResult(
@@ -1132,7 +1145,7 @@ export function initSettingsHandlers(container: HTMLElement) {
     const allSources = await listBookSources();
     const statuses = await testAvailabilityForScope(
       allSources.map((source) => source.bookSourceUrl),
-      "测试书源可用性中...",
+      "测试书源可用性中",
     );
     rerenderVirtualSourceLists();
     const unavailableCount = statuses.filter((status) => !status.available).length;
