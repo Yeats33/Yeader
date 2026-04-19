@@ -91,4 +91,5 @@ pub struct Chapter {
     pub url: String,
     pub is_volume: bool,
     pub is_vip: bool,
+    pub is_pay: bool,
 }

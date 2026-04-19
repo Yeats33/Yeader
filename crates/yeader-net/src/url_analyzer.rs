@@ -6,7 +6,6 @@
 use std::collections::HashMap;
 
 use http::header::{HeaderName, HeaderValue};
-use percent_encoding::NON_ALPHANUMERIC;
 use regex::Regex;
 use reqwest::header::HeaderMap;
 use serde::Deserialize;
@@ -420,6 +419,7 @@ fn substitute_page_number(input: &str, page: i32) -> String {
 /// URL options parsed from the JSON suffix after the URL.
 /// Corresponds to `AnalyzeUrl.UrlOption` (lines 781-957).
 #[derive(Debug, Deserialize, Default)]
+#[allow(dead_code)]
 struct UrlOptions {
     #[serde(default)]
     method: Option<String>,

@@ -69,6 +69,9 @@ fn detect_mode(raw: &str) -> (Mode, &str) {
     if raw.starts_with('/') {
         return (Mode::XPath, raw);
     }
+    if let Some(rest) = raw.strip_prefix("@XPath:") {
+        return (Mode::XPath, rest);
+    }
     (Mode::Default, raw)
 }
 

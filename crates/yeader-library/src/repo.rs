@@ -33,6 +33,12 @@ fn row_to_source(row: &rusqlite::Row<'_>) -> rusqlite::Result<LegacyBookSource> 
         last_test_available: None,
         last_tested_at: None,
         last_test_detail: None,
+        login_url: None,
+        header: None,
+        custom_order: None,
+        weight: None,
+        last_update_time: None,
+        book_source_comment: None,
         extra,
     })
 }

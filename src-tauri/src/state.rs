@@ -8,6 +8,7 @@ use yeader_library::Database;
 pub struct AppState {
     pub db: Arc<Mutex<Database>>,
     /// Path to the log directory (e.g. ~/.yeader/logs).
+    #[allow(dead_code)]
     pub log_dir: PathBuf,
 }
 
