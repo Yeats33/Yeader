@@ -1,10 +1,14 @@
 #!/bin/bash
 # Bump version across all relevant files
-# Usage: ./scripts/bump-version.sh [patch|minor|major|beta]
+# Usage: ./scripts/bump-version.sh [patch|minor|major|beta] [--dry-run]
 
 set -e
 
 KIND=${1:-patch}
+DRY_RUN=false
+if [[ "$2" == "--dry-run" ]]; then
+  DRY_RUN=true
+fi
 
 # Get current version from package.json
 OLD_VERSION=$(grep -E '"version": "[^"]+"' package.json | grep -oE '[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?' | head -1)
@@ -35,7 +39,6 @@ case $KIND in
     ;;
   patch)
     if [[ -n "$PRERELEASE" ]]; then
-      # Already on a pre-release, strip it and do patch
       PATCH=$((PATCH + 1))
       PRERELEASE=""
     else
@@ -44,10 +47,8 @@ case $KIND in
     ;;
   beta)
     if [[ -z "$PRERELEASE" ]]; then
-      # Not on a pre-release, add beta0
       PRERELEASE="-beta0"
     else
-      # Increment beta number
       if [[ "$PRERELEASE" =~ ^-beta([0-9]+)$ ]]; then
         BETA_NUM=${BASH_REMATCH[1]}
         PRERELEASE="-beta$((BETA_NUM + 1))"
@@ -72,9 +73,18 @@ sed -i '' "s/^version = \"$OLD_VERSION\"$/version = \"$NEW_VERSION\"/" Cargo.tom
 # Update src-tauri/tauri.conf.json
 sed -i '' "s/\"version\": \"$OLD_VERSION\"/\"version\": \"$NEW_VERSION\"/" src-tauri/tauri.conf.json
 
+if $DRY_RUN; then
+  echo "[dry-run] Skipping git operations"
+  exit 0
+fi
+
 echo ""
-echo "Done! Don't forget to commit and tag:"
-echo "  git add -A"
-echo "  git commit -m 'chore: bump version to $NEW_VERSION'"
-echo "  git tag v$NEW_VERSION"
-echo "  git push && git push --tags"
+echo "Committing and tagging..."
+
+git add -A
+git commit -m "chore: bump version to v$NEW_VERSION"
+git tag "v$NEW_VERSION"
+git push && git push --tags
+
+echo ""
+echo "Released v$NEW_VERSION!"
