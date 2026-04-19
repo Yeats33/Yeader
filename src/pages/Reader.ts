@@ -97,6 +97,7 @@ function renderReaderContent(): string {
     <div class="page page-reader ${darkMode ? "dark-mode" : ""}" style="--font-size:${fontSize}px; --line-height:${lineHeight};" tabindex="-1">
       <header class="reader-header">
         <button class="btn-icon" data-nav="/" title="返回">&#x2190;</button>
+        <button class="btn-icon" id="reader-toc-btn" title="目录" ${chapters.length === 0 ? "disabled" : ""}>&#x2630;</button>
         <h1 class="reader-title">${bookInfo?.name ?? ""}</h1>
         <button class="btn-icon" id="reader-settings-btn" title="设置">&#x2699;</button>
       </header>
@@ -160,6 +161,7 @@ export async function initReaderHandlers(container: HTMLElement) {
 
   const tocEl = $$<HTMLElement>(container, "#reader-toc");
   const tocCloseBtn = $$<HTMLButtonElement>(container, "#toc-close");
+  const tocBtn = $<HTMLButtonElement>(container, "#reader-toc-btn");
   const readerBody = $<HTMLElement>(container, "#reader-body");
   const settingsPanel = $<HTMLElement>(container, "#reader-settings");
   const settingsBtn = $<HTMLButtonElement>(container, "#reader-settings-btn");
@@ -173,6 +175,10 @@ export async function initReaderHandlers(container: HTMLElement) {
 
   tocCloseBtn?.addEventListener("click", () => {
     tocEl?.classList.add("hidden");
+  });
+
+  tocBtn?.addEventListener("click", () => {
+    tocEl?.classList.remove("hidden");
   });
 
   readerBody.addEventListener("click", () => {
