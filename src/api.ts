@@ -210,6 +210,10 @@ export async function importEpub(path: string): Promise<Book> {
   return await invokeAdapter<Book>("import_epub", { path });
 }
 
+export async function importEpubUrl(url: string): Promise<Book> {
+  return await invokeAdapter<Book>("import_epub_url", { url });
+}
+
 export async function getEpubToc(bookUrl: string): Promise<Chapter[]> {
   return await invokeAdapter<Chapter[]>("get_epub_toc", { bookUrl });
 }
@@ -258,8 +262,60 @@ export async function checkCommandExists(name: string): Promise<boolean> {
   return await invokeAdapter<boolean>("check_command_exists", { name });
 }
 
+export async function getCommandVersion(name: string): Promise<string> {
+  return await invokeAdapter<string>("get_command_version", { name });
+}
+
 export async function openUrl(url: string): Promise<void> {
   return await invokeAdapter<void>("open_url", { url });
+}
+
+export async function runCommand(name: string, args: string[] = []): Promise<void> {
+  return await invokeAdapter<void>("run_command", { name, args });
+}
+
+export async function startSoNovelWebui(): Promise<void> {
+  return await invokeAdapter<void>("start_so_novel_webui");
+}
+
+export async function isSoNovelRunning(): Promise<boolean> {
+  return await invokeAdapter<boolean>("is_so_novel_running");
+}
+
+export async function stopSoNovel(): Promise<void> {
+  return await invokeAdapter<void>("stop_so_novel");
+}
+
+export async function getSoNovelConfig(): Promise<string> {
+  return await invokeAdapter<string>("get_so_novel_config");
+}
+
+export async function saveSoNovelConfig(content: string): Promise<void> {
+  return await invokeAdapter<void>("save_so_novel_config", { content });
+}
+
+export async function resetSoNovelConfig(): Promise<void> {
+  return await invokeAdapter<void>("reset_so_novel_config");
+}
+
+export async function listSoNovelRules(): Promise<string[]> {
+  return await invokeAdapter<string[]>("list_so_novel_rules");
+}
+
+export async function importSoNovelRule(name: string, content: string): Promise<void> {
+  return await invokeAdapter<void>("import_so_novel_rule", { name, content });
+}
+
+export async function deleteSoNovelRule(name: string): Promise<void> {
+  return await invokeAdapter<void>("delete_so_novel_rule", { name });
+}
+
+export async function getSoNovelActiveRule(): Promise<string> {
+  return await invokeAdapter<string>("get_so_novel_active_rule");
+}
+
+export async function setSoNovelActiveRule(name: string): Promise<void> {
+  return await invokeAdapter<void>("set_so_novel_active_rule", { name });
 }
 
 export async function saveReaderStyle(

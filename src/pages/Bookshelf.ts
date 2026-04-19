@@ -1,4 +1,4 @@
-import { listBooks, removeBook, importEpub, deleteLocalEpub } from "../api.ts";
+import { listBooks, removeBook, importEpub, importEpubUrl, deleteLocalEpub } from "../api.ts";
 import { navigate } from "../router.ts";
 import type { Book } from "../types.ts";
 import { ask } from "@tauri-apps/plugin-dialog";
@@ -133,7 +133,20 @@ export async function renderBookshelfPage(): Promise<string> {
         <button class="tab-btn" data-filter="network">网络书籍 (${networkBooks.length})</button>
       </div>
 
-      <button class="btn-primary" id="import-epub-btn" title="导入EPUB">+ 导入EPUB</button>
+      <div class="import-dropdown" id="import-dropdown-wrapper">
+        <button class="btn-primary" id="import-epub-btn" title="导入EPUB">+ 导入</button>
+        <div class="dropdown-menu hidden" id="import-menu">
+          <button class="dropdown-item" data-import="local">
+            <span class="dropdown-icon">📁</span>导入本地 EPUB
+          </button>
+          <button class="dropdown-item" data-import="path">
+            <span class="dropdown-icon">🔗</span>输入路径
+          </button>
+          <button class="dropdown-item" data-import="url">
+            <span class="dropdown-icon">🌐</span>输入 URL
+          </button>
+        </div>
+      </div>
 
       ${books.length === 0 ? `
         <div class="empty-state">
@@ -202,24 +215,70 @@ export function initBookshelfHandlers(container: HTMLElement) {
     });
   });
 
-  // EPUB Import
+  // Import dropdown
+  const dropdownWrapper = container.querySelector<HTMLElement>("#import-dropdown-wrapper");
+  const importMenu = container.querySelector<HTMLElement>("#import-menu");
   const importBtn = container.querySelector<HTMLButtonElement>("#import-epub-btn");
-  importBtn?.addEventListener("click", async () => {
-    try {
-      const { open } = await import("@tauri-apps/plugin-dialog");
-      const selected = await open({
-        multiple: false,
-        filters: [{ name: "EPUB", extensions: ["epub"] }],
-      });
-      if (selected) {
-        const book = await importEpub(selected as string);
-        alert(`导入成功: ${book.name}`);
-        window.location.reload();
+
+  importBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    importMenu?.classList.toggle("closed");
+  });
+
+  document.addEventListener("click", () => {
+    importMenu?.classList.add("closed");
+  });
+
+  dropdownWrapper?.addEventListener("click", (e) => {
+    e.stopPropagation();
+  });
+
+  importMenu?.querySelectorAll<HTMLButtonElement>(".dropdown-item").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const action = btn.dataset.import;
+      importMenu?.classList.add("closed");
+
+      if (action === "local") {
+        try {
+          const { open } = await import("@tauri-apps/plugin-dialog");
+          const selected = await open({
+            multiple: false,
+            filters: [{ name: "EPUB", extensions: ["epub"] }],
+          });
+          if (selected) {
+            const book = await importEpub(selected as string);
+            alert(`导入成功: ${book.name}`);
+            window.location.reload();
+          }
+        } catch (e) {
+          alert(`导入失败: ${e instanceof Error ? e.message : e}`);
+        }
       }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      alert(`导入失败: ${msg}`);
-    }
+
+      if (action === "path") {
+        const path = prompt("请输入 EPUB 文件路径：");
+        if (!path?.trim()) return;
+        try {
+          const book = await importEpub(path.trim());
+          alert(`导入成功: ${book.name}`);
+          window.location.reload();
+        } catch (e) {
+          alert(`导入失败: ${e instanceof Error ? e.message : e}`);
+        }
+      }
+
+      if (action === "url") {
+        const url = prompt("请输入 EPUB 下载 URL：");
+        if (!url?.trim()) return;
+        try {
+          const book = await importEpubUrl(url.trim());
+          alert(`导入成功: ${book.name}`);
+          window.location.reload();
+        } catch (e) {
+          alert(`导入失败: ${e instanceof Error ? e.message : e}`);
+        }
+      }
+    });
   });
 
   attachBookHandlers(container);

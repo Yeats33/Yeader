@@ -240,6 +240,118 @@ pub async fn import_epub(
 }
 
 #[tauri::command]
+pub async fn import_epub_url(
+    state: State<'_, AppState>,
+    url: String,
+) -> Result<yeader_models::Book, String> {
+    use std::io::Write;
+    use yeader_reader::epub::read_epub;
+    use uuid::Uuid;
+
+    // Download the file
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| format!("Failed to build HTTP client: {}", e))?;
+
+    let response = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to download EPUB: {}", e))?;
+
+    if !response.status().is_success() {
+        return Err(format!("Download failed with status: {}", response.status()));
+    }
+
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|e| format!("Failed to read response: {}", e))?;
+
+    // Write to temp file
+    let book_id = Uuid::new_v4().to_string();
+    let app_dir = state.app_dir.clone();
+    let temp_path = app_dir.join("temp_epub").join(format!("{}.epub", book_id));
+    std::fs::create_dir_all(temp_path.parent().unwrap()).map_err(|e| e.to_string())?;
+    let mut file = std::fs::File::create(&temp_path).map_err(|e| e.to_string())?;
+    file.write_all(&bytes).map_err(|e| e.to_string())?;
+
+    // Import using the same logic as import_epub
+    let dest_path = app_dir.join("epub_library").join(&book_id).join(format!("{}.epub", book_id));
+    std::fs::create_dir_all(dest_path.parent().unwrap()).map_err(|e| e.to_string())?;
+    std::fs::copy(&temp_path, &dest_path).map_err(|e| e.to_string())?;
+    std::fs::remove_file(&temp_path).ok();
+
+    let epub_book = read_epub(&dest_path).map_err(|e| format!("Failed to parse EPUB: {}", e))?;
+
+    let cover_url = epub_book.cover_data.as_ref().map(|cover_entry| {
+        let mime = match cover_entry.media_type.as_str() {
+            m if m.starts_with("image/jpeg") || m.starts_with("image/jpg") => "image/jpeg",
+            m if m.starts_with("image/png") => "image/png",
+            m if m.starts_with("image/webp") => "image/webp",
+            m if m.starts_with("image/gif") => "image/gif",
+            _ => &cover_entry.media_type,
+        };
+        let b64 = base64::Engine::encode(
+            &base64::engine::general_purpose::STANDARD,
+            &cover_entry.data,
+        );
+        format!("data:{};base64,{}", mime, b64)
+    });
+
+    if let Some(cover_entry) = &epub_book.cover_data {
+        let ext = match cover_entry.media_type.as_str() {
+            m if m.starts_with("image/jpeg") || m.starts_with("image/jpg") => "jpg",
+            m if m.starts_with("image/png") => "png",
+            m if m.starts_with("image/webp") => "webp",
+            m if m.starts_with("image/gif") => "gif",
+            _ => "bin",
+        };
+        let cover_file_path = dest_path.parent().unwrap().join(format!("cover.{}", ext));
+        std::fs::write(&cover_file_path, &cover_entry.data)
+            .map_err(|e| format!("Failed to write cover: {}", e))?;
+    }
+
+    let book = yeader_models::Book {
+        url: format!("local://epub/{}", book_id),
+        name: epub_book.title,
+        author: epub_book.author,
+        cover_url,
+        source_url: "local://epub".to_string(),
+        toc_url: None,
+        last_read_at: Some(chrono::Utc::now().to_rfc3339()),
+        group_id: None,
+        book_type: Some("epub".to_string()),
+        intro: None,
+        extra: {
+            let mut map = serde_json::Map::new();
+            map.insert(
+                "epub_path".to_string(),
+                serde_json::json!(dest_path.to_string_lossy().to_string()),
+            );
+            map.insert(
+                "epub_url".to_string(),
+                serde_json::json!(url),
+            );
+            map.insert(
+                "chapter_count".to_string(),
+                serde_json::json!(epub_book.chapters.len()),
+            );
+            map
+        },
+    };
+
+    {
+        let db = state.db.lock().unwrap();
+        let repo = yeader_library::BookRepo::new(&db);
+        repo.upsert(&book).map_err(|e| e.to_string())?;
+    }
+
+    Ok(book)
+}
+
+#[tauri::command]
 pub async fn list_local_epubs(
     state: State<'_, AppState>,
 ) -> Result<Vec<yeader_models::Book>, String> {

@@ -30,6 +30,9 @@ yeader-rules.workspace = true
 uuid.workspace = true
 chrono.workspace = true
 base64.workspace = true
+reqwest = { workspace = true }
+notify.workspace = true
+notify-debouncer-mini.workspace = true
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-opener.workspace = true
