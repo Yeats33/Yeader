@@ -81,7 +81,7 @@ fi
 echo ""
 echo "Committing and tagging..."
 
-git add -A
+git add Cargo.lock package.json Cargo.toml src-tauri/tauri.conf.json
 git commit -m "chore: bump version to v$NEW_VERSION"
 git tag "v$NEW_VERSION"
 git push && git push --tags
