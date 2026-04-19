@@ -102,6 +102,7 @@ export interface Book {
   total_chapters?: number;
   reading_chapter?: number;
   reading_progress?: number;
+  extra?: Record<string, unknown>;
 }
 
 export interface Chapter {
