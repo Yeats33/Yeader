@@ -204,6 +204,28 @@ export async function saveReadingProgress(
   await invokeAdapter<void>("save_reading_progress", { progress });
 }
 
+export async function importEpub(path: string): Promise<Book> {
+  return await invokeAdapter<Book>("import_epub", { path });
+}
+
+export async function listLocalEpubs(): Promise<Book[]> {
+  return await invokeAdapter<Book[]>("list_local_epubs");
+}
+
+export async function readLocalEpub(
+  bookUrl: string,
+  chapterIndex: number,
+): Promise<string> {
+  return await invokeAdapter<string>("read_local_epub", {
+    bookUrl,
+    chapterIndex,
+  });
+}
+
+export async function deleteLocalEpub(bookUrl: string): Promise<boolean> {
+  return await invokeAdapter<boolean>("delete_local_epub", { bookUrl });
+}
+
 export async function importBackup(path: string): Promise<ImportSummary> {
   return await invokeAdapter<ImportSummary>("import_backup", { path });
 }
