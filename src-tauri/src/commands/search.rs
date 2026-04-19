@@ -93,6 +93,12 @@ pub async fn test_book_sources_availability(
                             last_test_available: None,
                             last_tested_at: None,
                             last_test_detail: None,
+                            login_url: None,
+                            header: None,
+                            custom_order: None,
+                            weight: None,
+                            last_update_time: None,
+                            book_source_comment: None,
                             extra: Default::default(),
                         });
                     }

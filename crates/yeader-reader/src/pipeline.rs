@@ -388,6 +388,12 @@ mod tests {
             last_test_available: None,
             last_tested_at: None,
             last_test_detail: None,
+            login_url: None,
+            header: None,
+            custom_order: None,
+            weight: None,
+            last_update_time: None,
+            book_source_comment: None,
             rule_book_info: Some(BookInfoRule {
                 init: Some("@CSS:.book-info".to_string()),
                 name: Some("tag.h1@text".to_string()),
@@ -445,6 +451,12 @@ mod tests {
             rule_book_info: None,
             rule_toc: None,
             rule_content: None,
+            login_url: None,
+            header: None,
+            custom_order: None,
+            weight: None,
+            last_update_time: None,
+            book_source_comment: None,
             extra: Default::default(),
         };
 
@@ -490,6 +502,12 @@ mod tests {
             last_tested_at: None,
             last_test_detail: None,
             rule_book_info: None,
+            login_url: None,
+            header: None,
+            custom_order: None,
+            weight: None,
+            last_update_time: None,
+            book_source_comment: None,
             rule_toc: Some(TocRule {
                 chapter_list: Some("@CSS:#chapters > li".to_string()),
                 chapter_name: Some("a@text||tag.span@text".to_string()),
@@ -564,6 +582,12 @@ mod tests {
             rule_book_info: None,
             rule_toc: None,
             rule_content: None,
+            login_url: None,
+            header: None,
+            custom_order: None,
+            weight: None,
+            last_update_time: None,
+            book_source_comment: None,
             extra: Default::default(),
         };
 
@@ -623,6 +647,12 @@ mod tests {
             last_test_detail: None,
             rule_book_info: None,
             rule_toc: None,
+            login_url: None,
+            header: None,
+            custom_order: None,
+            weight: None,
+            last_update_time: None,
+            book_source_comment: None,
             rule_content: Some(ContentRule {
                 content: Some("@CSS:#content@html".to_string()),
                 title: Some("tag.h1@text".to_string()),
@@ -684,6 +714,12 @@ mod tests {
             rule_book_info: None,
             rule_toc: None,
             rule_content: None,
+            login_url: None,
+            header: None,
+            custom_order: None,
+            weight: None,
+            last_update_time: None,
+            book_source_comment: None,
             extra: Default::default(),
         };
 

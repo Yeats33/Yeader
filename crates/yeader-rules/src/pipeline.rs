@@ -21,6 +21,38 @@ pub struct BookSearchResult {
     pub word_count: Option<String>,
 }
 
+/// Book info extracted from a detail page.
+#[derive(Debug, Clone)]
+pub struct BookInfoResult {
+    pub name: String,
+    pub author: String,
+    pub intro: Option<String>,
+    pub kind: Option<String>,
+    pub cover_url: Option<String>,
+    pub toc_url: Option<String>,
+    pub last_chapter: Option<String>,
+    pub word_count: Option<String>,
+    pub download_urls: Vec<String>,
+}
+
+/// A chapter in a table of contents.
+#[derive(Debug, Clone)]
+pub struct Chapter {
+    pub title: String,
+    pub url: String,
+    pub is_vip: bool,
+    pub is_pay: bool,
+    pub update_time: Option<String>,
+}
+
+/// Chapter content result.
+#[derive(Debug, Clone)]
+pub struct ContentResult {
+    pub content: String,
+    pub title: Option<String>,
+    pub next_url: Option<String>,
+}
+
 /// Search for books using a legacy book source.
 ///
 /// # Arguments
@@ -165,6 +197,18 @@ pub enum PipelineError {
     #[error("ruleSearch.bookList rule is missing")]
     MissingBookListRule,
 
+    #[error("Book source has no ruleBookInfo configured")]
+    MissingBookInfoRule,
+
+    #[error("Book source has no ruleToc configured")]
+    MissingTocRule,
+
+    #[error("ruleToc.chapterList rule is missing")]
+    MissingChapterListRule,
+
+    #[error("Book source has no ruleContent configured")]
+    MissingContentRule,
+
     #[error("HTTP request failed: {0}")]
     HttpRequest(#[source] yeader_net::client::HttpError),
 }
@@ -173,6 +217,299 @@ impl From<yeader_net::client::HttpError> for PipelineError {
     fn from(e: yeader_net::client::HttpError) -> Self {
         PipelineError::HttpRequest(e)
     }
+}
+
+/// Fetch detailed book info from a book's detail page.
+///
+/// Uses ruleBookInfo to extract name, author, intro, cover, TOC URL, etc.
+pub async fn fetch_book_info(
+    client: &HttpClient,
+    source: &LegacyBookSource,
+    book_url: &str,
+) -> Result<BookInfoResult, PipelineError> {
+    let rule_book_info = source
+        .rule_book_info
+        .as_ref()
+        .ok_or(PipelineError::MissingBookInfoRule)?;
+
+    let response = client.get(book_url, &Default::default()).await?;
+    let analyzer = AnalyzeRule::new(&response.body, &response.url);
+
+    // Execute init rule first if present (may set variables)
+    if let Some(init) = rule_book_info.init.as_deref() {
+        if !init.is_empty() {
+            analyzer.get_string(init);
+        }
+    }
+
+    let name = rule_book_info
+        .name
+        .as_ref()
+        .map(|r| analyzer.get_string(r).trim().to_string())
+        .unwrap_or_default();
+
+    let author = rule_book_info
+        .author
+        .as_ref()
+        .map(|r| analyzer.get_string(r).trim().to_string())
+        .unwrap_or_default();
+
+    let intro = rule_book_info
+        .intro
+        .as_ref()
+        .and_then(|r| {
+            let s = analyzer.get_string(r).trim().to_string();
+            if s.is_empty() { None } else { Some(s) }
+        });
+
+    let kind = rule_book_info
+        .kind
+        .as_ref()
+        .and_then(|r| {
+            let s = analyzer.get_string(r).trim().to_string();
+            if s.is_empty() { None } else { Some(s) }
+        });
+
+    let cover_url = rule_book_info
+        .cover_url
+        .as_ref()
+        .and_then(|r| {
+            let s = analyzer.get_string(r).trim().to_string();
+            if s.is_empty() { None } else { Some(s) }
+        });
+
+    let toc_url = rule_book_info
+        .toc_url
+        .as_ref()
+        .and_then(|r| {
+            let s = analyzer.get_string(r).trim().to_string();
+            if s.is_empty() { None } else { Some(s) }
+        });
+
+    let last_chapter = rule_book_info
+        .last_chapter
+        .as_ref()
+        .and_then(|r| {
+            let s = analyzer.get_string(r).trim().to_string();
+            if s.is_empty() { None } else { Some(s) }
+        });
+
+    let word_count = rule_book_info
+        .word_count
+        .as_ref()
+        .and_then(|r| {
+            let s = analyzer.get_string(r).trim().to_string();
+            if s.is_empty() { None } else { Some(s) }
+        });
+
+    let download_urls: Vec<String> = if let Some(rule) = rule_book_info.download_urls.as_deref() {
+        analyzer.get_string_list(rule)
+            .into_iter()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect()
+    } else {
+        Vec::new()
+    };
+
+    Ok(BookInfoResult {
+        name,
+        author,
+        intro,
+        kind,
+        cover_url,
+        toc_url,
+        last_chapter,
+        word_count,
+        download_urls,
+    })
+}
+
+/// Fetch table of contents (chapter list) for a book.
+///
+/// Uses ruleToc to extract chapters. Supports pagination via nextTocUrl.
+pub async fn fetch_toc(
+    client: &HttpClient,
+    source: &LegacyBookSource,
+    toc_url: &str,
+) -> Result<Vec<Chapter>, PipelineError> {
+    let rule_toc = source
+        .rule_toc
+        .as_ref()
+        .ok_or(PipelineError::MissingTocRule)?;
+
+    let mut all_chapters = Vec::new();
+    let mut current_url = toc_url.to_string();
+
+    loop {
+        let response = client.get(&current_url, &Default::default()).await?;
+        let analyzer = AnalyzeRule::new(&response.body, &response.url);
+
+        let chapter_list_rule = rule_toc
+            .chapter_list
+            .as_ref()
+            .ok_or(PipelineError::MissingChapterListRule)?;
+
+        // Support reverse order prefix: "-:"
+        let (reversed, list_rule): (bool, &str) = if let Some(rest) = chapter_list_rule.strip_prefix("-:") {
+            (true, rest)
+        } else {
+            (false, chapter_list_rule.as_str())
+        };
+
+        let elements = analyzer.get_elements(list_rule);
+        let chapter_elements = if reversed {
+            elements.into_iter().rev().collect()
+        } else {
+            elements
+        };
+
+        for element in chapter_elements {
+            let elem_analyzer = AnalyzeRule::from_content(element, analyzer.base_url());
+
+            let title = rule_toc
+                .chapter_name
+                .as_ref()
+                .map(|r| elem_analyzer.get_string(r).trim().to_string())
+                .unwrap_or_default();
+
+            let url = rule_toc
+                .chapter_url
+                .as_ref()
+                .map(|r| elem_analyzer.get_string(r).trim().to_string())
+                .unwrap_or_default();
+
+            if title.is_empty() || url.is_empty() {
+                continue;
+            }
+
+            // isVip: null/false/0/"" = not VIP
+            let is_vip = rule_toc
+                .is_vip
+                .as_ref()
+                .map(|r| elem_analyzer.get_string(r).trim().to_string())
+                .map(|v| !v.is_empty() && v != "0" && v != "false")
+                .unwrap_or(false);
+
+            // isPay: same logic
+            let is_pay = rule_toc
+                .is_pay
+                .as_ref()
+                .map(|r| elem_analyzer.get_string(r).trim().to_string())
+                .map(|v| !v.is_empty() && v != "0" && v != "false")
+                .unwrap_or(false);
+
+            let update_time = rule_toc
+                .update_time
+                .as_ref()
+                .and_then(|r| {
+                    let s = elem_analyzer.get_string(r).trim().to_string();
+                    if s.is_empty() { None } else { Some(s) }
+                });
+
+            all_chapters.push(Chapter {
+                title,
+                url,
+                is_vip,
+                is_pay,
+                update_time,
+            });
+        }
+
+        // Check for next page
+        let next_url = rule_toc
+            .next_toc_url
+            .as_ref()
+            .and_then(|r| {
+                let s = analyzer.get_string(r).trim().to_string();
+                if s.is_empty() { None } else { Some(s) }
+            });
+
+        match next_url {
+            Some(url) if !url.is_empty() => {
+                current_url = url;
+            }
+            _ => break,
+        }
+    }
+
+    Ok(all_chapters)
+}
+
+/// Fetch chapter content.
+///
+/// Uses ruleContent to extract content. Supports pagination via nextContentUrl.
+pub async fn fetch_content(
+    client: &HttpClient,
+    source: &LegacyBookSource,
+    chapter_url: &str,
+) -> Result<ContentResult, PipelineError> {
+    let rule_content = source
+        .rule_content
+        .as_ref()
+        .ok_or(PipelineError::MissingContentRule)?;
+
+    let mut current_url = chapter_url.to_string();
+    let mut accumulated = String::new();
+    let mut last_title: Option<String> = None;
+
+    loop {
+        let response = client.get(&current_url, &Default::default()).await?;
+        let analyzer = AnalyzeRule::new(&response.body, &response.url);
+
+        // Extract title
+        if let Some(title_rule) = rule_content.title.as_deref() {
+            if !title_rule.is_empty() {
+                let t = analyzer.get_string(title_rule).trim().to_string();
+                if !t.is_empty() && last_title.is_none() {
+                    last_title = Some(t);
+                }
+            }
+        }
+
+        // Extract content using source_regex first if present
+        let content_rule = rule_content.content.as_deref().unwrap_or("");
+
+        let text = if let Some(regex) = rule_content.source_regex.as_deref() {
+            if !regex.is_empty() {
+                let matches = analyzer.get_string_list(regex);
+                matches.join("\n")
+            } else {
+                analyzer.get_string(content_rule)
+            }
+        } else {
+            analyzer.get_string(content_rule)
+        };
+
+        if !text.is_empty() {
+            if !accumulated.is_empty() {
+                accumulated.push('\n');
+            }
+            accumulated.push_str(&text);
+        }
+
+        // Check for next page
+        let next_url = rule_content
+            .next_content_url
+            .as_ref()
+            .and_then(|r| {
+                let s = analyzer.get_string(r).trim().to_string();
+                if s.is_empty() { None } else { Some(s) }
+            });
+
+        match next_url {
+            Some(url) if !url.is_empty() => {
+                current_url = url;
+            }
+            _ => break,
+        }
+    }
+
+    Ok(ContentResult {
+        content: accumulated,
+        title: last_title,
+        next_url: None,
+    })
 }
 
 #[cfg(test)]

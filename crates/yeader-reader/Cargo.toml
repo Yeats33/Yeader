@@ -13,3 +13,6 @@ chardetng = "0.1"
 encoding_rs = "0.8"
 regex.workspace = true
 zip = { version = "2", default-features = false, features = ["deflate"] }
+
+[dev-dependencies]
+rbook = "0.7.5"
