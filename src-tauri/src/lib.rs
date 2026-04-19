@@ -7,11 +7,8 @@ mod model;
 mod state;
 mod style;
 
-use bookmark::{load_bookmark_from_local_storage, save_bookmark_to_local_storage};
 use commands::{dev, integration, library, reader, search};
-use model::{BookMark, ReaderStyle};
 use state::AppState;
-use style::{load_style_from_local_storage, save_style_to_local_storage};
 use tauri::Manager;
 use yeader_library::Database;
 
@@ -57,7 +54,7 @@ pub fn run() {
             dev::toggle_dev_mode,
             integration::check_command_exists,
             integration::get_command_version,
-            integration::open_url,
+            integration::open_url_cmd,
             integration::run_command,
             integration::start_so_novel_webui,
             integration::is_so_novel_running,

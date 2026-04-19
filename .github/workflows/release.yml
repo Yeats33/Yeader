@@ -62,28 +62,28 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: yeader-macos
-          path: src-tauri/target/release/bundle/dmg/*.dmg
+          path: target/release/bundle/dmg/*.dmg
 
       - name: Upload artifacts (Windows)
         if: matrix.platform == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
           name: yeader-windows
-          path: src-tauri/target/release/bundle/msi/*.msi
+          path: target/release/bundle/msi/*.msi
 
       - name: Upload artifacts (Linux amd64)
         if: matrix.platform == 'ubuntu-24.04'
         uses: actions/upload-artifact@v4
         with:
           name: yeader-linux-amd64
-          path: src-tauri/target/release/bundle/deb/*amd64.deb
+          path: target/release/bundle/deb/*amd64.deb
 
       - name: Upload artifacts (Linux arm64)
         if: matrix.platform == 'ubuntu-24.04'
         uses: actions/upload-artifact@v4
         with:
           name: yeader-linux-arm64
-          path: src-tauri/target/release/bundle/deb/*arm64.deb
+          path: target/release/bundle/deb/*arm64.deb
 
   release:
     needs: [prepare, build]

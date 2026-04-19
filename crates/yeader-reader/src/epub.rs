@@ -4,7 +4,6 @@ use base64::Engine;
 use std::collections::HashMap;
 use std::path::Path;
 
-use percent_encoding::percent_decode_str;
 use rbook::Epub;
 
 /// Cover image data with MIME type.

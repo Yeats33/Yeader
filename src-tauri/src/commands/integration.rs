@@ -4,10 +4,9 @@ use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
-use notify::{RecommendedWatcher, RecursiveMode, Watcher};
+use notify::RecursiveMode;
 use notify_debouncer_mini::{new_debouncer, DebouncedEventKind};
 use tauri::{AppHandle, Emitter, Manager};
-use tauri_plugin_shell::ShellExt;
 
 static SO_NOVEL_RUNNING: AtomicBool = AtomicBool::new(false);
 
@@ -67,10 +66,8 @@ pub fn get_command_version(name: &str) -> Result<String, String> {
 }
 
 #[tauri::command]
-pub fn open_url(app: tauri::AppHandle, url: &str) -> Result<(), String> {
-    app.shell()
-        .open(url, None)
-        .map_err(|e| format!("Failed to open URL: {}", e))
+pub fn open_url_cmd(url: &str) -> Result<(), String> {
+    tauri_plugin_opener::open_url(url, None::<&str>).map_err(|e| format!("Failed to open URL: {}", e))
 }
 
 #[tauri::command]
