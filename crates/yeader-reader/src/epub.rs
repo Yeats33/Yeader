@@ -4,6 +4,7 @@ use base64::Engine;
 use std::collections::HashMap;
 use std::path::Path;
 
+use percent_encoding::percent_decode_str;
 use rbook::Epub;
 
 /// Cover image data with MIME type.
@@ -42,10 +43,17 @@ pub struct EpubChapter {
 }
 
 /// Build a map of all manifest resource hrefs to inlineable data URIs.
+fn decode_path(path: &str) -> String {
+    // Try percent-decoding, fall back to original
+    percent_encoding::percent_decode_str(path)
+        .decode_utf8_lossy()
+        .into_owned()
+}
+
 fn build_inline_map(epub: &Epub) -> HashMap<String, String> {
     let mut map = HashMap::new();
     for entry in epub.manifest().iter() {
-        let href = entry.href().to_string();
+        let href = decode_path(entry.href().as_str());
         if let Ok(bytes) = entry.read_bytes() {
             let mime = entry.media_type();
             let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
@@ -96,7 +104,7 @@ fn inline_images(content: &str, href: &str, inline_map: &HashMap<String, String>
     result = img_pattern
         .replace_all(&result, |caps: &regex::Captures| {
             let raw_src = &caps[1];
-            let resolved = resolve_href(href, raw_src);
+            let resolved = decode_path(&resolve_href(href, raw_src));
             if let Some(data_uri) = inline_map.get(&resolved) {
                 caps[0].replace(raw_src, data_uri.as_str())
             } else {

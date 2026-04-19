@@ -13,6 +13,7 @@ chardetng = "0.1"
 encoding_rs = "0.8"
 regex.workspace = true
 base64.workspace = true
+percent-encoding.workspace = true
 rbook = "0.7"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 
