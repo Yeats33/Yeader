@@ -238,7 +238,6 @@ export async function initSoNovelRulesHandlers(container: HTMLElement): Promise<
       btn.addEventListener("click", async () => {
         const url = btn.dataset.url!;
         const name = btn.dataset.name!;
-        const label = btn.dataset.label!;
         const originalText = btn.textContent;
         btn.textContent = "更新中...";
         btn.disabled = true;
