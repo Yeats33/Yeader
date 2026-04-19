@@ -168,3 +168,23 @@ export interface LogLine {
   target: string;
   message: string;
 }
+
+export interface ReaderStyle {
+  font_family: string;
+  font_size: number;
+  line_height: number;
+  theme: string;
+}
+
+export interface Mark {
+  page: number;
+  content: string;
+  width: number;
+  height: number;
+  cfi: string;
+}
+
+export interface BookMark {
+  book_path: string;
+  list: Mark[];
+}

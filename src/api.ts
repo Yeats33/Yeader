@@ -12,6 +12,8 @@ import type {
   BookSourceAvailability,
   DevModeStatus,
   LogLine,
+  ReaderStyle,
+  BookMark,
 } from "./types.ts";
 
 type InvokeAdapter = typeof invoke;
@@ -250,4 +252,54 @@ export async function getLogLines(limit?: number): Promise<LogLine[]> {
 
 export async function openLogFile(): Promise<void> {
   return await invokeAdapter<void>("open_log_file");
+}
+
+export async function checkCommandExists(name: string): Promise<boolean> {
+  return await invokeAdapter<boolean>("check_command_exists", { name });
+}
+
+export async function openUrl(url: string): Promise<void> {
+  return await invokeAdapter<void>("open_url", { url });
+}
+
+export async function saveReaderStyle(
+  fontFamily: string,
+  fontSize: number,
+  lineHeight: number,
+  theme: string,
+): Promise<string> {
+  return await invokeAdapter<string>("save_reader_style", {
+    fontFamily,
+    fontSize,
+    lineHeight,
+    theme,
+  });
+}
+
+export async function getReaderStyle(): Promise<ReaderStyle> {
+  return await invokeAdapter<ReaderStyle>("get_reader_style");
+}
+
+export async function saveBookmark(
+  bookPath: string,
+  page: number,
+  content: string,
+  width: number,
+  height: number,
+  cfi: string,
+  action?: number,
+): Promise<string> {
+  return await invokeAdapter<string>("save_bookmark", {
+    bookPath,
+    page,
+    content,
+    width,
+    height,
+    cfi,
+    action,
+  });
+}
+
+export async function getBookmark(bookPath: string): Promise<BookMark> {
+  return await invokeAdapter<BookMark>("get_bookmark", { bookPath });
 }
