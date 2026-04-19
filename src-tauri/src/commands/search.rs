@@ -6,6 +6,8 @@ use yeader_models::{LegacyBookSource, SearchResult};
 use crate::state::AppState;
 
 const TEST_RESULT_BATCH_SIZE: usize = 10;
+const TEST_COOLDOWN_SECS: u64 = 300; // 5 minutes
+const MAX_CONCURRENT_TESTS: usize = 20;
 
 #[tauri::command]
 pub async fn search_books(
@@ -65,84 +67,108 @@ pub async fn test_book_sources_availability(
     state: State<'_, AppState>,
     source_urls: Option<Vec<String>>,
 ) -> Result<Vec<BookSourceAvailability>, String> {
-    let sources = {
+    let now_secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+
+    // Load sources and check cooldown
+    let (sources, skipped): (Vec<_>, Vec<(String, String)>) = {
         let db = state.db.lock().unwrap();
         let repo = yeader_library::BookSourceRepo::new(&db);
-        match source_urls {
-            Some(urls) => {
-                let mut collected = Vec::with_capacity(urls.len());
-                for url in urls {
-                    if let Some(source) = repo.find_by_url(&url).map_err(|e| e.to_string())? {
-                        collected.push(source);
-                    } else {
-                        collected.push(LegacyBookSource {
-                            book_source_url: url,
-                            book_source_name: String::new(),
-                            book_source_group: None,
-                            search_url: None,
-                            book_url_pattern: None,
-                            login_check_js: None,
-                            book_source_type: None,
-                            enabled_explore: None,
-                            explore_url: None,
-                            rule_search: None,
-                            rule_book_info: None,
-                            rule_toc: None,
-                            rule_content: None,
-                            enabled: false,
-                            last_test_available: None,
-                            last_tested_at: None,
-                            last_test_detail: None,
-                            login_url: None,
-                            header: None,
-                            custom_order: None,
-                            weight: None,
-                            last_update_time: None,
-                            book_source_comment: None,
-                            extra: Default::default(),
-                        });
+        let all_sources: Vec<_> = match source_urls {
+            Some(urls) => urls
+                .iter()
+                .filter_map(|url| repo.find_by_url(url).map_err(|e| e.to_string()).ok().flatten())
+                .collect(),
+            None => repo.list_all().map_err(|e| e.to_string())?,
+        };
+
+        let mut sources = Vec::new();
+        let mut skipped = Vec::new();
+        for source in all_sources {
+            if let Some(ref last_tested) = source.last_tested_at {
+                if let Ok(last_secs) = last_tested.parse::<u64>() {
+                    if now_secs.saturating_sub(last_secs) < TEST_COOLDOWN_SECS {
+                        skipped.push((source.book_source_url.clone(), last_tested.clone()));
+                        continue;
                     }
                 }
-                collected
             }
-            None => repo.list_all().map_err(|e| e.to_string())?,
+            sources.push(source);
         }
+        (sources, skipped)
     };
 
-    let tested_at = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_secs().to_string())
-        .unwrap_or_else(|_| "0".to_string());
-
-    let mut results = Vec::with_capacity(sources.len());
-    let mut pending_persist: Vec<(String, bool, Option<String>, String)> = Vec::new();
+    let semaphore = std::sync::Arc::new(tokio::sync::Semaphore::new(MAX_CONCURRENT_TESTS as _));
+    let pending_persist = std::sync::Arc::new(tokio::sync::Mutex::new(
+        Vec::<(String, bool, Option<String>, String)>::new(),
+    ));
+    let sources_len = sources.len();
+    let mut handles = Vec::with_capacity(sources_len);
 
     for source in sources {
-        let (available, detail) = match search_impl(&source, "测试", 1).await {
-            Ok(_) => (true, Some("请求和解析通过".to_string())),
-            Err(error) => (false, Some(error)),
-        };
-        let detail_for_persist = detail.clone();
-        results.push(BookSourceAvailability {
-            source_url: source.book_source_url.clone(),
-            available,
-            detail,
-            tested_at: tested_at.clone(),
-        });
-        pending_persist.push((source.book_source_url.clone(), available, detail_for_persist, tested_at.clone()));
+        let sem = semaphore.clone();
+        let pending = pending_persist.clone();
 
-        if pending_persist.len() >= TEST_RESULT_BATCH_SIZE {
-            let to_persist = std::mem::take(&mut pending_persist);
-            let db = state.db.lock().unwrap();
-            let repo = yeader_library::BookSourceRepo::new(&db);
-            let _ = repo.set_test_result_batch(&to_persist);
+        let handle = tokio::spawn(async move {
+            let _permit = sem.acquire().await.ok();
+
+            let (available, detail) = match search_impl(&source, "测试", 1).await {
+                Ok(_) => (true, Some("请求和解析通过".to_string())),
+                Err(error) => (false, Some(error)),
+            };
+
+            let tested_at = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map(|d| d.as_secs().to_string())
+                .unwrap_or_else(|_| "0".to_string());
+
+            let result = BookSourceAvailability {
+                source_url: source.book_source_url.clone(),
+                available,
+                detail,
+                tested_at: tested_at.clone(),
+            };
+
+            pending.lock().await.push((
+                source.book_source_url.clone(),
+                available,
+                result.detail.clone(),
+                tested_at,
+            ));
+
+            result
+        });
+        handles.push(handle);
+    }
+
+    let mut results: Vec<_> = Vec::with_capacity(sources_len);
+    for handle in handles {
+        if let Ok(result) = handle.await {
+            results.push(result);
         }
     }
 
-    if !pending_persist.is_empty() {
+    // Persist results in batches
+    let to_persist = std::sync::Arc::try_unwrap(pending_persist)
+        .expect("all handles dropped")
+        .into_inner();
+
+    for chunk in to_persist.chunks(TEST_RESULT_BATCH_SIZE) {
         let db = state.db.lock().unwrap();
         let repo = yeader_library::BookSourceRepo::new(&db);
-        let _ = repo.set_test_result_batch(&pending_persist);
+        let _ = repo.set_test_result_batch(&chunk.to_vec());
+    }
+
+    // Add skipped sources as "冷却中"
+    for (url, tested_at) in skipped {
+        results.push(BookSourceAvailability {
+            source_url: url,
+            available: false,
+            detail: Some("冷却中".to_string()),
+            tested_at,
+        });
     }
 
     Ok(results)
