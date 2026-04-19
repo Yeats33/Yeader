@@ -268,6 +268,7 @@ test("runAvailabilityChecksIncrementally emits results as each source finishes",
     (status) => {
       emitted.push(status.sourceUrl);
     },
+    () => {},
   );
 
   assert.equal(JSON.stringify(emitted), JSON.stringify(["fast", "slow"]));

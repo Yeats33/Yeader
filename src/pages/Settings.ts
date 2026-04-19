@@ -340,16 +340,18 @@ export async function runAvailabilityChecksIncrementally(
   sourceUrls: string[],
   tester: (sourceUrl: string) => Promise<BookSourceAvailability>,
   onResult: (status: BookSourceAvailability) => void,
+  onProgress: (text: string) => void,
 ): Promise<BookSourceAvailability[]> {
   const results: BookSourceAvailability[] = [];
+  const total = sourceUrls.length;
 
-  await Promise.all(
-    sourceUrls.map(async (sourceUrl) => {
-      const status = await tester(sourceUrl);
-      results.push(status);
-      onResult(status);
-    }),
-  );
+  for (let i = 0; i < sourceUrls.length; i++) {
+    const sourceUrl = sourceUrls[i];
+    onProgress(`测试中 (${i + 1}/${total})`);
+    const status = await tester(sourceUrl);
+    results.push(status);
+    onResult(status);
+  }
 
   return results;
 }
@@ -872,7 +874,7 @@ export function initSettingsHandlers(container: HTMLElement) {
     sourceUrls: string[],
     loadingLabel: string,
   ): Promise<BookSourceAvailability[]> {
-    renderSourceActionResult("loading", loadingLabel);
+    renderSourceActionResult("loading", `${loadingLabel} (0/${sourceUrls.length})`);
 
     return await runAvailabilityChecksIncrementally(
       sourceUrls,
@@ -891,6 +893,7 @@ export function initSettingsHandlers(container: HTMLElement) {
           updateAvailabilityChip(saved);
         }
       },
+      (text) => renderSourceActionResult("loading", text),
     );
   }
 
@@ -1093,7 +1096,7 @@ export function initSettingsHandlers(container: HTMLElement) {
       }
 
       try {
-        const statuses = await testAvailabilityForScope(sourceUrls, `${label}中...`);
+        const statuses = await testAvailabilityForScope(sourceUrls, `${label}中`);
         rerenderVirtualSourceLists();
         const unavailableCount = statuses.filter((status) => !status.available).length;
         renderSourceActionResult(
@@ -1132,7 +1135,7 @@ export function initSettingsHandlers(container: HTMLElement) {
     const allSources = await listBookSources();
     const statuses = await testAvailabilityForScope(
       allSources.map((source) => source.bookSourceUrl),
-      "测试书源可用性中...",
+      "测试书源可用性中",
     );
     rerenderVirtualSourceLists();
     const unavailableCount = statuses.filter((status) => !status.available).length;
