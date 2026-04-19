@@ -10,6 +10,8 @@ import type {
   ReadingProgress,
   ImportSummary,
   BookSourceAvailability,
+  DevModeStatus,
+  LogLine,
 } from "./types.ts";
 
 type InvokeAdapter = typeof invoke;
@@ -196,4 +198,22 @@ export async function saveReadingProgress(
 
 export async function importBackup(path: string): Promise<ImportSummary> {
   return await invokeAdapter<ImportSummary>("import_backup", { path });
+}
+
+// ---- Dev mode ----
+
+export async function getDevModeStatus(): Promise<DevModeStatus> {
+  return await invokeAdapter<DevModeStatus>("get_dev_mode_status");
+}
+
+export async function toggleDevMode(enabled: boolean): Promise<boolean> {
+  return await invokeAdapter<boolean>("toggle_dev_mode", { enabled });
+}
+
+export async function getLogLines(limit?: number): Promise<LogLine[]> {
+  return await invokeAdapter<LogLine[]>("get_log_lines", { limit });
+}
+
+export async function openLogFile(): Promise<void> {
+  return await invokeAdapter<void>("open_log_file");
 }

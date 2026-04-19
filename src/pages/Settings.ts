@@ -13,6 +13,10 @@ import {
   importBookSourcesJson,
   importBookSourcesUrl,
   importBookSourcesSubscription,
+  getDevModeStatus,
+  toggleDevMode,
+  getLogLines,
+  openLogFile,
 } from "../api.ts";
 import { navigate } from "../router.ts";
 import { $ } from "../query.ts";
@@ -510,6 +514,24 @@ export async function renderSettingsPage(): Promise<string> {
             </div>
           </div>
           <div id="appearance-result" class="import-result"></div>
+        </div>
+      </section>
+
+      <section class="settings-section" id="dev-mode-section" style="display:none">
+        <div class="section-header">
+          <h2>开发模式</h2>
+        </div>
+        <div class="dev-mode-panel">
+          <div class="setting-row">
+            <span class="setting-label">启用开发模式</span>
+            <button class="btn-toggle" id="dev-mode-toggle-btn"></button>
+          </div>
+          <div class="setting-row">
+            <button class="btn-secondary" id="view-logs-btn">查看日志</button>
+            <button class="btn-secondary" id="open-log-file-btn">打开日志文件</button>
+          </div>
+          <div id="log-viewer" class="log-viewer hidden"></div>
+          <div id="dev-mode-result" class="import-result"></div>
         </div>
       </section>
     </div>
@@ -1046,5 +1068,82 @@ export function initSettingsHandlers(container: HTMLElement) {
     editCustomCssBtn.textContent = "编辑";
     delete editCustomCssBtn.dataset.expanded;
     renderAppearanceResult("success", "自定义 CSS 已保存");
+  });
+
+  // ---- Dev Mode ----
+  const devModeSection = $<HTMLElement>(container, "#dev-mode-section");
+  const devModeToggleBtn = $<HTMLButtonElement>(container, "#dev-mode-toggle-btn");
+  const viewLogsBtn = $<HTMLButtonElement>(container, "#view-logs-btn");
+  const openLogFileBtn = $<HTMLButtonElement>(container, "#open-log-file-btn");
+  const logViewer = $<HTMLElement>(container, "#log-viewer");
+  const devModeResult = $<HTMLElement>(container, "#dev-mode-result");
+
+  function renderDevModeResult(kind: "success" | "error" | "loading", text: string) {
+    devModeResult.innerHTML = `<div class="${kind === "loading" ? "loading" : `${kind}-msg`}">${escapeText(text)}</div>`;
+  }
+
+  getDevModeStatus()
+    .then((status) => {
+      if (!status.available) return;
+      devModeSection.style.display = "block";
+      devModeToggleBtn.classList.toggle("active", status.enabled);
+      devModeToggleBtn.textContent = status.enabled ? "已启用" : "已禁用";
+    })
+    .catch(() => {
+      // Dev mode not available, stay hidden.
+    });
+
+  devModeToggleBtn.addEventListener("click", async () => {
+    const currentState = devModeToggleBtn.classList.contains("active");
+    renderDevModeResult("loading", "切换中...");
+    try {
+      const newState = await toggleDevMode(!currentState);
+      devModeToggleBtn.classList.toggle("active", newState);
+      devModeToggleBtn.textContent = newState ? "已启用" : "已禁用";
+      renderDevModeResult("success", `开发模式${newState ? "已启用" : "已禁用"}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      renderDevModeResult("error", `切换失败：${msg}`);
+    }
+  });
+
+  viewLogsBtn.addEventListener("click", async () => {
+    if (logViewer.classList.contains("hidden")) {
+      logViewer.classList.remove("hidden");
+      viewLogsBtn.textContent = "收起日志";
+      renderDevModeResult("loading", "加载日志中...");
+      try {
+        const lines = await getLogLines(200);
+        if (lines.length === 0) {
+          logViewer.innerHTML = '<p class="empty-state">暂无日志</p>';
+        } else {
+          logViewer.innerHTML = lines
+            .map(
+              (line) =>
+                `<div class="log-line log-${escapeAttr(line.level.toLowerCase())}"><span class="log-ts">${escapeText(line.timestamp)}</span> <span class="log-level">[${escapeText(line.level)}]</span> <span class="log-module">${escapeText(line.target)}</span> <span class="log-msg">${escapeText(line.message)}</span></div>`,
+            )
+            .join("");
+        }
+        renderDevModeResult("success", `显示最近 ${lines.length} 条日志`);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        logViewer.innerHTML = `<div class="error-msg">加载日志失败：${escapeText(msg)}</div>`;
+        renderDevModeResult("error", `加载日志失败：${msg}`);
+      }
+    } else {
+      logViewer.classList.add("hidden");
+      viewLogsBtn.textContent = "查看日志";
+    }
+  });
+
+  openLogFileBtn.addEventListener("click", async () => {
+    renderDevModeResult("loading", "打开日志文件中...");
+    try {
+      await openLogFile();
+      renderDevModeResult("success", "日志文件已用系统默认应用打开");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      renderDevModeResult("error", `打开失败：${msg}`);
+    }
   });
 }

@@ -1,17 +1,21 @@
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use yeader_library::Database;
 
-/// Application state holding the SQLite database.
+/// Application state holding the SQLite database and logging resources.
 /// Arc<Mutex<Database>> allows safe sharing across threads (required by Tauri).
 #[derive(Clone)]
 pub struct AppState {
     pub db: Arc<Mutex<Database>>,
+    /// Path to the log directory (e.g. ~/.yeader/logs).
+    pub log_dir: PathBuf,
 }
 
 impl AppState {
-    pub fn new(db: Database) -> Self {
+    pub fn new(db: Database, log_dir: PathBuf) -> Self {
         Self {
             db: Arc::new(Mutex::new(db)),
+            log_dir,
         }
     }
 }

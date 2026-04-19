@@ -155,3 +155,15 @@ export interface BookSourceAvailability {
   detail?: string;
   testedAt?: string;
 }
+
+export interface DevModeStatus {
+  enabled: boolean;
+  available: boolean;
+}
+
+export interface LogLine {
+  timestamp: string;
+  level: string;
+  target: string;
+  message: string;
+}
