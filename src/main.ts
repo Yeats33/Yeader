@@ -1,4 +1,4 @@
-import "./styles.css";
+import "./styles/index.css";
 import { initApp } from "./app.ts";
 import { loadTheme, getCurrentTheme, getColorMode } from "./theme.ts";
 import { renderNavBar, initNavBar } from "./components/NavBar.ts";

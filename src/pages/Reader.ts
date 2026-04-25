@@ -16,7 +16,6 @@ import { navigate } from "../router.ts";
 import { $, $$ } from "../query.ts";
 import { themeManager, type Theme } from "../utils/themeManager";
 import type { BookInfo, Chapter } from "../types.ts";
-import "./Reader.css";
 
 interface ReaderState {
   bookInfo: BookInfo | null;
