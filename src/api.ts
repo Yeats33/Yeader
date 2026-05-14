@@ -14,6 +14,8 @@ import type {
   LogLine,
   ReaderStyle,
   BookMark,
+  AuthResult,
+  AuthSessionInfo,
 } from "./types.ts";
 
 type InvokeAdapter = typeof invoke;
@@ -358,4 +360,30 @@ export async function saveBookmark(
 
 export async function getBookmark(bookPath: string): Promise<BookMark> {
   return await invokeAdapter<BookMark>("get_bookmark", { bookPath });
+}
+
+export async function generateAuthNonce(): Promise<string> {
+  return await invokeAdapter<string>("generate_auth_nonce");
+}
+
+export async function verifyEvmAuth(
+  message: string,
+  signature: string,
+  address: string,
+  chainId: number,
+): Promise<AuthResult> {
+  return await invokeAdapter<AuthResult>("verify_evm_auth", {
+    message,
+    signature,
+    address,
+    chainId,
+  });
+}
+
+export async function getAuthSession(): Promise<AuthSessionInfo | null> {
+  return await invokeAdapter<AuthSessionInfo | null>("get_auth_session");
+}
+
+export async function clearAuthSession(): Promise<void> {
+  await invokeAdapter<void>("clear_auth_session");
 }

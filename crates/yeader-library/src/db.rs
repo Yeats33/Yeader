@@ -95,6 +95,19 @@ impl Database {
                 note           TEXT,
                 created_at     TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS auth_sessions (
+                wallet_address TEXT PRIMARY KEY,
+                chain_id       INTEGER NOT NULL,
+                created_at     TEXT NOT NULL,
+                expires_at     TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS auth_nonces (
+                nonce      TEXT PRIMARY KEY,
+                created_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL
+            );
             ",
         )?;
         ensure_column(&self.conn, "book_sources", "source_json", "TEXT NOT NULL DEFAULT '{}'")?;

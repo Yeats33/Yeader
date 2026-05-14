@@ -188,3 +188,16 @@ export interface BookMark {
   book_path: string;
   list: Mark[];
 }
+
+export interface AuthResult {
+  verified: boolean;
+  wallet_address: string;
+  chain_id: number;
+}
+
+export interface AuthSessionInfo {
+  wallet_address: string;
+  chain_id: number;
+  created_at: string;
+  expires_at: string;
+}

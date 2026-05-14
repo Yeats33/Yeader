@@ -7,7 +7,7 @@ mod model;
 mod state;
 mod style;
 
-use commands::{dev, integration, library, reader, search};
+use commands::{auth, dev, integration, library, reader, search};
 use state::AppState;
 use tauri::Manager;
 use yeader_library::Database;
@@ -97,6 +97,10 @@ pub fn run() {
             reader::get_reader_style,
             reader::save_bookmark,
             reader::get_bookmark,
+            auth::generate_auth_nonce,
+            auth::verify_evm_auth,
+            auth::get_auth_session,
+            auth::clear_auth_session,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

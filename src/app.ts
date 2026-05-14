@@ -1,12 +1,13 @@
 import { navigate, onRouteChange, getRoute, matchRoute } from "./router.ts";
 import { renderBookshelfPage, initBookshelfHandlers } from "./pages/Bookshelf.ts";
 import { renderSearchPage, initSearchHandlers } from "./pages/Search.ts";
-import { renderReaderPage, initReaderHandlers } from "./pages/Reader.ts";
-import { renderIntegrationPage, initIntegrationHandlers } from "./pages/Integration.ts";
+import { renderReaderPage, initReader } from "./pages/Reader/index.ts";
+import { renderIntegrationPage, initIntegrationPage } from "./pages/Integration.ts";
 import { renderSoNovelWebuiPage, initSoNovelWebuiHandlers } from "./pages/SoNovelWebui.ts";
 import { renderSoNovelConfigPage, initSoNovelConfigHandlers } from "./pages/SoNovelConfig.ts";
 import { renderSoNovelRulesPage, initSoNovelRulesHandlers } from "./pages/SoNovelRules.ts";
 import { renderSettingsPage, initSettingsHandlers } from "./pages/Settings.ts";
+import { renderAccountPage, initAccountPage } from "./pages/Account.ts";
 
 type PageHandler = (container: HTMLElement) => Promise<void> | void;
 
@@ -33,12 +34,12 @@ const pageHandlers: Array<{
       const bookId = params?.["bookId"] ?? "";
       return renderReaderPage(bookId);
     },
-    init: initReaderHandlers,
+    init: initReader,
   },
   {
     pattern: "/integration",
     render: async () => renderIntegrationPage(),
-    init: initIntegrationHandlers,
+    init: initIntegrationPage,
   },
   {
     pattern: "/integration/so-novel/webui",
@@ -54,6 +55,11 @@ const pageHandlers: Array<{
     pattern: "/integration/so-novel/rules",
     render: async () => renderSoNovelRulesPage(),
     init: initSoNovelRulesHandlers,
+  },
+  {
+    pattern: "/account",
+    render: renderAccountPage,
+    init: initAccountPage,
   },
   {
     pattern: "/settings",
