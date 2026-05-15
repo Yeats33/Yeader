@@ -1,4 +1,5 @@
 import type { ReaderState } from "./types.ts";
+import { resolveEpubImages } from "../../reader/imageResolver.ts";
 
 export async function loadCurrentChapter(
   container: HTMLElement,
@@ -25,11 +26,19 @@ export async function loadCurrentChapter(
 
   try {
     let content: string;
+    let epubBasePath = "";
     if (state.bookUrl.startsWith("local://epub/")) {
       content = await readLocalEpub(state.bookUrl, state.currentChapterIndex);
+      epubBasePath = state.bookUrl.replace("local://epub/", "");
     } else {
       content = await fetchContent(chapter.url, state.sourceUrl);
     }
+
+    // Resolve image paths for EPUB content or proxy HTTP images
+    if (state.bookUrl.startsWith("local://epub/")) {
+      content = await resolveEpubImages(content, epubBasePath);
+    }
+
     readerBody.innerHTML = `<article class="chapter-content">${content}</article>`;
     applyReaderStyleToContent(state);
   } catch (e) {

@@ -1,4 +1,4 @@
-import { searchBooks, listBookSources, addBookToShelf } from "../api.ts";
+import { searchBooks, listBookSources } from "../api.ts";
 import { navigate } from "../router.ts";
 import { $ } from "../query.ts";
 import type { SearchResult, LegacyBookSource } from "../types.ts";
@@ -295,14 +295,7 @@ export function initSearchHandlers(container: HTMLElement) {
       el.addEventListener("click", async () => {
         const bookUrl = el.dataset.bookUrl!;
         const sourceId = (el.querySelector<HTMLInputElement>(".result-source-id")?.value ?? "").trim();
-        await addBookToShelf({
-          url: bookUrl,
-          name: el.querySelector(".result-title")?.textContent ?? "",
-          author: el.querySelector(".result-author")?.textContent ?? "",
-          source_url: sourceId,
-          cover_url: el.querySelector("img")?.src,
-        });
-        navigate("/");
+        navigate(`/online-reader/${encodeURIComponent(bookUrl)}/${encodeURIComponent(sourceId)}`);
       });
       el.addEventListener("keydown", (e: KeyboardEvent) => {
         if (e.key === "Enter" || e.key === " ") {

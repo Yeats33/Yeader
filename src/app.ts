@@ -8,6 +8,8 @@ import { renderSoNovelConfigPage, initSoNovelConfigHandlers } from "./pages/SoNo
 import { renderSoNovelRulesPage, initSoNovelRulesHandlers } from "./pages/SoNovelRules.ts";
 import { renderSettingsPage, initSettingsHandlers } from "./pages/Settings.ts";
 import { renderAccountPage, initAccountPage } from "./pages/Account.ts";
+import { renderOnlineReaderPage, initOnlineReader } from "./pages/OnlineReader/index.ts";
+import { renderOnlineChapterPage, initOnlineChapter } from "./pages/OnlineReader/chapter.ts";
 
 type PageHandler = (container: HTMLElement) => Promise<void> | void;
 
@@ -65,6 +67,31 @@ const pageHandlers: Array<{
     pattern: "/settings",
     render: renderSettingsPage,
     init: initSettingsHandlers,
+  },
+  {
+    pattern: "/online-reader/:bookId/:sourceId",
+    render: async () => {
+      return renderOnlineReaderPage();
+    },
+    init: (container) => {
+      const params = matchRoute("/online-reader/:bookId/:sourceId", getRoute());
+      const bookId = params?.["bookId"] ?? "";
+      const sourceId = params?.["sourceId"] ?? "";
+      return initOnlineReader(container, decodeURIComponent(bookId), decodeURIComponent(sourceId));
+    },
+  },
+  {
+    pattern: "/online-reader/:bookId/:sourceId/chapter/:chapterUrl",
+    render: async () => {
+      return renderOnlineChapterPage();
+    },
+    init: (container) => {
+      const params = matchRoute("/online-reader/:bookId/:sourceId/chapter/:chapterUrl", getRoute());
+      const bookId = params?.["bookId"] ?? "";
+      const sourceId = params?.["sourceId"] ?? "";
+      const chapterUrl = params?.["chapterUrl"] ?? "";
+      return initOnlineChapter(container, decodeURIComponent(bookId), decodeURIComponent(sourceId), decodeURIComponent(chapterUrl));
+    },
   },
 ];
 
