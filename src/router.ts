@@ -1,7 +1,6 @@
-export type Route = {
-  path: string;
-  params?: Record<string, string>;
-};
+import { parseHash, matchRoute as matchRoutePattern, type Route } from "./routing/matchRoute.ts";
+
+export type { Route };
 
 export type Router = {
   currentRoute: Route;
@@ -9,11 +8,6 @@ export type Router = {
 };
 
 const listeners: Set<() => void> = new Set();
-
-function parseHash(hash: string): Route {
-  const path = hash.replace(/^#/, "") || "/";
-  return { path };
-}
 
 function getCurrentRoute(): Route {
   return parseHash(window.location.hash);
@@ -42,18 +36,5 @@ export function getRoute(): Route {
 }
 
 export function matchRoute(pattern: string, route: Route): Record<string, string> | null {
-  const patternParts = pattern.split("/").filter(Boolean);
-  const pathParts = route.path.split("/").filter(Boolean);
-
-  if (patternParts.length !== pathParts.length) return null;
-
-  const params: Record<string, string> = {};
-  for (let i = 0; i < patternParts.length; i++) {
-    if (patternParts[i].startsWith(":")) {
-      params[patternParts[i].slice(1)] = pathParts[i];
-    } else if (patternParts[i] !== pathParts[i]) {
-      return null;
-    }
-  }
-  return params;
+  return matchRoutePattern(pattern, route);
 }

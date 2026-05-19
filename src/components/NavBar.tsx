@@ -1,9 +1,9 @@
-import { navigate, getRoute } from "../router.ts";
+import { navigate } from "../routing/hashRoute.ts";
 
 type NavItem = {
   path: string;
   label: string;
-  icon: string; // SVG path
+  icon: string;
   activeIcon: string;
 };
 
@@ -40,33 +40,31 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
-export function renderNavBar(): string {
-  const route = getRoute();
-  const routePath = route?.path ?? "/";
-  return `
-    <nav class="bottom-nav" id="bottom-nav">
-      ${NAV_ITEMS.map((item) => {
-        const isActive = routePath === item.path || (item.path !== "/" && routePath.startsWith(item.path));
-        return `
-          <button
-            class="nav-item ${isActive ? "active" : ""}"
-            data-nav="${item.path}"
-            aria-label="${item.label}"
-          >
-            <span class="nav-icon">${isActive ? item.activeIcon : item.icon}</span>
-            <span class="nav-label">${item.label}</span>
-          </button>
-        `;
-      }).join("")}
-    </nav>
-  `;
-}
+type NavBarProps = {
+  routePath: string;
+};
 
-export function initNavBar(container: HTMLElement): void {
-  container.querySelectorAll<HTMLElement>("[data-nav]").forEach((el) => {
-    el.addEventListener("click", () => {
-      const path = el.dataset.nav!;
-      navigate(path);
-    });
-  });
+export function NavBar({ routePath }: NavBarProps) {
+  return (
+    <nav className="bottom-nav" id="bottom-nav">
+      {NAV_ITEMS.map((item) => {
+        const isActive = routePath === item.path || (item.path !== "/" && routePath.startsWith(item.path));
+        return (
+          <button
+            key={item.path}
+            className={`nav-item ${isActive ? "active" : ""}`}
+            aria-label={item.label}
+            onClick={() => navigate(item.path)}
+            type="button"
+          >
+            <span
+              className="nav-icon"
+              dangerouslySetInnerHTML={{ __html: isActive ? item.activeIcon : item.icon }}
+            />
+            <span className="nav-label">{item.label}</span>
+          </button>
+        );
+      })}
+    </nav>
+  );
 }

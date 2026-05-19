@@ -15,11 +15,16 @@
     "@reown/appkit-adapter-wagmi": "^1.8.19",
     "@reown/appkit-siwe": "^1.8.19",
     "@tauri-apps/api": "^2.10.1",
-    "@tauri-apps/plugin-dialog": "^2.7.0"
+    "@tauri-apps/plugin-dialog": "^2.7.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.2",
     "typescript": "^5",
-    "vite": "^6"
+    "vite": "^8.0.13"
   }
 }
