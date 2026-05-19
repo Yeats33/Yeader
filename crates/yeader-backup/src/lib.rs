@@ -93,7 +93,7 @@ pub fn load_backup_zip_reader<R: Read + std::io::Seek>(
         let mut content = String::new();
         entry
             .read_to_string(&mut content)
-            .map_err(|e| BackupLoadError::Io(e))?;
+            .map_err(BackupLoadError::Io)?;
         let content = content.trim_end_matches(['\r', '\n']).to_string();
 
         files.insert(file_name, content);

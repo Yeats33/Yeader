@@ -31,8 +31,10 @@ pub async fn generate_auth_nonce(state: tauri::State<'_, AppState>) -> Result<St
 
     let nonce = uuid::Uuid::new_v4().to_string();
 
-    // Nonce valid for 5 minutes
-    repo.save_nonce(&nonce, "5 minutes")
+    let expires_at = (chrono::Utc::now() + chrono::Duration::minutes(5))
+        .format("%Y-%m-%dT%H:%M:%SZ")
+        .to_string();
+    repo.save_nonce(&nonce, &expires_at)
         .map_err(|e| format!("Failed to save nonce: {e}"))?;
 
     Ok(nonce)
@@ -62,9 +64,17 @@ pub async fn verify_evm_auth(
     }
 
     // 2. Consume the nonce from the message to prevent replay
-    if let Some(nonce) = extract_nonce(&message) {
-        repo.consume_nonce(&nonce)
-            .map_err(|e| format!("Nonce check failed: {e}"))?;
+    let nonce = extract_nonce(&message)
+        .ok_or_else(|| "Missing nonce in message".to_string())?;
+    let consumed = repo
+        .consume_nonce(&nonce)
+        .map_err(|e| format!("Nonce check failed: {e}"))?;
+    if !consumed {
+        return Ok(AuthResult {
+            verified: false,
+            wallet_address: address,
+            chain_id: 0,
+        });
     }
 
     // 3. Create a session (7 days expiry)

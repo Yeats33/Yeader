@@ -174,10 +174,10 @@ struct LevelSplitWriter {
 impl Write for LevelSplitWriter {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         // Parse the level from the JSON line to route correctly.
-        if let Some(first_char) = buf.first().copied() {
-            if first_char == b'{' {
-                if let Ok(line) = std::str::from_utf8(buf) {
-                    if let Some(level_start) = line.find("\"level\":\"") {
+        if let Some(first_char) = buf.first().copied()
+            && first_char == b'{'
+                && let Ok(line) = std::str::from_utf8(buf)
+                    && let Some(level_start) = line.find("\"level\":\"") {
                         let after = &line[level_start + 8..];
                         let level_end = after.find('"').unwrap_or(0);
                         let level = &after[..level_end];
@@ -186,9 +186,6 @@ impl Write for LevelSplitWriter {
                             return self.error.lock().unwrap().write(buf);
                         }
                     }
-                }
-            }
-        }
         // Default: main log (INFO, DEBUG, etc.)
         self.main.lock().unwrap().write(buf)
     }

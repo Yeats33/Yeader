@@ -138,9 +138,7 @@ export function App() {
   const hideNav = HIDE_NAV_ROUTES.some((path) => route.path.startsWith(path));
 
   useEffect(() => {
-    loadTheme(getCurrentTheme(), getColorMode()).catch((error) => {
-      console.warn("Theme load failed, using defaults:", error);
-    });
+    loadTheme(getCurrentTheme(), getColorMode()).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -148,18 +146,13 @@ export function App() {
 
     listen<string>("so-novel-download-ready", async (event) => {
       const path = event.payload;
-      console.log("so-novel downloaded:", path);
       try {
-        const book = await importEpub(path);
-        console.log("Imported to bookshelf:", book.name);
-      } catch (error) {
-        console.error("Failed to import so-novel download:", error);
+        await importEpub(path);
+      } catch {
       }
     }).then((cleanup) => {
       unlisten = cleanup;
-    }).catch((error) => {
-      console.error("Failed to listen for so-novel downloads:", error);
-    });
+    }).catch(() => {});
 
     return () => {
       unlisten?.();

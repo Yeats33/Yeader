@@ -89,12 +89,11 @@ fn parse_selector_step(part: &str) -> (String, Option<isize>) {
     let mut raw = part;
     let mut index = None;
 
-    if let Some((base, suffix)) = part.rsplit_once('.') {
-        if let Ok(parsed) = suffix.parse::<isize>() {
+    if let Some((base, suffix)) = part.rsplit_once('.')
+        && let Ok(parsed) = suffix.parse::<isize>() {
             raw = base;
             index = Some(parsed);
         }
-    }
 
     let selector = if let Some(value) = raw.strip_prefix("class.") {
         format!(".{value}")

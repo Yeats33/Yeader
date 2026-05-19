@@ -7,6 +7,15 @@ import {
   setSoNovelActiveRule,
 } from "../api.ts";
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 const OFFICIAL_RULES = [
   {
     name: "main",
@@ -127,8 +136,7 @@ export async function initSoNovelRulesHandlers(container: HTMLElement): Promise<
         listSoNovelRules(),
         getSoNovelActiveRule(),
       ]);
-    } catch (e) {
-      console.error("Failed to load rules:", e);
+    } catch {
     }
   }
 
@@ -177,7 +185,7 @@ export async function initSoNovelRulesHandlers(container: HTMLElement): Promise<
 
     // Active rule
     if (activeDisplay) {
-      activeDisplay.innerHTML = `<span class="active-rule-name">${activeRule}</span>`;
+      activeDisplay.innerHTML = `<span class="active-rule-name">${escapeHtml(activeRule)}</span>`;
     }
 
     // Custom rules
@@ -189,15 +197,16 @@ export async function initSoNovelRulesHandlers(container: HTMLElement): Promise<
           .filter((name) => !OFFICIAL_RULES.some((r) => r.name === name))
           .map((name) => {
             const isActive = activeRule === name + ".json";
+            const safeName = escapeHtml(name);
             return `
               <div class="rule-item">
                 <div class="rule-item-info">
-                  <strong class="rule-item-name">${name}.json</strong>
+                  <strong class="rule-item-name">${safeName}.json</strong>
                   ${isActive ? '<span class="rule-active-badge">已激活</span>' : ""}
                 </div>
                 <div class="rule-item-actions">
-                  ${!isActive ? `<button class="btn-secondary btn-sm" data-action="activate-custom" data-name="${name}">激活</button>` : ""}
-                  <button class="btn-danger btn-sm" data-action="delete-custom" data-name="${name}">删除</button>
+                  ${!isActive ? `<button class="btn-secondary btn-sm" data-action="activate-custom" data-name="${safeName}">激活</button>` : ""}
+                  <button class="btn-danger btn-sm" data-action="delete-custom" data-name="${safeName}">删除</button>
                 </div>
               </div>
             `;

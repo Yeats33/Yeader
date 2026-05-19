@@ -28,17 +28,14 @@ pub enum UrlAnalyzerError {
 pub type Result<T> = std::result::Result<T, UrlAnalyzerError>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default)]
 pub enum Method {
+    #[default]
     GET,
     POST,
     HEAD,
 }
 
-impl Default for Method {
-    fn default() -> Self {
-        Method::GET
-    }
-}
 
 #[derive(Debug, Clone, Default)]
 pub struct AnalyzedUrl {
@@ -312,7 +309,7 @@ fn parse_url_with_options(url_with_options: &str, key: &str, page: i32) -> Resul
         .unwrap_or(Method::GET);
 
     // Substitute variables in URL
-    let url = substitute_url_variables(&url_part, key, page);
+    let url = substitute_url_variables(url_part, key, page);
 
     // Extract body (with variable substitution)
     let body = options
@@ -325,15 +322,14 @@ fn parse_url_with_options(url_with_options: &str, key: &str, page: i32) -> Resul
         .as_ref()
         .and_then(|o| o.content_type.as_deref())
         .or_else(|| options.as_ref().and_then(|o| o.charset.as_deref()))
-        .and_then(|ct| extract_charset_from_content_type(ct));
+        .and_then(extract_charset_from_content_type);
 
     // Build headers
     let mut headers = HeaderMap::new();
-    if let Some(ref ct) = options.as_ref().and_then(|o| o.content_type.clone()) {
-        if let Ok(value) = ct.parse::<HeaderValue>() {
+    if let Some(ref ct) = options.as_ref().and_then(|o| o.content_type.clone())
+        && let Ok(value) = ct.parse::<HeaderValue>() {
             headers.insert(HeaderName::from_static("content-type"), value);
         }
-    }
     if let Some(ref hs) = options.as_ref().and_then(|o| o.headers.clone()) {
         for (k, v) in hs {
             if let (Ok(name), Ok(val)) = (k.parse::<HeaderName>(), v.parse::<HeaderValue>()) {
@@ -390,7 +386,7 @@ fn split_url_options(raw: &str) -> (&str, Option<&str>) {
                 }
             }
             ',' if in_brace == 0 && in_quote.is_none() => {
-                return (&raw[..i], Some(&raw[i + 1..].trim_start()));
+                return (&raw[..i], Some(raw[i + 1..].trim_start()));
             }
             _ => {}
         }
@@ -421,7 +417,7 @@ fn substitute_page_number(input: &str, page: i32) -> String {
                 let page_idx = (page - 1).min(pages_len - 1).max(0) as usize;
                 pages
                     .get(page_idx)
-                    .unwrap_or(&pages.last().unwrap_or(&""))
+                    .unwrap_or(pages.last().unwrap_or(&""))
                     .to_string()
             }
         })

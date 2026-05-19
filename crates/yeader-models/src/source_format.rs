@@ -385,11 +385,10 @@ fn insert_legacy_field(
     name: &str,
     rule: Option<&String>,
 ) {
-    if let Some(rule) = rule {
-        if !rule.trim().is_empty() {
+    if let Some(rule) = rule
+        && !rule.trim().is_empty() {
             fields.insert(name.to_string(), legacy_selector(rule));
         }
-    }
 }
 
 fn legacy_selector(rule: &String) -> YeaderSelector {

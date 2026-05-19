@@ -28,15 +28,13 @@ export async function loadReaderStyle(state: ReaderState): Promise<void> {
     state.fontFamily = style.font_family || "Noto Serif";
     state.theme = (style.theme as typeof state.theme) || "light";
     applyReaderStyle(state);
-  } catch (e) {
-    console.error("[Reader] loadReaderStyle failed:", e);
+  } catch {
   }
 }
 
 export async function saveReaderStyleSettings(state: ReaderState): Promise<void> {
   try {
     await saveReaderStyle(state.fontFamily, state.fontSize, state.lineHeight, state.theme);
-  } catch (e) {
-    console.error("[Reader] saveReaderStyle failed:", e);
+  } catch {
   }
 }

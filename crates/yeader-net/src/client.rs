@@ -98,7 +98,7 @@ impl HttpClient {
             status: _,
         } = decode_response(resp).await?;
 
-        if !(status >= 200 && status < 300) && status != 304 {
+        if !(200..300).contains(&status) && status != 304 {
             return Err(HttpError::Status {
                 status,
                 message: body.chars().take(200).collect(),

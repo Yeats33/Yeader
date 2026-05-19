@@ -89,21 +89,19 @@ fn extract_index_from_rule(rule: &str) -> Option<(&str, IndexSpec)> {
     }
 
     // Check for dot notation .N or .-N
-    if let Some(dot_idx) = rule.rfind('.') {
-        if dot_idx > 0 {
+    if let Some(dot_idx) = rule.rfind('.')
+        && dot_idx > 0 {
             let base = &rule[..dot_idx];
             let index_str = &rule[dot_idx + 1..];
             // Must be all digits (possibly leading -)
-            if index_str.chars().all(|c| c.is_ascii_digit() || c == '-') {
-                if let Ok(idx) = index_str.parse::<isize>() {
+            if index_str.chars().all(|c| c.is_ascii_digit() || c == '-')
+                && let Ok(idx) = index_str.parse::<isize>() {
                     // Don't treat ".git" or similar as index
                     if idx.abs() < 100000 {
                         return Some((base, IndexSpec::Index(idx)));
                     }
                 }
-            }
         }
-    }
 
     None
 }
@@ -632,8 +630,8 @@ impl AnalyzeRule {
         }
 
         let json_val = self.content.as_json_value()?;
-        if let Value::Object(map) = json_val {
-            if let Some(value) = map.get(key) {
+        if let Value::Object(map) = json_val
+            && let Some(value) = map.get(key) {
                 // Return the value as a string
                 let s = match value {
                     Value::String(s) => s.clone(),
@@ -644,7 +642,6 @@ impl AnalyzeRule {
                 };
                 return Some(vec![s]);
             }
-        }
         None
     }
 
@@ -656,11 +653,10 @@ impl AnalyzeRule {
         }
 
         let json_val = self.content.as_json_value()?;
-        if let Value::Object(map) = json_val {
-            if let Some(value) = map.get(key) {
+        if let Value::Object(map) = json_val
+            && let Some(value) = map.get(key) {
                 return Some(vec![Content::Json(value.clone())]);
             }
-        }
         None
     }
 
@@ -697,7 +693,7 @@ impl AnalyzeRule {
                     let json_str = self.content.as_json_value()?.to_string();
                     let values = json_path_list(&json_str, &source_rule.rule);
                     let elements: Vec<Content> =
-                        values.into_iter().map(|v| Content::Json(v)).collect();
+                        values.into_iter().map(Content::Json).collect();
                     if elements.is_empty() {
                         None
                     } else {

@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod backup;
 pub mod dev;
 pub mod integration;
 pub mod library;

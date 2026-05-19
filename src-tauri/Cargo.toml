@@ -21,6 +21,7 @@ tauri.workspace = true
 tauri-plugin-dialog = "2.7.0"
 tokio.workspace = true
 tauri-plugin-shell.workspace = true
+yeader-backup.workspace = true
 yeader-library.workspace = true
 yeader-models.workspace = true
 yeader-net.workspace = true

@@ -161,12 +161,12 @@ export async function removeBook(url: string): Promise<boolean> {
 }
 
 export async function searchBooks(
-  sourceUrl: string,
+  sourceId: string,
   keyword: string,
   page: number = 1,
 ): Promise<SearchResult[]> {
   return await invokeAdapter<SearchResult[]>("search_books", {
-    sourceUrl,
+    sourceId,
     keyword,
     page,
   });
@@ -287,7 +287,7 @@ export async function getCommandVersion(name: string): Promise<string> {
 }
 
 export async function openUrl(url: string): Promise<void> {
-  return await invokeAdapter<void>("open_url", { url });
+  return await invokeAdapter<void>("open_url_cmd", { url });
 }
 
 export async function runCommand(name: string, args: string[] = []): Promise<void> {

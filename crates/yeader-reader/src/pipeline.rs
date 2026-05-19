@@ -8,6 +8,7 @@ use yeader_rules::{AnalyzeRule, Content, ReplaceRule};
 
 /// Book information extracted from a book source page.
 #[derive(Debug, Clone, PartialEq)]
+#[derive(Default)]
 pub struct BookInfo {
     pub title: String,
     pub author: String,
@@ -61,10 +62,8 @@ fn resolve_url(base: &str, relative: &str) -> String {
         let mut rel = relative;
 
         // If base doesn't end with /, it's a file path - remove the file first
-        if !result.ends_with('/') {
-            if let Some(end) = result.rfind('/') {
-                result.truncate(end);
-            }
+        if !result.ends_with('/') && let Some(end) = result.rfind('/') {
+            result.truncate(end);
         }
 
         while rel.starts_with("../") {
@@ -141,21 +140,6 @@ pub fn fetch_book_info(source: &LegacyBookSource, book_url: &str, body: &str) ->
     }
 }
 
-impl Default for BookInfo {
-    fn default() -> Self {
-        Self {
-            title: String::new(),
-            author: String::new(),
-            intro: String::new(),
-            kind: String::new(),
-            last_chapter: String::new(),
-            update_time: String::new(),
-            cover_url: String::new(),
-            toc_url: String::new(),
-            word_count: String::new(),
-        }
-    }
-}
 
 /// Fetch table of contents (chapter list) from a TOC page.
 ///
@@ -265,8 +249,7 @@ fn extract_chapters(analyzer: &AnalyzeRule, rule: &TocRule) -> Vec<Chapter> {
 fn apply_format_js(chapters: Vec<Chapter>, format_js: &str) -> Vec<Chapter> {
     chapters
         .into_iter()
-        .enumerate()
-        .map(|(_i, mut ch)| {
+        .map(|mut ch| {
             let title = yeader_rules::eval_js(format_js, Some(&ch.title));
             if !title.is_empty() {
                 ch.title = title;

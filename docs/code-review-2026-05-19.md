@@ -1,10 +1,51 @@
 # Yeader 项目严格代码审核报告
 
-- **日期**: 2026-05-19
-- **分支**: main (HEAD = `daa5266`)
-- **审核范围**: 整个仓库 — Rust 工作区 (8 个 crate) + Vite/React 前端 + Tauri 配置 + 未提交的脏目录
+- **日期**: 2026-05-19（**rev 2** — 基线刷新至 HEAD = `4c6061d`）
+- **分支**: main (HEAD = `4c6061d feat: Enable native source operations for online reading`)
+- **上次基线**: `daa5266`（rev 1 时工作树有 18 个 modified + 2 个 untracked）
+- **审核范围**: 整个仓库 — Rust 工作区 (8 个 crate) + Vite/React 前端 + Tauri 配置
 - **审核方式**: 静态阅读 + `cargo check` + `cargo clippy --workspace` + 命令注册/前端调用面对账 + 安全/可维护性人工核查
-- **最终结论**: **REQUEST CHANGES** — 工作区当前**未提交**且包含若干**会在运行时立即触发的严重缺陷**（搜索功能参数名不匹配、打开 URL 命令名不匹配、nonce 永不过期等），不可在此状态发布或合入主干。
+- **最终结论**: **REQUEST CHANGES** — 工作区现在干净（rev 1 中的脏改已被 `4c6061d` 收编），但**所有 4 个 CRITICAL 与 6/7 个 HIGH 项目原样保留**。仍不可在此状态发布或合入主干。
+
+---
+
+## 0a. 自上次审核 (`daa5266 → 4c6061d`) 的变化
+
+> 仅一个新 commit。下方所有结论已重新对 HEAD 验证。
+
+**已修复 / 已变化（4 项）**
+
+| 原 ID | 状态 | 证据 |
+|---|---|---|
+| 工作树未提交（rev 1 §1 表格） | ✅ Clean | `git status` 已无变更 |
+| `sources/czbooks.net.json` 未入 git → `include_str!` 编译失败风险 | ✅ 已入库 | `git ls-files sources/` 命中 |
+| `src/pages/SourceOps.ts` 未入 git | ✅ 已入库 | `git ls-files src/pages/SourceOps.ts` 命中 |
+| M-4: `extract_field` 未在 `el` 子树上 scope（rev 1 中 `el` 是 unused 变量） | ⚠️ **部分修复** — `search.rs` 已重写为真正使用 `el`，但 `search.rs` 文件膨胀到 850 行（超过 800 硬上限） |
+
+**新增观察（2 项）**
+
+| ID | 内容 |
+|---|---|
+| ➕ 单元测试 | `search.rs` 新增 `yeader_native_tests::czbooks_detail_selectors_match_current_dom` 等针对 czbooks DOM 的 selector 用例 — 正向变化 |
+| ⚠️ 文件膨胀 | `src-tauri/src/commands/search.rs` 460 → **850 行**，接近 800 硬上限；建议拆分 yeader-native 执行层到独立 crate（如 `yeader-search`） |
+
+**仍然原样未修复（10 项 — 全部 CRITICAL/HIGH）**
+
+| 原 ID | 验证结果（HEAD） |
+|---|---|
+| C-1 `search_books` 参数 `sourceUrl` ↔ `source_id` 不匹配 | ❌ 仍然冲突。`src/api.ts:168` 传 `sourceUrl`；`src-tauri/src/commands/search.rs:675-679` 收 `source_id` |
+| C-2 `open_url` 未注册（注册的是 `open_url_cmd`） | ❌ 仍然冲突。`src/api.ts:290` ↔ `src-tauri/src/lib.rs:76` |
+| C-3 Nonce 用字面字符串 `"5 minutes"` 当 TTL | ❌ 原样：`src-tauri/src/commands/auth.rs:35 repo.save_nonce(&nonce, "5 minutes")` |
+| C-4 `verify_evm_auth` nonce 缺失仍颁发 session | ❌ 原样：`auth.rs:65-68` 仍是 `if let Some(nonce) = extract_nonce(&message) { … }`，分支外仍走 `save_session` |
+| H-1 `import_so_novel_rule` 路径穿越 | ❌ 原样：`integration.rs:398 rules_dir.join(format!("{}.json", name))` |
+| H-2 Tauri CSP = null | ❌ 原样：`tauri.conf.json` `"csp": null` |
+| H-3 `innerHTML` 注入面 + `escapeHtml` 不全 | ❌ 未变 |
+| H-4 `run_command` RCE 入口 | ❌ 未变 |
+| H-5 `book_path` 未前缀校验 | ❌ 未变 |
+| H-6 `db.lock().unwrap()` 全工程铺开 | ❌ 未变（且 search.rs 重写后新增了若干处） |
+| H-7 4 个前端命令仍未注册 | ❌ 仍然缺失：`get_log_lines` / `import_backup` / `open_log_file` / `open_url` |
+
+**结论**：本次提交把架构方向往「Yeader 原生 source pack」推进了一步（去掉旧 compat、抽出 source 操作页、补 czbooks selectors 单测），但**没有触碰**任何 rev 1 标红的安全/正确性回归。下文 §2 起完全保留。
 
 ---
 
@@ -14,17 +55,17 @@
 
 ---
 
-## 1. 构建与质量门快照
+## 1. 构建与质量门快照（HEAD = `4c6061d`）
 
 | 检查项 | 结果 |
 |---|---|
-| `cargo check -p yeader` | ✅ 通过（带 2 个 warning：未使用变量 `el`、未使用常量 `LEGACY_BOOK_SOURCE_COMPAT_DISABLED`） |
-| `cargo clippy --workspace` | ⚠️ **66 个 warning** 跨 6 个 crate（其中 `-D warnings` 模式下会直接 fail） |
-| `cargo fmt --all -- --check` | ⚠️ 存在尾随空行差异（未格式化） |
+| `cargo check -p yeader` | ✅ 通过（仅剩 1 个 warning：未使用常量 `LEGACY_BOOK_SOURCE_COMPAT_DISABLED`；rev 1 中 `el` unused 已随 search.rs 重写解决） |
+| `cargo clippy --workspace` | ⚠️ **66 个 warning** 跨 6 个 crate（rev 1 之后未运行 `--fix`） |
+| `cargo fmt --all -- --check` | ⚠️ 仍存在尾随空行差异 |
 | `cargo test --workspace --no-run` | ✅ 编译通过 |
-| Git 工作树 | ⚠️ 18 个 modified + 2 个 untracked（`sources/`、`src/pages/SourceOps.ts`）未提交 |
-| 前端 invoke vs Rust command | ❌ **至少 4 个命令名/参数名不匹配**（详见 §2.2、§2.3） |
-| Tauri CSP | ❌ `csp: null`（CLAUDE.md 自述「must be restricted before production」） |
+| Git 工作树 | ✅ Clean（rev 1 的 18 个 modified + 2 个 untracked 已被 `4c6061d` 收编） |
+| 前端 invoke vs Rust command | ❌ 4 个命令名/参数名仍不匹配（C-1、C-2、H-7） |
+| Tauri CSP | ❌ `csp: null`（CLAUDE.md 自述「must be restricted before production」，未变） |
 
 ---
 

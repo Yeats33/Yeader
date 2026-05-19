@@ -331,9 +331,9 @@ fn normalize_extracted_url(value: &str, homepage: Option<&str>) -> String {
     if trimmed.starts_with("//") {
         return format!("https:{trimmed}");
     }
-    if trimmed.starts_with('/') {
-        if let Some(homepage) = homepage {
-            if let Ok(base) = reqwest::Url::parse(homepage) {
+    if trimmed.starts_with('/')
+        && let Some(homepage) = homepage
+            && let Ok(base) = reqwest::Url::parse(homepage) {
                 return format!(
                     "{}://{}{}",
                     base.scheme(),
@@ -341,8 +341,6 @@ fn normalize_extracted_url(value: &str, homepage: Option<&str>) -> String {
                     trimmed
                 );
             }
-        }
-    }
     trimmed.to_string()
 }
 
@@ -679,7 +677,7 @@ pub async fn search_books(
     _page: i32,
 ) -> Result<Vec<SearchResult>, String> {
     let source = {
-        let db = state.db.lock().unwrap();
+        let db = state.db.lock().map_err(|e| e.to_string())?;
         let repo = yeader_library::YeaderSourceRepo::new(&db);
         repo.find_by_id(&source_id)
             .map_err(|e| e.to_string())?
@@ -717,7 +715,7 @@ pub async fn test_book_sources_availability_legacy(
         .unwrap_or(0);
 
     let (sources, skipped): (Vec<_>, Vec<(String, String)>) = {
-        let db = state.db.lock().unwrap();
+        let db = state.db.lock().map_err(|e| e.to_string())?;
         let repo = yeader_library::BookSourceRepo::new(&db);
         let all_sources: Vec<_> = match source_urls {
             Some(urls) => urls
@@ -735,14 +733,12 @@ pub async fn test_book_sources_availability_legacy(
         let mut sources = Vec::new();
         let mut skipped = Vec::new();
         for source in all_sources {
-            if let Some(ref last_tested) = source.last_tested_at {
-                if let Ok(last_secs) = last_tested.parse::<u64>() {
-                    if now_secs.saturating_sub(last_secs) < TEST_COOLDOWN_SECS {
+            if let Some(ref last_tested) = source.last_tested_at
+                && let Ok(last_secs) = last_tested.parse::<u64>()
+                    && now_secs.saturating_sub(last_secs) < TEST_COOLDOWN_SECS {
                         skipped.push((source.book_source_url.clone(), last_tested.clone()));
                         continue;
                     }
-                }
-            }
             sources.push(source);
         }
         (sources, skipped)
@@ -806,9 +802,9 @@ pub async fn test_book_sources_availability_legacy(
         .into_inner();
 
     for chunk in to_persist.chunks(TEST_RESULT_BATCH_SIZE) {
-        let db = state.db.lock().unwrap();
+        let db = state.db.lock().map_err(|e| e.to_string())?;
         let repo = yeader_library::BookSourceRepo::new(&db);
-        let _ = repo.set_test_result_batch(&chunk.to_vec());
+        let _ = repo.set_test_result_batch(chunk);
     }
 
     for (url, tested_at) in skipped {

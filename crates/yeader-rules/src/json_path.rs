@@ -104,9 +104,8 @@ fn tokenize(path: &str) -> Result<Vec<Token>, ()> {
                 let inner = path[i + 1..end].trim();
                 if inner == "*" || inner.is_empty() {
                     tokens.push(Token::Wildcard);
-                } else if inner.starts_with('?') {
+                } else if let Some(inner) = inner.strip_prefix('?') {
                     // Filter expression: [?(@.key op value)]
-                    let inner = &inner[1..];
                     let (filter, negate) = if inner.starts_with("!@.") {
                         (&inner[1..], true)
                     } else {
@@ -287,7 +286,7 @@ fn parse_filter(inner: &str) -> Result<FilterExpr, ()> {
     } else {
         let re = regex::Regex::new(r"([><=!]+)").unwrap();
         let splits: Vec<&str> = re.split(rest).collect();
-        splits.iter().map(|s| *s).collect()
+        splits.iter().copied().collect()
     };
     if parts.is_empty() {
         return Err(());

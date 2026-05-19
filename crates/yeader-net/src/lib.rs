@@ -27,8 +27,7 @@ pub fn resolve_book_url(source: &LegacyBookSource, input: &str) -> String {
         // Absolute path — prepend scheme+host
         if let Some(domain_end) = base
             .find("://")
-            .map(|i| base[i + 3..].find('/').map(|j| i + 3 + j))
-            .flatten()
+            .and_then(|i| base[i + 3..].find('/').map(|j| i + 3 + j))
         {
             let host = &base[..domain_end];
             return format!("{}{}", host, input);

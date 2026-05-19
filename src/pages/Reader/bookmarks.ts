@@ -14,8 +14,7 @@ export async function loadBookmarks(state: ReaderState): Promise<void> {
         cfi: m.cfi,
       }));
     }
-  } catch (e) {
-    console.error("[Reader] loadBookmarks failed:", e);
+  } catch {
   }
 }
 
@@ -24,7 +23,7 @@ export async function saveCurrentBookmark(state: ReaderState): Promise<void> {
   if (!chapter) return;
 
   try {
-    const result = await saveBookmark(
+    await saveBookmark(
       state.bookUrl,
       state.currentChapterIndex,
       chapter.title ?? "",
@@ -32,10 +31,8 @@ export async function saveCurrentBookmark(state: ReaderState): Promise<void> {
       window.innerHeight,
       state.currentCfi,
     );
-    console.log("[Reader] Bookmark saved:", result);
     await loadBookmarks(state);
-  } catch (e) {
-    console.error("[Reader] saveBookmark failed:", e);
+  } catch {
   }
 }
 
@@ -53,7 +50,6 @@ export async function deleteBookmark(state: ReaderState, index: number): Promise
       1, // action: 1 = delete
     );
     await loadBookmarks(state);
-  } catch (e) {
-    console.error("[Reader] deleteBookmark failed:", e);
+  } catch {
   }
 }

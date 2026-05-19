@@ -7,7 +7,7 @@ mod model;
 mod state;
 mod style;
 
-use commands::{auth, dev, integration, library, reader, search};
+use commands::{auth, backup, dev, integration, library, reader, search};
 use state::AppState;
 use tauri::Manager;
 use yeader_library::Database;
@@ -36,27 +36,29 @@ pub fn run() {
             let _ = LOG_GUARD.set(Box::new(guard));
 
             let db_path = app_dir.join("yeader.db");
-            let db = Database::open(db_path.to_str().unwrap())
+            let db_path_str = db_path
+                .to_str()
+                .ok_or_else(|| "Database path contains non-UTF-8 characters".to_string())?;
+            let db = Database::open(db_path_str)
                 .map_err(|e| format!("Failed to open database: {}", e))?;
 
             let state = AppState::new(db, log_dir, app_dir.clone());
             app.manage(state);
 
             // Initialize built-in Yeader sources
-            if let Ok(pack) = parse_yeader_source_pack(BUILTIN_SOURCE_PACK) {
-                if let Some(app_state) = app.try_state::<AppState>() {
-                    let db = app_state.db.lock().unwrap();
-                    let repo = yeader_library::YeaderSourceRepo::new(&db);
-                    if let Err(e) = repo.upsert_batch(&pack.sources) {
-                        tracing::warn!("Failed to init built-in sources: {}", e);
-                    } else {
-                        tracing::info!(
-                            "Built-in source pack loaded: {} sources",
-                            pack.sources.len()
-                        );
+            if let Ok(pack) = parse_yeader_source_pack(BUILTIN_SOURCE_PACK)
+                && let Some(app_state) = app.try_state::<AppState>()
+                    && let Ok(db) = app_state.db.lock() {
+                        let repo = yeader_library::YeaderSourceRepo::new(&db);
+                        if let Err(e) = repo.upsert_batch(&pack.sources) {
+                            tracing::warn!("Failed to init built-in sources: {}", e);
+                        } else {
+                            tracing::info!(
+                                "Built-in source pack loaded: {} sources",
+                                pack.sources.len()
+                            );
+                        }
                     }
-                }
-            }
 
             tracing::info!("Yeader initialized successfully");
 
@@ -71,6 +73,9 @@ pub fn run() {
             parse_legado_import_uri,
             dev::get_dev_mode_status,
             dev::toggle_dev_mode,
+            dev::get_log_lines,
+            dev::open_log_file,
+            backup::import_backup,
             integration::check_command_exists,
             integration::get_command_version,
             integration::open_url_cmd,

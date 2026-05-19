@@ -163,8 +163,7 @@ function attachAuthButtons(container: HTMLElement, _step: LoginStep): void {
     try {
       refreshAuthUI(container, "connecting");
       await connectWallet();
-    } catch (e) {
-      console.error("Connect wallet failed:", e);
+    } catch {
       refreshAuthUI(container, "idle");
     }
   });
@@ -269,8 +268,7 @@ export function initIntegrationPage(container: HTMLElement): void {
       try {
         await signIn();
         refreshAuthUI(container, "authenticated");
-      } catch (e) {
-        console.error("Sign in failed:", e);
+      } catch {
         refreshAuthUI(container, "idle");
       }
     }

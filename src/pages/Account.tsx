@@ -127,8 +127,7 @@ function AccountContent({ state, step, setStep }: {
           try {
             setStep("connecting");
             await connectWallet();
-          } catch (error) {
-            console.error("Connect wallet failed:", error);
+          } catch {
             setStep("idle");
           }
         }}
@@ -168,8 +167,7 @@ export function AccountPage() {
         try {
           await signIn();
           if (!disposed) setStep("authenticated");
-        } catch (error) {
-          console.error("Sign in failed:", error);
+        } catch {
           if (!disposed) setStep("idle");
         }
       }

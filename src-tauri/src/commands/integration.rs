@@ -71,8 +71,13 @@ pub fn open_url_cmd(url: &str) -> Result<(), String> {
         .map_err(|e| format!("Failed to open URL: {}", e))
 }
 
+const ALLOWED_COMMANDS: &[&str] = &["which", "java", "java.exe"];
+
 #[tauri::command]
 pub fn run_command(name: &str, args: Vec<String>) -> Result<(), String> {
+    if !ALLOWED_COMMANDS.contains(&name) {
+        return Err(format!("Command not allowed: {}", name));
+    }
     let mut cmd = std::process::Command::new(name);
     cmd.args(&args);
     cmd.spawn()
@@ -177,31 +182,31 @@ fn watch_download_dir(download_dir: PathBuf, app: AppHandle) {
         match res {
             Ok(events) => {
                 for event in events {
-                    if event.kind == DebouncedEventKind::Any {
-                        if is_ebook_file(&event.path, &download_dir) {
-                            let filename = event
-                                .path
-                                .file_name()
-                                .map(|n| n.to_string_lossy().to_string())
-                                .unwrap_or_default();
+                    if event.kind == DebouncedEventKind::Any
+                        && is_ebook_file(&event.path, &download_dir)
+                    {
+                        let filename = event
+                            .path
+                            .file_name()
+                            .map(|n| n.to_string_lossy().to_string())
+                            .unwrap_or_default();
 
-                            let now = std::time::Instant::now();
-                            if let Some(last) = recent.get(&filename) {
-                                if now.duration_since(*last).as_secs() < 60 {
-                                    continue;
-                                }
-                            }
-                            recent.insert(filename.clone(), now);
-
-                            let path = event.path.clone();
-                            let app_clone = app.clone();
-                            std::thread::spawn(move || {
-                                std::thread::sleep(Duration::from_secs(2));
-                                let path_str = path.to_string_lossy().to_string();
-                                tracing::info!("so-novel downloaded file ready: {}", path_str);
-                                let _ = app_clone.emit("so-novel-download-ready", path_str);
-                            });
+                        let now = std::time::Instant::now();
+                        if let Some(last) = recent.get(&filename)
+                            && now.duration_since(*last).as_secs() < 60
+                        {
+                            continue;
                         }
+                        recent.insert(filename.clone(), now);
+
+                        let path = event.path.clone();
+                        let app_clone = app.clone();
+                        std::thread::spawn(move || {
+                            std::thread::sleep(Duration::from_secs(2));
+                            let path_str = path.to_string_lossy().to_string();
+                            tracing::info!("so-novel downloaded file ready: {}", path_str);
+                            let _ = app_clone.emit("so-novel-download-ready", path_str);
+                        });
                     }
                 }
             }
@@ -385,14 +390,24 @@ pub fn list_so_novel_rules(app: tauri::AppHandle) -> Result<Vec<String>, String>
     {
         let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
         let path = entry.path();
-        if path.extension().map(|e| e == "json").unwrap_or(false) {
-            if let Some(name) = path.file_stem() {
-                rules.push(name.to_string_lossy().to_string());
-            }
+        if path.extension().map(|e| e == "json").unwrap_or(false)
+            && let Some(name) = path.file_stem()
+        {
+            rules.push(name.to_string_lossy().to_string());
         }
     }
     rules.sort();
     Ok(rules)
+}
+
+fn validate_rule_name(name: &str) -> Result<(), String> {
+    if name.is_empty() {
+        return Err("Rule name cannot be empty".to_string());
+    }
+    if !name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-') {
+        return Err("Rule name must contain only [A-Za-z0-9_-] characters".to_string());
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -401,6 +416,7 @@ pub fn import_so_novel_rule(
     name: String,
     content: String,
 ) -> Result<(), String> {
+    validate_rule_name(&name)?;
     let rules_dir = so_novel_rules_dir(&app)?;
     std::fs::create_dir_all(&rules_dir)
         .map_err(|e| format!("Failed to create rules dir: {}", e))?;
@@ -410,6 +426,7 @@ pub fn import_so_novel_rule(
 
 #[tauri::command]
 pub fn delete_so_novel_rule(app: tauri::AppHandle, name: String) -> Result<(), String> {
+    validate_rule_name(&name)?;
     let rules_dir = so_novel_rules_dir(&app)?;
     let rule_path = rules_dir.join(format!("{}.json", name));
     if rule_path.exists() {
@@ -424,7 +441,7 @@ pub fn get_so_novel_active_rule(app: tauri::AppHandle) -> Result<String, String>
     for line in config.lines() {
         let line = line.trim();
         if line.starts_with("active-rules") && line.contains('=') {
-            return Ok(line.split('=').nth(1).unwrap().trim().to_string());
+            return Ok(line.split('=').nth(1).unwrap_or("").trim().to_string());
         }
     }
     Ok("main.json".to_string())

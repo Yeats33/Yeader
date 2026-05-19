@@ -7,7 +7,8 @@ function escapeHtml(value: string): string {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 export function renderSourceOpsPage(): string {
@@ -178,7 +179,7 @@ function renderImportTab(container: HTMLElement, sources: YeaderSource[]) {
       const encodedSourceId = encodeURIComponent(source.id);
       navigate(`/online-reader/${encodedUrl}/${encodedSourceId}`);
     } catch (e) {
-      resultDiv.innerHTML = `<p class="error-msg">导入失败: ${e instanceof Error ? e.message : String(e)}</p>`;
+      resultDiv.innerHTML = `<p class="error-msg">导入失败: ${escapeHtml(e instanceof Error ? e.message : String(e))}</p>`;
     } finally {
       importBtn.disabled = false;
     }

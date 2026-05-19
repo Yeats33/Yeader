@@ -200,7 +200,7 @@ fn strip_prefix_ignore_ascii_case<'a>(value: &'a str, prefix: &str) -> Option<&'
 }
 
 /// Find elements matching an XPath-like pattern and return their HTML.
-fn select_xpath_elements<'a>(document: &'a Html, xpath: &str) -> Vec<String> {
+fn select_xpath_elements(document: &Html, xpath: &str) -> Vec<String> {
     let xpath = xpath.trim();
     if xpath.is_empty() {
         return Vec::new();
@@ -232,7 +232,7 @@ fn select_xpath_elements<'a>(document: &'a Html, xpath: &str) -> Vec<String> {
 }
 
 /// Get string list using XPath-like pattern.
-fn get_xpath_string_list<'a>(document: &'a Html, xpath: &str) -> Vec<String> {
+fn get_xpath_string_list(document: &Html, xpath: &str) -> Vec<String> {
     let xpath = xpath.trim();
     if xpath.is_empty() {
         return Vec::new();
@@ -248,8 +248,7 @@ fn get_xpath_string_list<'a>(document: &'a Html, xpath: &str) -> Vec<String> {
         }
     } else {
         // Check for text() extractor
-        if xpath.ends_with("/text()") {
-            let path = &xpath[..xpath.len() - 7];
+        if let Some(path) = xpath.strip_suffix("/text()") {
             let elements = evaluate_xpath_path(document, path);
             return elements
                 .iter()
@@ -385,15 +384,14 @@ fn extract_predicates(segment: &str) -> (&str, Vec<Predicate>) {
     };
 
     // Handle tag[position] like li[1]
-    if predicates.is_empty() {
-        if let Some(open_bracket) = segment.rfind('[') {
+    if predicates.is_empty()
+        && let Some(open_bracket) = segment.rfind('[') {
             let before = &segment[..open_bracket];
             let rest = &segment[open_bracket + 1..segment.len() - 1];
             if rest.chars().all(|c| c.is_ascii_digit()) {
                 return (before, vec![]);
             }
         }
-    }
 
     (tag, predicates)
 }
@@ -425,8 +423,8 @@ fn parse_predicate(content: &str) -> Option<(String, String)> {
             let attr = rest[..eq_pos].trim().to_string();
             let val = rest[eq_pos + 1..]
                 .trim()
-                .trim_start_matches(|c| c == '\'' || c == '"')
-                .trim_end_matches(|c| c == '\'' || c == '"')
+                .trim_start_matches(['\'', '"'])
+                .trim_end_matches(['\'', '"'])
                 .to_string();
             return Some((attr, val));
         }

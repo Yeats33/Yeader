@@ -150,7 +150,7 @@ fn split_into_chapters(
         let trimmed = line.trim();
         let is_chapter_title = chapter_regex
             .as_ref()
-            .map_or(false, |r| r.is_match(trimmed));
+            .is_some_and(|r| r.is_match(trimmed));
 
         if is_chapter_title {
             // Save previous chapter if it has content

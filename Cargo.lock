@@ -6601,6 +6601,7 @@ dependencies = [
  "tracing-appender",
  "tracing-subscriber",
  "uuid",
+ "yeader-backup",
  "yeader-library",
  "yeader-models",
  "yeader-net",
