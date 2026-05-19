@@ -6,4 +6,4 @@ mod repo;
 
 pub use auth_repo::{AuthRepo, AuthSession};
 pub use db::Database;
-pub use repo::{BookGroupRepo, BookRepo, BookmarkRepo, BookSourceRepo, ReadingProgressRepo, ReplaceRuleRepo, RssSourceRepo};
+pub use repo::{BookGroupRepo, BookRepo, BookmarkRepo, BookSourceRepo, ReadingProgressRepo, ReplaceRuleRepo, RssSourceRepo, YeaderSourceRepo};

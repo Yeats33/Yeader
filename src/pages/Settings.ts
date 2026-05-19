@@ -35,6 +35,10 @@ import {
   describeThemeOptions,
   type ThemeName,
 } from "../theme.ts";
+import {
+  LEGACY_BOOK_SOURCE_COMPAT_DISABLED_MESSAGE,
+  LEGACY_BOOK_SOURCE_COMPAT_ENABLED,
+} from "../compatibility.ts";
 
 type PersistedBookSourceAvailability = BookSourceAvailability & {
   testedAt: string;
@@ -500,6 +504,26 @@ function describeSourceItems(sources: LegacyBookSource[]): string {
     .join("");
 }
 
+function describeLegacyBookSourceDisabledPanel(): string {
+  return `
+    <div class="source-toolbar">
+      <button class="btn-secondary" id="filter-available-btn" disabled>只显示可用</button>
+      <button class="btn-secondary" id="test-availability-btn" disabled>测试可用性</button>
+      <button class="btn-secondary" id="disable-unavailable-btn" disabled>禁用不可用</button>
+      <button class="btn-secondary" id="enable-all-sources-btn" disabled>启用全部</button>
+      <button class="btn-secondary" id="delete-disabled-sources-btn" disabled>删除已禁用</button>
+      <button class="btn-danger" id="dev-delete-all-sources-btn" disabled>${getDeleteAllButtonLabel(false)}</button>
+    </div>
+    <div class="source-tag-filters" id="source-tag-filters">
+      <div class="source-filter-status" id="source-filter-status">兼容层关闭</div>
+    </div>
+    <div id="source-action-result" class="import-result"></div>
+    <div class="source-tree" id="source-tree" data-filter="all" data-selected-tags="[]">
+      <p class="empty-state">${LEGACY_BOOK_SOURCE_COMPAT_DISABLED_MESSAGE}</p>
+    </div>
+  `;
+}
+
 function describeVirtualSourceList(listId: string, sources: LegacyBookSource[]): string {
   const totalCount = sources.length;
   const viewportHeight = getViewportHeight(totalCount || 1);
@@ -715,14 +739,14 @@ export async function renderSettingsPage(): Promise<string> {
         <div class="section-header">
           <h2>书源管理</h2>
           <div class="section-actions">
-            <button class="btn-primary" id="import-json-btn">导入书源</button>
+            <button class="btn-primary" id="import-json-btn" ${LEGACY_BOOK_SOURCE_COMPAT_ENABLED ? "" : "disabled"}>导入书源</button>
             <input type="file" id="import-json-input" accept="application/json,.json" hidden />
-            <button class="btn-primary" id="import-url-btn">导入链接</button>
-            <button class="btn-secondary" id="import-subscription-btn">订阅链接</button>
-            <button class="btn-secondary" id="import-source-btn">开发专用：导入测试书源</button>
+            <button class="btn-primary" id="import-url-btn" ${LEGACY_BOOK_SOURCE_COMPAT_ENABLED ? "" : "disabled"}>导入链接</button>
+            <button class="btn-secondary" id="import-subscription-btn" ${LEGACY_BOOK_SOURCE_COMPAT_ENABLED ? "" : "disabled"}>订阅链接</button>
+            <button class="btn-secondary" id="import-source-btn" ${LEGACY_BOOK_SOURCE_COMPAT_ENABLED ? "" : "disabled"}>开发专用：导入测试书源</button>
           </div>
         </div>
-        ${describeBookSourceTree(bookSources)}
+        ${LEGACY_BOOK_SOURCE_COMPAT_ENABLED ? describeBookSourceTree(bookSources) : describeLegacyBookSourceDisabledPanel()}
       </section>
 
       <section class="settings-section">
@@ -821,6 +845,10 @@ export function initSettingsHandlers(container: HTMLElement) {
   const filterStatus = $<HTMLElement>(container, "#source-filter-status");
   const availabilityResults = new Map<string, PersistedBookSourceAvailability>();
   const virtualListRenderers = new Map<string, () => void>();
+
+  if (!LEGACY_BOOK_SOURCE_COMPAT_ENABLED) {
+    importResult.innerHTML = `<div class="loading">${escapeText(LEGACY_BOOK_SOURCE_COMPAT_DISABLED_MESSAGE)}</div>`;
+  }
 
   function renderSourceActionResult(kind: "loading" | "success" | "error", text: string) {
     sourceActionResult.innerHTML = `<div class="${kind === "loading" ? "loading" : `${kind}-msg`}">${escapeText(text)}</div>`;

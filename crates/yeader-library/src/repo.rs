@@ -3,7 +3,7 @@
 use rusqlite::params;
 use serde_json::Map;
 
-use yeader_models::{Book, BookGroup, Bookmark, LegacyBookSource, LegacyReplaceRule, LegacyRssSource, ReadingProgress};
+use yeader_models::{Book, BookGroup, Bookmark, LegacyBookSource, LegacyReplaceRule, LegacyRssSource, ReadingProgress, YeaderSource};
 
 use crate::Database;
 
@@ -175,6 +175,111 @@ impl<'a> BookSourceRepo<'a> {
         }
         tx.commit()?;
         Ok(count)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// YeaderSourceRepo
+// ---------------------------------------------------------------------------
+
+pub struct YeaderSourceRepo<'a> {
+    db: &'a Database,
+}
+
+impl<'a> YeaderSourceRepo<'a> {
+    pub fn new(db: &'a Database) -> Self {
+        Self { db }
+    }
+
+    pub fn upsert(&self, source: &YeaderSource) -> rusqlite::Result<()> {
+        let source_json = serde_json::to_string(source).unwrap_or_default();
+        let media_type = serde_json::to_value(source.media_type)
+            .ok()
+            .and_then(|value| value.as_str().map(str::to_string))
+            .unwrap_or_else(|| "generic".to_string());
+
+        self.db.conn().execute(
+            "INSERT INTO yeader_sources (id, name, media_type, enabled, source_json)
+             VALUES (?1, ?2, ?3, ?4, ?5)
+             ON CONFLICT(id) DO UPDATE SET
+                name = excluded.name,
+                media_type = excluded.media_type,
+                enabled = excluded.enabled,
+                source_json = excluded.source_json",
+            params![
+                source.id,
+                source.name,
+                media_type,
+                source.enabled as i32,
+                source_json,
+            ],
+        )?;
+        Ok(())
+    }
+
+    pub fn upsert_batch(&self, sources: &[YeaderSource]) -> rusqlite::Result<()> {
+        let tx = self.db.conn().unchecked_transaction()?;
+        for source in sources {
+            let source_json = serde_json::to_string(source).unwrap_or_default();
+            let media_type = serde_json::to_value(source.media_type)
+                .ok()
+                .and_then(|value| value.as_str().map(str::to_string))
+                .unwrap_or_else(|| "generic".to_string());
+
+            tx.execute(
+                "INSERT INTO yeader_sources (id, name, media_type, enabled, source_json)
+                 VALUES (?1, ?2, ?3, ?4, ?5)
+                 ON CONFLICT(id) DO UPDATE SET
+                    name = excluded.name,
+                    media_type = excluded.media_type,
+                    enabled = excluded.enabled,
+                    source_json = excluded.source_json",
+                params![
+                    source.id,
+                    source.name,
+                    media_type,
+                    source.enabled as i32,
+                    source_json,
+                ],
+            )?;
+        }
+        tx.commit()
+    }
+
+    pub fn list_all(&self) -> rusqlite::Result<Vec<YeaderSource>> {
+        let mut stmt = self
+            .db
+            .conn()
+            .prepare("SELECT source_json FROM yeader_sources ORDER BY name")?;
+        let rows = stmt.query_map([], |row| {
+            let source_json: String = row.get(0)?;
+            serde_json::from_str::<YeaderSource>(&source_json).map_err(|error| {
+                rusqlite::Error::FromSqlConversionFailure(
+                    0,
+                    rusqlite::types::Type::Text,
+                    Box::new(error),
+                )
+            })
+        })?;
+        rows.collect()
+    }
+
+    pub fn find_by_id(&self, id: &str) -> rusqlite::Result<Option<YeaderSource>> {
+        let mut stmt = self
+            .db
+            .conn()
+            .prepare("SELECT source_json FROM yeader_sources WHERE id = ?1")?;
+        let mut rows = stmt.query_map(params![id], |row| {
+            let source_json: String = row.get(0)?;
+            serde_json::from_str::<YeaderSource>(&source_json).map_err(|error| {
+                rusqlite::Error::FromSqlConversionFailure(
+                    0,
+                    rusqlite::types::Type::Text,
+                    Box::new(error),
+                )
+            })
+        })?;
+        rows.next().transpose()
     }
 }
 
@@ -721,7 +826,10 @@ impl<'a> BookmarkRepo<'a> {
 mod tests {
     use serde_json::{Map, Value};
 
-    use yeader_models::{LegacyBookSource, LegacyReplaceRule, LegacyRssSource, ReadingProgress};
+    use yeader_models::{
+        LegacyBookSource, LegacyReplaceRule, LegacyRssSource, ReadingProgress, YeaderMediaType,
+        YeaderRequestDefaults, YeaderSource,
+    };
 
     use super::*;
 
@@ -966,6 +1074,60 @@ mod tests {
             found.extra.get("customField"),
             Some(&Value::String("hello".into()))
         );
+    }
+
+    // --- YeaderSourceRepo ---
+
+    #[test]
+    fn yeader_source_upsert_and_list() {
+        let db = test_db();
+        let repo = YeaderSourceRepo::new(&db);
+
+        let source = YeaderSource {
+            id: "native.example".into(),
+            name: "Native Example".into(),
+            media_type: YeaderMediaType::Novel,
+            version: Some("1".into()),
+            homepage: Some("https://example.com".into()),
+            tags: vec!["native".into()],
+            enabled: true,
+            request_defaults: YeaderRequestDefaults::default(),
+            variables: Default::default(),
+            capabilities: Vec::new(),
+            extra: Map::new(),
+        };
+
+        repo.upsert(&source).unwrap();
+        let all = repo.list_all().unwrap();
+        assert_eq!(all.len(), 1);
+        assert_eq!(all[0].id, "native.example");
+        assert_eq!(all[0].media_type, YeaderMediaType::Novel);
+    }
+
+    #[test]
+    fn yeader_source_find_by_id() {
+        let db = test_db();
+        let repo = YeaderSourceRepo::new(&db);
+
+        let source = YeaderSource {
+            id: "rss.example".into(),
+            name: "Native RSS".into(),
+            media_type: YeaderMediaType::Rss,
+            version: None,
+            homepage: None,
+            tags: Vec::new(),
+            enabled: false,
+            request_defaults: YeaderRequestDefaults::default(),
+            variables: Default::default(),
+            capabilities: Vec::new(),
+            extra: Map::new(),
+        };
+
+        repo.upsert(&source).unwrap();
+        let found = repo.find_by_id("rss.example").unwrap().unwrap();
+        assert_eq!(found.name, "Native RSS");
+        assert!(!found.enabled);
+        assert!(repo.find_by_id("missing").unwrap().is_none());
     }
 
     // --- RssSourceRepo ---

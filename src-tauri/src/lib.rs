@@ -68,6 +68,8 @@ pub fn run() {
             integration::get_so_novel_active_rule,
             integration::set_so_novel_active_rule,
             library::list_book_sources,
+            library::list_yeader_sources,
+            library::import_yeader_source_pack_json,
             library::load_book_sources_from_file,
             library::import_book_sources_json,
             library::import_book_sources_url,
@@ -107,6 +109,6 @@ pub fn run() {
 }
 
 #[tauri::command]
-fn parse_legado_import_uri(uri: &str) -> Result<yeader_models::CompatImportArtifact, String> {
-    yeader_protocol::parse_legado_import_uri(uri).map_err(|error| error.to_string())
+fn parse_legado_import_uri(_uri: &str) -> Result<yeader_models::CompatImportArtifact, String> {
+    Err("旧书源兼容已暂时关闭，等待 Yeader 自有书源格式。".into())
 }

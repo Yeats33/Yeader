@@ -41,6 +41,14 @@ impl Database {
                 source_json      TEXT NOT NULL DEFAULT '{}'
             );
 
+            CREATE TABLE IF NOT EXISTS yeader_sources (
+                id          TEXT PRIMARY KEY,
+                name        TEXT NOT NULL,
+                media_type  TEXT NOT NULL,
+                enabled     INTEGER NOT NULL DEFAULT 1,
+                source_json TEXT NOT NULL
+            );
+
             CREATE TABLE IF NOT EXISTS rss_sources (
                 source_url   TEXT PRIMARY KEY,
                 source_name  TEXT NOT NULL,

@@ -5,12 +5,23 @@ use yeader_models::{LegacyBookSource, SearchResult};
 
 use crate::state::AppState;
 
+const LEGACY_BOOK_SOURCE_COMPAT_DISABLED: &str = "旧书源兼容已暂时关闭，等待 Yeader 自有书源格式。";
 const TEST_RESULT_BATCH_SIZE: usize = 10;
 const TEST_COOLDOWN_SECS: u64 = 300; // 5 minutes
 const MAX_CONCURRENT_TESTS: usize = 20;
 
 #[tauri::command]
 pub async fn search_books(
+    _state: State<'_, AppState>,
+    _source_url: String,
+    _keyword: String,
+    _page: i32,
+) -> Result<Vec<SearchResult>, String> {
+    Err(LEGACY_BOOK_SOURCE_COMPAT_DISABLED.into())
+}
+
+#[allow(dead_code)]
+async fn search_books_legacy(
     state: State<'_, AppState>,
     source_url: String,
     keyword: String,
@@ -64,6 +75,14 @@ pub struct BookSourceAvailability {
 
 #[tauri::command]
 pub async fn test_book_sources_availability(
+    _state: State<'_, AppState>,
+    _source_urls: Option<Vec<String>>,
+) -> Result<Vec<BookSourceAvailability>, String> {
+    Ok(Vec::new())
+}
+
+#[allow(dead_code)]
+pub async fn test_book_sources_availability_legacy(
     state: State<'_, AppState>,
     source_urls: Option<Vec<String>>,
 ) -> Result<Vec<BookSourceAvailability>, String> {
@@ -79,7 +98,12 @@ pub async fn test_book_sources_availability(
         let all_sources: Vec<_> = match source_urls {
             Some(urls) => urls
                 .iter()
-                .filter_map(|url| repo.find_by_url(url).map_err(|e| e.to_string()).ok().flatten())
+                .filter_map(|url| {
+                    repo.find_by_url(url)
+                        .map_err(|e| e.to_string())
+                        .ok()
+                        .flatten()
+                })
                 .collect(),
             None => repo.list_all().map_err(|e| e.to_string())?,
         };
@@ -101,9 +125,12 @@ pub async fn test_book_sources_availability(
     };
 
     let semaphore = std::sync::Arc::new(tokio::sync::Semaphore::new(MAX_CONCURRENT_TESTS as _));
-    let pending_persist = std::sync::Arc::new(tokio::sync::Mutex::new(
-        Vec::<(String, bool, Option<String>, String)>::new(),
-    ));
+    let pending_persist = std::sync::Arc::new(tokio::sync::Mutex::new(Vec::<(
+        String,
+        bool,
+        Option<String>,
+        String,
+    )>::new()));
     let sources_len = sources.len();
     let mut handles = Vec::with_capacity(sources_len);
 

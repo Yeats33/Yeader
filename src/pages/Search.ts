@@ -2,6 +2,10 @@ import { searchBooks, listBookSources } from "../api.ts";
 import { navigate } from "../router.ts";
 import { $ } from "../query.ts";
 import type { SearchResult, LegacyBookSource } from "../types.ts";
+import {
+  LEGACY_BOOK_SOURCE_COMPAT_DISABLED_MESSAGE,
+  LEGACY_BOOK_SOURCE_COMPAT_ENABLED,
+} from "../compatibility.ts";
 
 function escapeHtml(value: string): string {
   return value
@@ -131,6 +135,18 @@ export function describeSearchSourceFilters(sources: LegacyBookSource[]): string
 }
 
 export async function renderSearchPage(): Promise<string> {
+  if (!LEGACY_BOOK_SOURCE_COMPAT_ENABLED) {
+    return `
+      <div class="page page-search">
+        <header class="page-header">
+          <h1>搜索</h1>
+          <button class="btn-icon" data-nav="/" title="返回书架">&#x2190;</button>
+        </header>
+        <div class="empty-state"><p>${LEGACY_BOOK_SOURCE_COMPAT_DISABLED_MESSAGE}</p></div>
+      </div>
+    `;
+  }
+
   let sources: LegacyBookSource[] = [];
   try {
     sources = await listBookSources();
@@ -165,6 +181,13 @@ export async function renderSearchPage(): Promise<string> {
 }
 
 export function initSearchHandlers(container: HTMLElement) {
+  if (!LEGACY_BOOK_SOURCE_COMPAT_ENABLED) {
+    container.querySelectorAll<HTMLElement>("[data-nav]").forEach((el) => {
+      el.addEventListener("click", () => navigate(el.dataset.nav!));
+    });
+    return;
+  }
+
   const keywordInput = $<HTMLInputElement>(container, "#search-keyword");
   const sourcePicker = $<HTMLElement>(container, "#search-source-picker");
   const sourceStatus = $<HTMLElement>(container, "#search-source-status");

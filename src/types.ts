@@ -88,6 +88,66 @@ export interface LegacyReplaceRule {
   replacement: string;
 }
 
+export interface YeaderSourcePack {
+  format: "yeader.source-pack";
+  version: number;
+  name?: string;
+  sources: YeaderSource[];
+}
+
+export interface YeaderSource {
+  id: string;
+  name: string;
+  mediaType: "novel" | "rss" | "comic" | "audio" | "video" | "generic";
+  version?: string;
+  homepage?: string;
+  tags?: string[];
+  enabled: boolean;
+  requestDefaults?: YeaderRequestDefaults;
+  variables?: Record<string, string>;
+  capabilities?: YeaderCapability[];
+}
+
+export interface YeaderRequestDefaults {
+  headers?: Record<string, string>;
+  encoding?: string;
+  timeoutMs?: number;
+}
+
+export interface YeaderCapability {
+  kind: "search" | "detail" | "toc" | "content" | "feed" | "list" | "asset";
+  request?: YeaderRequest;
+  item?: YeaderSelector;
+  fields?: Record<string, YeaderSelector>;
+  actions?: YeaderAction[];
+}
+
+export interface YeaderRequest {
+  url: string;
+  method?: string;
+  headers?: Record<string, string>;
+  query?: Record<string, string>;
+  body?: string;
+  pagination?: {
+    variable: string;
+    firstPage?: number;
+    step?: number;
+  };
+}
+
+export interface YeaderSelector {
+  engine: "css" | "jsonPath" | "xPath" | "regex" | "text" | "javaScript" | "legacyLegado";
+  query: string;
+  output?: string;
+  all?: boolean;
+  fallback?: YeaderSelector[];
+}
+
+export interface YeaderAction {
+  kind: "beforeRequest" | "beforeExtract" | "afterExtract";
+  script: string;
+}
+
 export interface Book {
   url: string;
   name: string;

@@ -3,6 +3,7 @@ import type {
   LegacyBookSource,
   LegacyRssSource,
   LegacyReplaceRule,
+  YeaderSource,
   Book,
   SearchResult,
   Chapter,
@@ -32,6 +33,16 @@ export function resetInvokeAdapterForTests(): void {
 
 export async function listBookSources(): Promise<LegacyBookSource[]> {
   return await invokeAdapter<LegacyBookSource[]>("list_book_sources");
+}
+
+export async function listYeaderSources(): Promise<YeaderSource[]> {
+  return await invokeAdapter<YeaderSource[]>("list_yeader_sources");
+}
+
+export async function importYeaderSourcePackJson(
+  json: string,
+): Promise<YeaderSource[]> {
+  return await invokeAdapter<YeaderSource[]>("import_yeader_source_pack_json", { json });
 }
 
 export async function loadBookSourcesFromFile(): Promise<LegacyBookSource[]> {

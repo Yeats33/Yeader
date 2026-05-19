@@ -1,4 +1,5 @@
 import { navigate } from "../routing/hashRoute.ts";
+import { LEGACY_BOOK_SOURCE_COMPAT_ENABLED } from "../compatibility.ts";
 
 type NavItem = {
   path: string;
@@ -14,12 +15,14 @@ const NAV_ITEMS: NavItem[] = [
     icon: `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m4 19.5 3-12 3 12"/><path d="M4 4.5h14"/><path d="M4 9.5h14"/></svg>`,
     activeIcon: `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m4 19.5 3-12 3 12"/><path d="M4 4.5h14"/><path d="M4 9.5h14"/></svg>`,
   },
-  {
-    path: "/search",
-    label: "搜索",
-    icon: `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>`,
-    activeIcon: `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>`,
-  },
+  ...(LEGACY_BOOK_SOURCE_COMPAT_ENABLED
+    ? [{
+        path: "/search",
+        label: "搜索",
+        icon: `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>`,
+        activeIcon: `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>`,
+      }]
+    : []),
   {
     path: "/integration",
     label: "集成",

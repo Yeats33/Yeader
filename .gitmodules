@@ -1,0 +1,3 @@
+[submodule "tools/yeader-source-tools"]
+	path = tools/yeader-source-tools
+	url = git@github.com:Yeats33/yeader-source-tools.git

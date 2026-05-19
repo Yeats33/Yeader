@@ -10,8 +10,20 @@ use crate::{
 
 use crate::state::AppState;
 
+const LEGACY_BOOK_SOURCE_COMPAT_DISABLED: &str =
+    "旧书源兼容已暂时关闭，等待 Yeader 自有书源格式。";
+
 #[tauri::command]
 pub async fn fetch_book_info(
+    _state: State<'_, AppState>,
+    _book_url: String,
+    _source_url: String,
+) -> Result<ModelBookInfo, String> {
+    Err(LEGACY_BOOK_SOURCE_COMPAT_DISABLED.into())
+}
+
+#[allow(dead_code)]
+async fn fetch_book_info_legacy(
     state: State<'_, AppState>,
     book_url: String,
     source_url: String,
@@ -68,6 +80,15 @@ pub async fn fetch_book_info(
 
 #[tauri::command]
 pub async fn fetch_toc(
+    _state: State<'_, AppState>,
+    _toc_url: String,
+    _source_url: String,
+) -> Result<Vec<ModelChapter>, String> {
+    Err(LEGACY_BOOK_SOURCE_COMPAT_DISABLED.into())
+}
+
+#[allow(dead_code)]
+async fn fetch_toc_legacy(
     state: State<'_, AppState>,
     toc_url: String,
     source_url: String,
@@ -107,6 +128,15 @@ pub async fn fetch_toc(
 
 #[tauri::command]
 pub async fn fetch_content(
+    _state: State<'_, AppState>,
+    _chapter_url: String,
+    _source_url: String,
+) -> Result<String, String> {
+    Err(LEGACY_BOOK_SOURCE_COMPAT_DISABLED.into())
+}
+
+#[allow(dead_code)]
+async fn fetch_content_legacy(
     state: State<'_, AppState>,
     chapter_url: String,
     source_url: String,
