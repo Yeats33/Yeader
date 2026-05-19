@@ -11,9 +11,9 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use tracing_subscriber::{
-    fmt::{self, format::FmtSpan, MakeWriter},
-    prelude::*,
     EnvFilter,
+    fmt::{self, MakeWriter, format::FmtSpan},
+    prelude::*,
 };
 
 const LOG_DIR_NAME: &str = "logs";
@@ -55,10 +55,7 @@ struct TruncatingWriter {
 
 impl TruncatingWriter {
     fn new(path: PathBuf, tracker: Arc<SizeTracker>) -> io::Result<Self> {
-        let file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&path)?;
+        let file = OpenOptions::new().create(true).append(true).open(&path)?;
         let size = file.metadata()?.len() as usize;
         tracker.set(size);
         Ok(Self {
@@ -127,10 +124,7 @@ struct ErrorWriter {
 
 impl ErrorWriter {
     fn new(path: PathBuf) -> io::Result<Self> {
-        let file = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(path)?;
+        let file = OpenOptions::new().create(true).append(true).open(path)?;
         Ok(Self {
             file: Arc::new(Mutex::new(file)),
         })
@@ -156,10 +150,7 @@ struct LevelSplitMakeWriter {
 }
 
 impl LevelSplitMakeWriter {
-    fn new(
-        main: Arc<Mutex<TruncatingWriter>>,
-        error: Arc<Mutex<ErrorWriter>>,
-    ) -> Self {
+    fn new(main: Arc<Mutex<TruncatingWriter>>, error: Arc<Mutex<ErrorWriter>>) -> Self {
         Self { main, error }
     }
 }
@@ -272,8 +263,7 @@ pub fn init_logging(log_dir: PathBuf) -> Result<DropGuard<()>, String> {
             .map_err(|e| format!("Failed to open main log: {}", e))?,
     ));
     let error = Arc::new(Mutex::new(
-        ErrorWriter::new(error_path)
-            .map_err(|e| format!("Failed to open error log: {}", e))?,
+        ErrorWriter::new(error_path).map_err(|e| format!("Failed to open error log: {}", e))?,
     ));
 
     let make_writer = LevelSplitMakeWriter::new(Arc::clone(&main), Arc::clone(&error));
@@ -338,4 +328,3 @@ pub struct DropGuard<T> {
 impl<T> Drop for DropGuard<T> {
     fn drop(&mut self) {}
 }
-

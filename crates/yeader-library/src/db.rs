@@ -118,17 +118,17 @@ impl Database {
             );
             ",
         )?;
-        ensure_column(&self.conn, "book_sources", "source_json", "TEXT NOT NULL DEFAULT '{}'")?;
+        ensure_column(
+            &self.conn,
+            "book_sources",
+            "source_json",
+            "TEXT NOT NULL DEFAULT '{}'",
+        )?;
         Ok(())
     }
 }
 
-fn ensure_column(
-    conn: &Connection,
-    table: &str,
-    column: &str,
-    decl: &str,
-) -> rusqlite::Result<()> {
+fn ensure_column(conn: &Connection, table: &str, column: &str, decl: &str) -> rusqlite::Result<()> {
     let mut stmt = conn.prepare(&format!("PRAGMA table_info({})", table))?;
     let exists = stmt
         .query_map([], |row| row.get::<_, String>(1))?

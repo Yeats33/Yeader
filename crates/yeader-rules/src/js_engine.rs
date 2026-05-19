@@ -1,7 +1,7 @@
 //! JavaScript evaluation via rhai.
 
-use std::collections::HashMap;
 use rhai::{Engine, Scope};
+use std::collections::HashMap;
 
 /// Evaluate a JS expression, returning the result as a string.
 ///
@@ -48,8 +48,8 @@ impl JsTemplateExpander {
     /// Expand a template string, evaluating each `{{...}}` expression.
     pub fn expand(&self, template: &str, local_vars: &[(&str, &str)]) -> String {
         static RE: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
-        let regex = RE
-            .get_or_init(|| regex::Regex::new(r"\{\{([^}]+)\}\}").expect("valid template regex"));
+        let regex =
+            RE.get_or_init(|| regex::Regex::new(r"\{\{([^}]+)\}\}").expect("valid template regex"));
 
         regex
             .replace_all(template, |captures: &regex::Captures<'_>| {

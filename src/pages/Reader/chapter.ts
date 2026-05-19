@@ -31,7 +31,12 @@ export async function loadCurrentChapter(
       content = await readLocalEpub(state.bookUrl, state.currentChapterIndex);
       epubBasePath = state.bookUrl.replace("local://epub/", "");
     } else {
-      content = await fetchContent(chapter.url, state.sourceUrl);
+      content = await fetchContent(
+        chapter.url,
+        state.bookUrl,
+        state.sourceUrl,
+        state.currentChapterIndex + 1,
+      );
     }
 
     // Resolve image paths for EPUB content or proxy HTTP images

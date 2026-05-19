@@ -18,6 +18,7 @@ import { renderSettingsPage, initSettingsHandlers } from "./pages/Settings.ts";
 import { AccountPage } from "./pages/Account.tsx";
 import { renderOnlineReaderPage, initOnlineReader } from "./pages/OnlineReader/index.ts";
 import { renderOnlineChapterPage, initOnlineChapter } from "./pages/OnlineReader/chapter.ts";
+import { renderSourceOpsPage, initSourceOpsHandlers } from "./pages/SourceOps.ts";
 
 const HIDE_NAV_ROUTES = ["/integration/so-novel/webui"];
 
@@ -81,6 +82,13 @@ function resolvePage(routePath: string): LegacyPageDefinition | null {
     return {
       render: renderSettingsPage,
       init: initSettingsHandlers,
+    };
+  }
+
+  if (matchRoute("/source-ops", { path: routePath })) {
+    return {
+      render: renderSourceOpsPage,
+      init: initSourceOpsHandlers,
     };
   }
 

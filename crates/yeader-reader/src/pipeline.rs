@@ -219,10 +219,8 @@ fn extract_chapters(analyzer: &AnalyzeRule, rule: &TocRule) -> Vec<Chapter> {
 
     for element in elements {
         // Create a sub-analyzer for each chapter element
-        let inner_analyzer = AnalyzeRule::from_content(
-            Content::Html(element.to_string()),
-            analyzer.base_url(),
-        );
+        let inner_analyzer =
+            AnalyzeRule::from_content(Content::Html(element.to_string()), analyzer.base_url());
 
         let title = inner_analyzer.get_string(chapter_name_rule);
         let url_raw = inner_analyzer.get_string(chapter_url_rule);
@@ -528,7 +526,12 @@ mod tests {
     #[test]
     fn fetch_toc_extracts_chapters() {
         let source = make_toc_source();
-        let chapters = fetch_toc(&source, "https://example.com/book/123", "https://example.com/book/123/toc", TOC_HTML);
+        let chapters = fetch_toc(
+            &source,
+            "https://example.com/book/123",
+            "https://example.com/book/123/toc",
+            TOC_HTML,
+        );
 
         assert_eq!(chapters.len(), 5);
         assert_eq!(chapters[0].title, "Chapter 1 - The Beginning");
@@ -543,7 +546,12 @@ mod tests {
     #[test]
     fn fetch_toc_handles_volume_markers() {
         let source = make_toc_source();
-        let chapters = fetch_toc(&source, "https://example.com/book/123", "https://example.com/book/123/toc", TOC_HTML);
+        let chapters = fetch_toc(
+            &source,
+            "https://example.com/book/123",
+            "https://example.com/book/123/toc",
+            TOC_HTML,
+        );
 
         // Volume marker (3rd item) has title from span.volume
         assert_eq!(chapters[2].title, "Volume 1");
@@ -554,7 +562,12 @@ mod tests {
     #[test]
     fn fetch_toc_handles_vip_chapters() {
         let source = make_toc_source();
-        let chapters = fetch_toc(&source, "https://example.com/book/123", "https://example.com/book/123/toc", TOC_HTML);
+        let chapters = fetch_toc(
+            &source,
+            "https://example.com/book/123",
+            "https://example.com/book/123/toc",
+            TOC_HTML,
+        );
 
         // VIP chapter (5th item) has both volume and vip markers
         assert_eq!(chapters[4].title, "VIP Content");
@@ -591,7 +604,12 @@ mod tests {
             extra: Default::default(),
         };
 
-        let chapters = fetch_toc(&source, "https://example.com/book/123", "https://example.com/toc", TOC_HTML);
+        let chapters = fetch_toc(
+            &source,
+            "https://example.com/book/123",
+            "https://example.com/toc",
+            TOC_HTML,
+        );
         assert!(chapters.is_empty());
     }
 
@@ -671,7 +689,12 @@ mod tests {
     #[test]
     fn fetch_content_extracts_html() {
         let source = make_content_source();
-        let content = fetch_content(&source, "https://example.com/book/123/chapter/1", CHAPTER_HTML, &[]);
+        let content = fetch_content(
+            &source,
+            "https://example.com/book/123/chapter/1",
+            CHAPTER_HTML,
+            &[],
+        );
 
         // Check that key content is present (HTML structure may vary)
         assert!(content.contains("First paragraph"));
@@ -686,7 +709,12 @@ mod tests {
             ReplaceRule::new("\\s+".to_string(), " ".to_string(), true, false), // normalize whitespace
             ReplaceRule::new("<[^>]+>".to_string(), "".to_string(), true, false), // strip HTML tags
         ];
-        let content = fetch_content(&source, "https://example.com/book/123/chapter/1", CHAPTER_HTML, &rules);
+        let content = fetch_content(
+            &source,
+            "https://example.com/book/123/chapter/1",
+            CHAPTER_HTML,
+            &rules,
+        );
 
         // HTML tags should be stripped
         assert!(!content.contains("<p>"));

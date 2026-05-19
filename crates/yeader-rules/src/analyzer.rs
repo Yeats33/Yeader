@@ -11,7 +11,7 @@ use crate::css::CssAnalyzer;
 use crate::js_engine::eval_js;
 use crate::json_path::{json_path_list, json_path_string_list};
 use crate::regex::{apply_replace, regex_get_elements};
-use crate::rule_parser::{split_source_rule, Mode, SourceRule};
+use crate::rule_parser::{Mode, SourceRule, split_source_rule};
 use crate::xpath::XPathAnalyzer;
 
 /// Represents an index specification extracted from a rule suffix.
@@ -39,9 +39,12 @@ impl IndexSpec {
                 }
                 vec![list[normalized as usize].clone()]
             }
-            IndexSpec::Range { start, end } => {
-                list.iter().skip(*start).take(*end - *start).cloned().collect()
-            }
+            IndexSpec::Range { start, end } => list
+                .iter()
+                .skip(*start)
+                .take(*end - *start)
+                .cloned()
+                .collect(),
         }
     }
 }
@@ -189,7 +192,8 @@ impl AnalyzeRule {
 
     /// Create a new analyzer with JSON content.
     pub fn new_json(content: &str, base_url: &str) -> Self {
-        let json: Value = serde_json::from_str(content).unwrap_or(Value::String(content.to_string()));
+        let json: Value =
+            serde_json::from_str(content).unwrap_or(Value::String(content.to_string()));
         Self {
             content: Content::Json(json),
             base_url: base_url.to_string(),
@@ -234,8 +238,8 @@ impl AnalyzeRule {
     /// Replaces `@get:{key}` with the stored variable value.
     fn expand_get_variables(&self, rule: &str) -> String {
         static RE: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
-        let regex = RE
-            .get_or_init(|| regex::Regex::new(r"@get:\{([^}]+)\}").expect("valid @get regex"));
+        let regex =
+            RE.get_or_init(|| regex::Regex::new(r"@get:\{([^}]+)\}").expect("valid @get regex"));
 
         regex
             .replace_all(rule, |captures: &regex::Captures<'_>| {
@@ -249,8 +253,8 @@ impl AnalyzeRule {
     /// Also handles `<n,m>` page overrides used in legado URL options.
     fn expand_url_variables(&self, rule: &str) -> String {
         static RE: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
-        let regex = RE
-            .get_or_init(|| regex::Regex::new(r"\{\{([^}]+)\}\}").expect("valid {{}} regex"));
+        let regex =
+            RE.get_or_init(|| regex::Regex::new(r"\{\{([^}]+)\}\}").expect("valid {{}} regex"));
 
         regex
             .replace_all(rule, |captures: &regex::Captures<'_>| {
@@ -286,7 +290,11 @@ impl AnalyzeRule {
                 if !current_num.is_empty() {
                     if let Ok(n) = current_num.parse::<i64>() {
                         numbers.push(n);
-                    } else if let Some(n) = self.variables.get(&*current_num).and_then(|s| s.parse::<i64>().ok()) {
+                    } else if let Some(n) = self
+                        .variables
+                        .get(&*current_num)
+                        .and_then(|s| s.parse::<i64>().ok())
+                    {
                         numbers.push(n);
                     }
                     current_num.clear();
@@ -298,7 +306,11 @@ impl AnalyzeRule {
         if !current_num.is_empty() {
             if let Ok(n) = current_num.parse::<i64>() {
                 numbers.push(n);
-            } else if let Some(n) = self.variables.get(&*current_num).and_then(|s| s.parse::<i64>().ok()) {
+            } else if let Some(n) = self
+                .variables
+                .get(&*current_num)
+                .and_then(|s| s.parse::<i64>().ok())
+            {
                 numbers.push(n);
             }
         }
@@ -313,7 +325,13 @@ impl AnalyzeRule {
                     '+' => res = res.wrapping_add(numbers[j + 1]),
                     '-' => res = res.wrapping_sub(numbers[j + 1]),
                     '*' => res = res.wrapping_mul(numbers[j + 1]),
-                    '/' => res = if numbers[j + 1] != 0 { res / numbers[j + 1] } else { 0 },
+                    '/' => {
+                        res = if numbers[j + 1] != 0 {
+                            res / numbers[j + 1]
+                        } else {
+                            0
+                        }
+                    }
                     _ => {}
                 }
             }
@@ -593,7 +611,10 @@ impl AnalyzeRule {
             }
             Mode::XPath => {
                 if self.content.is_html() {
-                    Some(XPathAnalyzer::new(self.content.as_str()).get_string_list(&source_rule.rule))
+                    Some(
+                        XPathAnalyzer::new(self.content.as_str())
+                            .get_string_list(&source_rule.rule),
+                    )
                 } else {
                     None
                 }
@@ -668,15 +689,15 @@ impl AnalyzeRule {
             Mode::Json => {
                 if self.content.is_json() {
                     // Try direct key access first (LinkedTreeMap-style)
-                    if let Some(elements) = self.try_json_direct_key_access_elements(&source_rule.rule) {
+                    if let Some(elements) =
+                        self.try_json_direct_key_access_elements(&source_rule.rule)
+                    {
                         return Some(elements);
                     }
                     let json_str = self.content.as_json_value()?.to_string();
                     let values = json_path_list(&json_str, &source_rule.rule);
-                    let elements: Vec<Content> = values
-                        .into_iter()
-                        .map(|v| Content::Json(v))
-                        .collect();
+                    let elements: Vec<Content> =
+                        values.into_iter().map(|v| Content::Json(v)).collect();
                     if elements.is_empty() {
                         None
                     } else {
@@ -705,7 +726,8 @@ impl AnalyzeRule {
             }
             Mode::XPath => {
                 if self.content.is_html() {
-                    let elements = XPathAnalyzer::new(self.content.as_str()).get_elements(&source_rule.rule);
+                    let elements =
+                        XPathAnalyzer::new(self.content.as_str()).get_elements(&source_rule.rule);
                     if elements.is_empty() {
                         None
                     } else {

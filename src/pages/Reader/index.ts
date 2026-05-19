@@ -52,9 +52,7 @@ export async function renderReaderPage(bookUrl: string): Promise<string> {
       const bookInfo = await fetchBookInfo(state.bookUrl, state.sourceUrl);
       state.bookInfo = bookInfo;
 
-      if (bookInfo.toc_url) {
-        state.chapters = await fetchToc(bookInfo.toc_url, state.sourceUrl);
-      }
+      state.chapters = await fetchToc(state.bookUrl, state.sourceUrl);
     } catch (e) {
       console.error("[Reader] fetchBookInfo failed:", e);
       state.bookInfo = { name: "未知书籍", author: "未知作者" };

@@ -439,8 +439,8 @@ const fn default_step() -> i64 {
 #[cfg(test)]
 mod tests {
     use super::{
-        parse_yeader_source_pack, YeaderCapabilityKind, YeaderMediaType, YeaderSelectorEngine,
-        YeaderSource,
+        YeaderCapabilityKind, YeaderMediaType, YeaderSelectorEngine, YeaderSource,
+        parse_yeader_source_pack,
     };
     use crate::{parse_book_sources, parse_rss_sources};
 

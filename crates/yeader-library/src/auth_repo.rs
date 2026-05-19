@@ -57,9 +57,7 @@ impl<'a> AuthRepo<'a> {
     }
 
     pub fn clear_session(&self) -> rusqlite::Result<()> {
-        self.db
-            .conn()
-            .execute("DELETE FROM auth_sessions", [])?;
+        self.db.conn().execute("DELETE FROM auth_sessions", [])?;
         Ok(())
     }
 
@@ -160,7 +158,8 @@ mod tests {
         let db = test_db();
         let repo = AuthRepo::new(&db);
 
-        repo.save_nonce("test-nonce", "2099-01-01T00:00:00Z").unwrap();
+        repo.save_nonce("test-nonce", "2099-01-01T00:00:00Z")
+            .unwrap();
         assert!(repo.consume_nonce("test-nonce").unwrap());
         assert!(!repo.consume_nonce("test-nonce").unwrap());
     }

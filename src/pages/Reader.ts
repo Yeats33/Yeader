@@ -104,13 +104,11 @@ export async function renderReaderPage(bookUrl: string): Promise<string> {
       bookInfo = { name: "未知书籍", author: "未知作者" };
     }
 
-    if (bookInfo.toc_url) {
-      try {
-        state.chapters = await fetchToc(bookInfo.toc_url, state.sourceUrl);
-      } catch (e) {
-        console.error("[Reader] fetchToc failed:", e);
-        state.chapters = [];
-      }
+    try {
+      state.chapters = await fetchToc(state.bookUrl, state.sourceUrl);
+    } catch (e) {
+      console.error("[Reader] fetchToc failed:", e);
+      state.chapters = [];
     }
   }
 
@@ -584,7 +582,12 @@ async function loadCurrentChapter(container: HTMLElement) {
       content = await readLocalEpub(state.bookUrl, state.currentChapterIndex);
     } else {
       // Network chapter
-      content = await fetchContent(chapter.url, state.sourceUrl);
+      content = await fetchContent(
+        chapter.url,
+        state.bookUrl,
+        state.sourceUrl,
+        state.currentChapterIndex + 1,
+      );
     }
     readerBody.innerHTML = `<article class="chapter-content">${content}</article>`;
     applyReaderStyleToContent();

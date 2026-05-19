@@ -6577,15 +6577,17 @@ dependencies = [
 
 [[package]]
 name = "yeader"
-version = "0.1.3-beta6"
+version = "0.2.1-beta1"
 dependencies = [
  "base64 0.22.1",
  "chrono",
  "hex",
+ "http",
  "k256",
  "notify",
  "notify-debouncer-mini",
  "reqwest 0.12.28",
+ "scraper",
  "serde",
  "serde_json",
  "sha3",
@@ -6609,7 +6611,7 @@ dependencies = [
 
 [[package]]
 name = "yeader-backup"
-version = "0.1.3-beta6"
+version = "0.2.1-beta1"
 dependencies = [
  "serde_json",
  "yeader-models",
@@ -6618,7 +6620,7 @@ dependencies = [
 
 [[package]]
 name = "yeader-library"
-version = "0.1.3-beta6"
+version = "0.2.1-beta1"
 dependencies = [
  "rusqlite",
  "serde_json",
@@ -6627,7 +6629,7 @@ dependencies = [
 
 [[package]]
 name = "yeader-models"
-version = "0.1.3-beta6"
+version = "0.2.1-beta1"
 dependencies = [
  "serde",
  "serde_json",
@@ -6635,7 +6637,7 @@ dependencies = [
 
 [[package]]
 name = "yeader-net"
-version = "0.1.3-beta6"
+version = "0.2.1-beta1"
 dependencies = [
  "chardetng",
  "encoding_rs",
@@ -6653,14 +6655,14 @@ dependencies = [
 
 [[package]]
 name = "yeader-protocol"
-version = "0.1.3-beta6"
+version = "0.2.1-beta1"
 dependencies = [
  "yeader-models",
 ]
 
 [[package]]
 name = "yeader-reader"
-version = "0.1.3-beta6"
+version = "0.2.1-beta1"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -6677,7 +6679,7 @@ dependencies = [
 
 [[package]]
 name = "yeader-rules"
-version = "0.1.3-beta6"
+version = "0.2.1-beta1"
 dependencies = [
  "http",
  "regex",

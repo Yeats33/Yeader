@@ -50,7 +50,12 @@ pub struct AnalyzedUrl {
 }
 
 /// Evaluate a JS expression using rhai.
-fn eval_js_expr(js_str: &str, result: Option<&str>, key: Option<&str>, page: Option<i32>) -> String {
+fn eval_js_expr(
+    js_str: &str,
+    result: Option<&str>,
+    key: Option<&str>,
+    page: Option<i32>,
+) -> String {
     let engine = rhai::Engine::new();
     let mut scope = rhai::Scope::new();
 
@@ -220,7 +225,12 @@ fn find_sequence(chars: &[char], seq: &str) -> Option<usize> {
 /// Extract balanced braces content, returning (content, end_position).
 /// Uses balanced-brace counting that respects quotes and escaping.
 /// Corresponds to `chompCodeBalanced` in `RuleAnalyzer.kt` (lines 91-126).
-fn extract_balanced_braces(chars: &[char], start: usize, open: char, close: char) -> Option<(String, usize)> {
+fn extract_balanced_braces(
+    chars: &[char],
+    start: usize,
+    open: char,
+    close: char,
+) -> Option<(String, usize)> {
     let len = chars.len();
     let mut pos = start;
     let mut depth = 0;
@@ -344,8 +354,7 @@ fn parse_url_with_options(url_with_options: &str, key: &str, page: i32) -> Resul
 /// Encode a string for use in a URL query component (RFC 3986).
 fn encode_url_component(s: &str) -> String {
     use percent_encoding::NON_ALPHANUMERIC;
-    percent_encoding::percent_encode(s.as_bytes(), NON_ALPHANUMERIC)
-        .to_string()
+    percent_encoding::percent_encode(s.as_bytes(), NON_ALPHANUMERIC).to_string()
 }
 
 /// Substitute variables in a URL string (no JS expansion, just key/page).
@@ -410,7 +419,10 @@ fn substitute_page_number(input: &str, page: i32) -> String {
                 // Multiple values: use page as 1-indexed index
                 let pages_len = pages.len() as i32;
                 let page_idx = (page - 1).min(pages_len - 1).max(0) as usize;
-                pages.get(page_idx).unwrap_or(&pages.last().unwrap_or(&"")).to_string()
+                pages
+                    .get(page_idx)
+                    .unwrap_or(&pages.last().unwrap_or(&""))
+                    .to_string()
             }
         })
         .to_string()

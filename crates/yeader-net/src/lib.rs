@@ -5,7 +5,7 @@ pub mod encoding;
 pub mod url_analyzer;
 
 pub use client::{HttpClient, HttpError, HttpResponse};
-pub use url_analyzer::{analyze_url, AnalyzedUrl, Method};
+pub use url_analyzer::{AnalyzedUrl, Method, analyze_url};
 
 use reqwest::header::HeaderMap;
 use yeader_models::LegacyBookSource;
@@ -25,7 +25,11 @@ pub fn resolve_book_url(source: &LegacyBookSource, input: &str) -> String {
     let base = source.book_source_url.trim_end_matches('/');
     if input.starts_with('/') {
         // Absolute path — prepend scheme+host
-        if let Some(domain_end) = base.find("://").map(|i| base[i + 3..].find('/').map(|j| i + 3 + j)).flatten() {
+        if let Some(domain_end) = base
+            .find("://")
+            .map(|i| base[i + 3..].find('/').map(|j| i + 3 + j))
+            .flatten()
+        {
             let host = &base[..domain_end];
             return format!("{}{}", host, input);
         }

@@ -64,21 +64,16 @@ fn build_inline_map(epub: &Epub) -> HashMap<String, String> {
 
 /// Resolve a possibly-relative href against a base path.
 fn resolve_href(base_href: &str, src: &str) -> String {
-    let base = base_href
-        .rsplit_once('/')
-        .map(|(dir, _)| dir)
-        .unwrap_or("");
+    let base = base_href.rsplit_once('/').map(|(dir, _)| dir).unwrap_or("");
 
-    let combined = if src.starts_with('/')
-        || src.starts_with("http://")
-        || src.starts_with("https://")
-    {
-        src.to_string()
-    } else if base.is_empty() {
-        src.to_string()
-    } else {
-        format!("{}/{}", base, src)
-    };
+    let combined =
+        if src.starts_with('/') || src.starts_with("http://") || src.starts_with("https://") {
+            src.to_string()
+        } else if base.is_empty() {
+            src.to_string()
+        } else {
+            format!("{}/{}", base, src)
+        };
 
     let segments: Vec<&str> = combined.split('/').collect();
     let mut resolved: Vec<&str> = Vec::new();
@@ -117,8 +112,8 @@ fn inline_images(content: &str, href: &str, inline_map: &HashMap<String, String>
 
 /// Parse an EPUB file at the given path.
 pub fn read_epub(path: &Path) -> std::io::Result<EpubBook> {
-    let epub = Epub::open(path)
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+    let epub =
+        Epub::open(path).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
 
     let title = epub
         .metadata()
@@ -191,14 +186,11 @@ pub fn read_epub(path: &Path) -> std::io::Result<EpubBook> {
     };
 
     // Try to get cover image
-    let cover_data = epub
-        .manifest()
-        .cover_image()
-        .and_then(|img| {
-            let data = img.read_bytes().ok()?;
-            let media_type = img.media_type().to_string();
-            Some(CoverData { data, media_type })
-        });
+    let cover_data = epub.manifest().cover_image().and_then(|img| {
+        let data = img.read_bytes().ok()?;
+        let media_type = img.media_type().to_string();
+        Some(CoverData { data, media_type })
+    });
 
     Ok(EpubBook {
         title,

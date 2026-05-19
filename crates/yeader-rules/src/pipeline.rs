@@ -4,7 +4,7 @@
 //! book search results, book info, table of contents, and chapter content.
 
 use yeader_models::LegacyBookSource;
-use yeader_net::{analyze_url, HttpClient, Method};
+use yeader_net::{HttpClient, Method, analyze_url};
 
 use crate::analyzer::AnalyzeRule;
 
@@ -81,19 +81,19 @@ pub async fn search_books(
 
     // Make HTTP request
     let response = match analyzed.method {
-        Method::GET => {
-            client.get(&analyzed.url, &analyzed.headers).await?
-        }
+        Method::GET => client.get(&analyzed.url, &analyzed.headers).await?,
         Method::POST => {
             if let Some(ref body) = analyzed.body {
-                client.post_json(&analyzed.url, body, &analyzed.headers).await?
+                client
+                    .post_json(&analyzed.url, body, &analyzed.headers)
+                    .await?
             } else {
-                client.post_form(&analyzed.url, "", &analyzed.headers).await?
+                client
+                    .post_form(&analyzed.url, "", &analyzed.headers)
+                    .await?
             }
         }
-        Method::HEAD => {
-            client.head(&analyzed.url, &analyzed.headers).await?
-        }
+        Method::HEAD => client.head(&analyzed.url, &analyzed.headers).await?,
     };
 
     // Create analyzer with response body
@@ -254,56 +254,39 @@ pub async fn fetch_book_info(
         .map(|r| analyzer.get_string(r).trim().to_string())
         .unwrap_or_default();
 
-    let intro = rule_book_info
-        .intro
-        .as_ref()
-        .and_then(|r| {
-            let s = analyzer.get_string(r).trim().to_string();
-            if s.is_empty() { None } else { Some(s) }
-        });
+    let intro = rule_book_info.intro.as_ref().and_then(|r| {
+        let s = analyzer.get_string(r).trim().to_string();
+        if s.is_empty() { None } else { Some(s) }
+    });
 
-    let kind = rule_book_info
-        .kind
-        .as_ref()
-        .and_then(|r| {
-            let s = analyzer.get_string(r).trim().to_string();
-            if s.is_empty() { None } else { Some(s) }
-        });
+    let kind = rule_book_info.kind.as_ref().and_then(|r| {
+        let s = analyzer.get_string(r).trim().to_string();
+        if s.is_empty() { None } else { Some(s) }
+    });
 
-    let cover_url = rule_book_info
-        .cover_url
-        .as_ref()
-        .and_then(|r| {
-            let s = analyzer.get_string(r).trim().to_string();
-            if s.is_empty() { None } else { Some(s) }
-        });
+    let cover_url = rule_book_info.cover_url.as_ref().and_then(|r| {
+        let s = analyzer.get_string(r).trim().to_string();
+        if s.is_empty() { None } else { Some(s) }
+    });
 
-    let toc_url = rule_book_info
-        .toc_url
-        .as_ref()
-        .and_then(|r| {
-            let s = analyzer.get_string(r).trim().to_string();
-            if s.is_empty() { None } else { Some(s) }
-        });
+    let toc_url = rule_book_info.toc_url.as_ref().and_then(|r| {
+        let s = analyzer.get_string(r).trim().to_string();
+        if s.is_empty() { None } else { Some(s) }
+    });
 
-    let last_chapter = rule_book_info
-        .last_chapter
-        .as_ref()
-        .and_then(|r| {
-            let s = analyzer.get_string(r).trim().to_string();
-            if s.is_empty() { None } else { Some(s) }
-        });
+    let last_chapter = rule_book_info.last_chapter.as_ref().and_then(|r| {
+        let s = analyzer.get_string(r).trim().to_string();
+        if s.is_empty() { None } else { Some(s) }
+    });
 
-    let word_count = rule_book_info
-        .word_count
-        .as_ref()
-        .and_then(|r| {
-            let s = analyzer.get_string(r).trim().to_string();
-            if s.is_empty() { None } else { Some(s) }
-        });
+    let word_count = rule_book_info.word_count.as_ref().and_then(|r| {
+        let s = analyzer.get_string(r).trim().to_string();
+        if s.is_empty() { None } else { Some(s) }
+    });
 
     let download_urls: Vec<String> = if let Some(rule) = rule_book_info.download_urls.as_deref() {
-        analyzer.get_string_list(rule)
+        analyzer
+            .get_string_list(rule)
             .into_iter()
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty())
@@ -351,11 +334,12 @@ pub async fn fetch_toc(
             .ok_or(PipelineError::MissingChapterListRule)?;
 
         // Support reverse order prefix: "-:"
-        let (reversed, list_rule): (bool, &str) = if let Some(rest) = chapter_list_rule.strip_prefix("-:") {
-            (true, rest)
-        } else {
-            (false, chapter_list_rule.as_str())
-        };
+        let (reversed, list_rule): (bool, &str) =
+            if let Some(rest) = chapter_list_rule.strip_prefix("-:") {
+                (true, rest)
+            } else {
+                (false, chapter_list_rule.as_str())
+            };
 
         let elements = analyzer.get_elements(list_rule);
         let chapter_elements = if reversed {
@@ -399,13 +383,10 @@ pub async fn fetch_toc(
                 .map(|v| !v.is_empty() && v != "0" && v != "false")
                 .unwrap_or(false);
 
-            let update_time = rule_toc
-                .update_time
-                .as_ref()
-                .and_then(|r| {
-                    let s = elem_analyzer.get_string(r).trim().to_string();
-                    if s.is_empty() { None } else { Some(s) }
-                });
+            let update_time = rule_toc.update_time.as_ref().and_then(|r| {
+                let s = elem_analyzer.get_string(r).trim().to_string();
+                if s.is_empty() { None } else { Some(s) }
+            });
 
             all_chapters.push(Chapter {
                 title,
@@ -417,13 +398,10 @@ pub async fn fetch_toc(
         }
 
         // Check for next page
-        let next_url = rule_toc
-            .next_toc_url
-            .as_ref()
-            .and_then(|r| {
-                let s = analyzer.get_string(r).trim().to_string();
-                if s.is_empty() { None } else { Some(s) }
-            });
+        let next_url = rule_toc.next_toc_url.as_ref().and_then(|r| {
+            let s = analyzer.get_string(r).trim().to_string();
+            if s.is_empty() { None } else { Some(s) }
+        });
 
         match next_url {
             Some(url) if !url.is_empty() => {
@@ -489,13 +467,10 @@ pub async fn fetch_content(
         }
 
         // Check for next page
-        let next_url = rule_content
-            .next_content_url
-            .as_ref()
-            .and_then(|r| {
-                let s = analyzer.get_string(r).trim().to_string();
-                if s.is_empty() { None } else { Some(s) }
-            });
+        let next_url = rule_content.next_content_url.as_ref().and_then(|r| {
+            let s = analyzer.get_string(r).trim().to_string();
+            if s.is_empty() { None } else { Some(s) }
+        });
 
         match next_url {
             Some(url) if !url.is_empty() => {

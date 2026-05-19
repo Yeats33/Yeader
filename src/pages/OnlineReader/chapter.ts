@@ -28,9 +28,7 @@ export async function initOnlineChapter(
     const bookInfo = await fetchBookInfo(state.bookUrl, state.sourceUrl);
     state.bookInfo = bookInfo;
 
-    const chapters = bookInfo.toc_url
-      ? await fetchToc(bookInfo.toc_url, state.sourceUrl)
-      : [];
+    const chapters = await fetchToc(state.bookUrl, state.sourceUrl);
     state.chapters = chapters;
 
     const currentIndex = chapters.findIndex((ch) => ch.url === chapterUrl);
@@ -62,7 +60,12 @@ export async function initOnlineChapter(
       readerBody.innerHTML = '<div class="loading">加载中...</div>';
 
       try {
-        const content = await fetchContent(chapter.url, state.sourceUrl);
+        const content = await fetchContent(
+          chapter.url,
+          state.bookUrl,
+          state.sourceUrl,
+          state.currentChapterIndex + 1,
+        );
         readerBody.innerHTML = `<article class="chapter-content">${content}</article>`;
 
         const { applyReaderStyleToContent } = await import("../Reader/style.ts");

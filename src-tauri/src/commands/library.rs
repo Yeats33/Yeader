@@ -24,15 +24,16 @@ pub fn import_yeader_source_pack_json(
     state: State<'_, AppState>,
     json: String,
 ) -> Result<Vec<YeaderSource>, String> {
-    let pack =
-        parse_yeader_source_pack(&json).map_err(|e| format!("Failed to parse source pack: {}", e))?;
+    let pack = parse_yeader_source_pack(&json)
+        .map_err(|e| format!("Failed to parse source pack: {}", e))?;
     if pack.format != "yeader.source-pack" {
         return Err(format!("Unsupported source pack format: {}", pack.format));
     }
 
     let db = state.db.lock().unwrap();
     let repo = yeader_library::YeaderSourceRepo::new(&db);
-    repo.upsert_batch(&pack.sources).map_err(|e| e.to_string())?;
+    repo.upsert_batch(&pack.sources)
+        .map_err(|e| e.to_string())?;
     Ok(pack.sources)
 }
 

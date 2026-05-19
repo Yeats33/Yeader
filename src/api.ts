@@ -174,28 +174,35 @@ export async function searchBooks(
 
 export async function fetchBookInfo(
   bookUrl: string,
-  sourceUrl: string,
+  sourceId: string,
 ): Promise<BookInfo> {
-  return await invokeAdapter<BookInfo>("fetch_book_info", { bookUrl, sourceUrl });
+  return await invokeAdapter<BookInfo>("fetch_book_info", { bookUrl, sourceId });
 }
 
 export async function fetchToc(
-  tocUrl: string,
-  sourceUrl: string,
+  bookUrl: string,
+  sourceId: string,
 ): Promise<Chapter[]> {
   try {
-    return await invokeAdapter<Chapter[]>("fetch_toc", { tocUrl, sourceUrl });
+    return await invokeAdapter<Chapter[]>("fetch_toc", { bookUrl, sourceId });
   } catch (e) {
-    throw new Error(`fetch_toc failed for ${tocUrl}: ${e instanceof Error ? e.message : String(e)}`);
+    throw new Error(`fetch_toc failed for ${bookUrl}: ${e instanceof Error ? e.message : String(e)}`);
   }
 }
 
 export async function fetchContent(
   chapterUrl: string,
-  sourceUrl: string,
+  bookUrl: string,
+  sourceId: string,
+  chapterIndex?: number,
 ): Promise<string> {
   try {
-    return await invokeAdapter<string>("fetch_content", { chapterUrl, sourceUrl });
+    return await invokeAdapter<string>("fetch_content", {
+      chapterUrl,
+      bookUrl,
+      sourceId,
+      chapterIndex,
+    });
   } catch (e) {
     throw new Error(`fetch_content failed for ${chapterUrl}: ${e instanceof Error ? e.message : String(e)}`);
   }

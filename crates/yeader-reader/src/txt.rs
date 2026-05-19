@@ -52,7 +52,8 @@ impl Default for ChapterSplitConfig {
         // Default pattern matches Chinese chapter titles like "第一章", "第1章"
         // and English patterns like "Chapter 1", "Chapter One"
         Self {
-            pattern: r"^(第[一二三四五六七八九十百千\d]+章|Chapter\s+[\dIVXLCDMivxlcdm]+)".to_string(),
+            pattern: r"^(第[一二三四五六七八九十百千\d]+章|Chapter\s+[\dIVXLCDMivxlcdm]+)"
+                .to_string(),
             include_title: false,
         }
     }
@@ -77,8 +78,8 @@ pub fn read_txt(path: &Path) -> std::io::Result<TxtBook> {
     file.read_to_end(&mut bytes)?;
 
     let detected = detect_encoding(&bytes);
-    let encoding = encoding_rs::Encoding::for_label(detected.name.as_bytes())
-        .unwrap_or(encoding_rs::UTF_8);
+    let encoding =
+        encoding_rs::Encoding::for_label(detected.name.as_bytes()).unwrap_or(encoding_rs::UTF_8);
     let (decoded, _, had_errors) = encoding.decode(&bytes);
 
     let text = if !had_errors {
@@ -88,7 +89,10 @@ pub fn read_txt(path: &Path) -> std::io::Result<TxtBook> {
         encoding_rs::UTF_8.decode(&bytes).0.into_owned()
     };
 
-    Ok(parse_txt(&text, path.file_stem().and_then(|s| s.to_str()).unwrap_or("")))
+    Ok(parse_txt(
+        &text,
+        path.file_stem().and_then(|s| s.to_str()).unwrap_or(""),
+    ))
 }
 
 /// Parse TXT content into chapters using title detection.
@@ -98,7 +102,11 @@ pub fn parse_txt(content: &str, filename: &str) -> TxtBook {
 }
 
 /// Parse TXT content with custom chapter splitting configuration.
-pub fn parse_txt_with_config(content: &str, filename: &str, config: &ChapterSplitConfig) -> TxtBook {
+pub fn parse_txt_with_config(
+    content: &str,
+    filename: &str,
+    config: &ChapterSplitConfig,
+) -> TxtBook {
     let chapter_regex = regex::Regex::new(&config.pattern).ok();
     let lines: Vec<&str> = content.lines().collect();
 
@@ -114,7 +122,13 @@ fn extract_title_from_content(lines: &[&str], filename: &str) -> String {
         let trimmed = line.trim();
         if !trimmed.is_empty() {
             // Check if first line looks like a title (short, no punctuation ending)
-            if trimmed.len() < 100 && !trimmed.ends_with('.') && !trimmed.ends_with('，') && !trimmed.ends_with('。') && !trimmed.ends_with('!') && !trimmed.ends_with('？') {
+            if trimmed.len() < 100
+                && !trimmed.ends_with('.')
+                && !trimmed.ends_with('，')
+                && !trimmed.ends_with('。')
+                && !trimmed.ends_with('!')
+                && !trimmed.ends_with('？')
+            {
                 return trimmed.to_string();
             }
         }
@@ -134,7 +148,9 @@ fn split_into_chapters(
 
     for line in lines {
         let trimmed = line.trim();
-        let is_chapter_title = chapter_regex.as_ref().map_or(false, |r| r.is_match(trimmed));
+        let is_chapter_title = chapter_regex
+            .as_ref()
+            .map_or(false, |r| r.is_match(trimmed));
 
         if is_chapter_title {
             // Save previous chapter if it has content
@@ -216,10 +232,16 @@ mod tests {
         assert!(book.chapters.len() >= 3);
 
         // First actual chapter should be 第一章
-        let first_actual = book.chapters.iter().find(|c| c.title.as_deref() == Some("第一章"));
+        let first_actual = book
+            .chapters
+            .iter()
+            .find(|c| c.title.as_deref() == Some("第一章"));
         assert!(first_actual.is_some(), "Should have 第一章 chapter");
 
-        let second_actual = book.chapters.iter().find(|c| c.title.as_deref() == Some("第二章"));
+        let second_actual = book
+            .chapters
+            .iter()
+            .find(|c| c.title.as_deref() == Some("第二章"));
         assert!(second_actual.is_some(), "Should have 第二章 chapter");
     }
 

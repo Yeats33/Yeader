@@ -8,18 +8,35 @@ use crate::{
     style::{load_style_from_local_storage, save_style_to_local_storage},
 };
 
+use super::search::{fetch_book_info_yeader, fetch_content_yeader, fetch_toc_yeader};
 use crate::state::AppState;
 
-const LEGACY_BOOK_SOURCE_COMPAT_DISABLED: &str =
-    "旧书源兼容已暂时关闭，等待 Yeader 自有书源格式。";
+const LEGACY_BOOK_SOURCE_COMPAT_DISABLED: &str = "旧书源兼容已暂时关闭，等待 Yeader 自有书源格式。";
 
-#[tauri::command]
+#[tauri::command(rename_all = "camelCase")]
 pub async fn fetch_book_info(
-    _state: State<'_, AppState>,
-    _book_url: String,
-    _source_url: String,
+    state: State<'_, AppState>,
+    book_url: String,
+    source_id: String,
 ) -> Result<ModelBookInfo, String> {
-    Err(LEGACY_BOOK_SOURCE_COMPAT_DISABLED.into())
+    info!(
+        "fetch_book_info called: book_url={}, source_id={}",
+        book_url, source_id
+    );
+
+    // Look up the Yeader source
+    let source = {
+        let db = state.db.lock().unwrap();
+        let repo = yeader_library::YeaderSourceRepo::new(&db);
+        repo.find_by_id(&source_id)
+            .map_err(|e| e.to_string())?
+            .ok_or_else(|| {
+                warn!("fetch_book_info: source not found: {}", source_id);
+                format!("Book source not found: {}", source_id)
+            })?
+    };
+
+    fetch_book_info_yeader(&source, &book_url).await
 }
 
 #[allow(dead_code)]
@@ -28,7 +45,10 @@ async fn fetch_book_info_legacy(
     book_url: String,
     source_url: String,
 ) -> Result<ModelBookInfo, String> {
-    info!("fetch_book_info called: book_url={}, source_url={}", book_url, source_url);
+    info!(
+        "fetch_book_info called: book_url={}, source_url={}",
+        book_url, source_url
+    );
 
     // Look up the book source
     let source = {
@@ -50,7 +70,10 @@ async fn fetch_book_info_legacy(
         .get(&resolved_url, &yeader_net::header_map_from_source(&source))
         .await
         .map_err(|e| {
-            warn!("fetch_book_info HTTP failed: resolved={}, error={}", resolved_url, e);
+            warn!(
+                "fetch_book_info HTTP failed: resolved={}, error={}",
+                resolved_url, e
+            );
             format!("HTTP error: {}", e)
         })?;
 
@@ -58,12 +81,22 @@ async fn fetch_book_info_legacy(
     let preview: String = response.body.chars().take(200).collect();
     info!("fetch_book_info: body preview: {}", preview);
     let info = yeader_reader::fetch_book_info(&source, &book_url, &response.body);
-    info!("fetch_book_info: parsed info: title={}, toc_url={}, has_rule={}", info.title, info.toc_url, source.rule_book_info.is_some());
+    info!(
+        "fetch_book_info: parsed info: title={}, toc_url={}, has_rule={}",
+        info.title,
+        info.toc_url,
+        source.rule_book_info.is_some()
+    );
     if source.rule_book_info.is_some() {
-        info!("fetch_book_info: rule init={:?}, name={:?}, toc_url={:?}",
+        info!(
+            "fetch_book_info: rule init={:?}, name={:?}, toc_url={:?}",
             source.rule_book_info.as_ref().and_then(|r| r.init.as_ref()),
             source.rule_book_info.as_ref().and_then(|r| r.name.as_ref()),
-            source.rule_book_info.as_ref().and_then(|r| r.toc_url.as_ref()));
+            source
+                .rule_book_info
+                .as_ref()
+                .and_then(|r| r.toc_url.as_ref())
+        );
     }
 
     Ok(ModelBookInfo {
@@ -78,13 +111,26 @@ async fn fetch_book_info_legacy(
     })
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "camelCase")]
 pub async fn fetch_toc(
-    _state: State<'_, AppState>,
-    _toc_url: String,
-    _source_url: String,
+    state: State<'_, AppState>,
+    book_url: String,
+    source_id: String,
 ) -> Result<Vec<ModelChapter>, String> {
-    Err(LEGACY_BOOK_SOURCE_COMPAT_DISABLED.into())
+    info!(
+        "fetch_toc called: book_url={}, source_id={}",
+        book_url, source_id
+    );
+
+    let source = {
+        let db = state.db.lock().unwrap();
+        let repo = yeader_library::YeaderSourceRepo::new(&db);
+        repo.find_by_id(&source_id)
+            .map_err(|e| e.to_string())?
+            .ok_or_else(|| format!("Book source not found: {}", source_id))?
+    };
+
+    fetch_toc_yeader(&source, &book_url).await
 }
 
 #[allow(dead_code)]
@@ -108,7 +154,10 @@ async fn fetch_toc_legacy(
         .get(&resolved_url, &yeader_net::header_map_from_source(&source))
         .await
         .map_err(|e| {
-            warn!("fetch_toc HTTP failed: resolved={}, error={}", resolved_url, e);
+            warn!(
+                "fetch_toc HTTP failed: resolved={}, error={}",
+                resolved_url, e
+            );
             format!("HTTP error: {}", e)
         })?;
 
@@ -126,13 +175,28 @@ async fn fetch_toc_legacy(
         .collect())
 }
 
-#[tauri::command]
+#[tauri::command(rename_all = "camelCase")]
 pub async fn fetch_content(
-    _state: State<'_, AppState>,
-    _chapter_url: String,
-    _source_url: String,
+    state: State<'_, AppState>,
+    chapter_url: String,
+    book_url: String,
+    source_id: String,
+    chapter_index: Option<usize>,
 ) -> Result<String, String> {
-    Err(LEGACY_BOOK_SOURCE_COMPAT_DISABLED.into())
+    info!(
+        "fetch_content called: chapter_url={}, book_url={}, source_id={}",
+        chapter_url, book_url, source_id
+    );
+
+    let source = {
+        let db = state.db.lock().unwrap();
+        let repo = yeader_library::YeaderSourceRepo::new(&db);
+        repo.find_by_id(&source_id)
+            .map_err(|e| e.to_string())?
+            .ok_or_else(|| format!("Book source not found: {}", source_id))?
+    };
+
+    fetch_content_yeader(&source, &chapter_url, &book_url, chapter_index).await
 }
 
 #[allow(dead_code)]
@@ -163,8 +227,7 @@ async fn fetch_content_legacy(
             format!("HTTP error: {}", e)
         })?;
 
-    let content =
-        yeader_reader::fetch_content(&source, &chapter_url, &response.body, &[]);
+    let content = yeader_reader::fetch_content(&source, &chapter_url, &response.body, &[]);
 
     Ok(content)
 }
@@ -175,8 +238,8 @@ pub async fn import_epub(
     path: String,
 ) -> Result<yeader_models::Book, String> {
     use std::path::Path;
-    use yeader_reader::epub::read_epub;
     use uuid::Uuid;
+    use yeader_reader::epub::read_epub;
 
     // Validate file exists
     let source_path = Path::new(&path);
@@ -275,8 +338,8 @@ pub async fn import_epub_url(
     url: String,
 ) -> Result<yeader_models::Book, String> {
     use std::io::Write;
-    use yeader_reader::epub::read_epub;
     use uuid::Uuid;
+    use yeader_reader::epub::read_epub;
 
     // Download the file
     let client = reqwest::Client::builder()
@@ -291,7 +354,10 @@ pub async fn import_epub_url(
         .map_err(|e| format!("Failed to download EPUB: {}", e))?;
 
     if !response.status().is_success() {
-        return Err(format!("Download failed with status: {}", response.status()));
+        return Err(format!(
+            "Download failed with status: {}",
+            response.status()
+        ));
     }
 
     let bytes = response
@@ -308,7 +374,10 @@ pub async fn import_epub_url(
     file.write_all(&bytes).map_err(|e| e.to_string())?;
 
     // Import using the same logic as import_epub
-    let dest_path = app_dir.join("epub_library").join(&book_id).join(format!("{}.epub", book_id));
+    let dest_path = app_dir
+        .join("epub_library")
+        .join(&book_id)
+        .join(format!("{}.epub", book_id));
     std::fs::create_dir_all(dest_path.parent().unwrap()).map_err(|e| e.to_string())?;
     std::fs::copy(&temp_path, &dest_path).map_err(|e| e.to_string())?;
     std::fs::remove_file(&temp_path).ok();
@@ -360,10 +429,7 @@ pub async fn import_epub_url(
                 "epub_path".to_string(),
                 serde_json::json!(dest_path.to_string_lossy().to_string()),
             );
-            map.insert(
-                "epub_url".to_string(),
-                serde_json::json!(url),
-            );
+            map.insert("epub_url".to_string(), serde_json::json!(url));
             map.insert(
                 "chapter_count".to_string(),
                 serde_json::json!(epub_book.chapters.len()),
@@ -419,8 +485,8 @@ pub async fn read_local_epub(
         .ok_or("EPUB path not found in book metadata")?;
 
     // Read EPUB
-    let epub_book =
-        read_epub(std::path::Path::new(epub_path)).map_err(|e| format!("Failed to read EPUB: {}", e))?;
+    let epub_book = read_epub(std::path::Path::new(epub_path))
+        .map_err(|e| format!("Failed to read EPUB: {}", e))?;
 
     // Return chapter content
     epub_book
@@ -483,8 +549,8 @@ pub async fn get_epub_toc(
         .and_then(|v| v.as_str())
         .ok_or("EPUB path not found")?;
 
-    let epub_book =
-        read_epub(std::path::Path::new(epub_path)).map_err(|e| format!("Failed to read EPUB: {}", e))?;
+    let epub_book = read_epub(std::path::Path::new(epub_path))
+        .map_err(|e| format!("Failed to read EPUB: {}", e))?;
 
     let chapters: Vec<yeader_models::Chapter> = epub_book
         .chapters

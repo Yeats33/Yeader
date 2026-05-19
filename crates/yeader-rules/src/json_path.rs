@@ -21,7 +21,10 @@ enum Token {
         value: String,
         negate: bool,
     },
-    Slice { start: Option<isize>, end: Option<isize> },
+    Slice {
+        start: Option<isize>,
+        end: Option<isize>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -110,7 +113,12 @@ fn tokenize(path: &str) -> Result<Vec<Token>, ()> {
                         (inner, false)
                     };
                     let filter = parse_filter(filter)?;
-                    tokens.push(Token::Filter { key: filter.key, op: filter.op, value: filter.value, negate });
+                    tokens.push(Token::Filter {
+                        key: filter.key,
+                        op: filter.op,
+                        value: filter.value,
+                        negate,
+                    });
                 } else if inner.contains(':') {
                     // Slice: [start:end]
                     let parts: Vec<&str> = inner.split(':').collect();
@@ -176,7 +184,12 @@ fn apply_token<'a>(values: Vec<&'a Value>, token: &Token) -> Vec<&'a Value> {
             .into_iter()
             .flat_map(|value| recursive_values(value, key))
             .collect(),
-        Token::Filter { key, op, value, negate } => {
+        Token::Filter {
+            key,
+            op,
+            value,
+            negate,
+        } => {
             let filter_val = value.trim_matches(|c| c == '\'' || c == '"');
             let results: Vec<&'a Value> = values
                 .into_iter()
@@ -188,27 +201,35 @@ fn apply_token<'a>(values: Vec<&'a Value>, token: &Token) -> Vec<&'a Value> {
                 results
             }
         }
-        Token::Slice { start, end } => {
-            values
-                .into_iter()
-                .filter_map(|value| match value {
-                    Value::Array(items) => {
-                        let len = items.len();
-                        let s = start.map(|v| normalize_index(v, len).unwrap_or(0)).unwrap_or(0);
-                        let e = end.map(|v| {
+        Token::Slice { start, end } => values
+            .into_iter()
+            .filter_map(|value| match value {
+                Value::Array(items) => {
+                    let len = items.len();
+                    let s = start
+                        .map(|v| normalize_index(v, len).unwrap_or(0))
+                        .unwrap_or(0);
+                    let e = end
+                        .map(|v| {
                             if v < 0 {
                                 (len as isize + v).max(0) as usize
                             } else {
                                 v.min(len as isize) as usize
                             }
-                        }).unwrap_or(len);
-                        Some(items.iter().skip(s).take(e.saturating_sub(s)).collect::<Vec<_>>())
-                    }
-                    _ => None,
-                })
-                .flatten()
-                .collect()
-        }
+                        })
+                        .unwrap_or(len);
+                    Some(
+                        items
+                            .iter()
+                            .skip(s)
+                            .take(e.saturating_sub(s))
+                            .collect::<Vec<_>>(),
+                    )
+                }
+                _ => None,
+            })
+            .flatten()
+            .collect(),
     }
 }
 
@@ -272,7 +293,11 @@ fn parse_filter(inner: &str) -> Result<FilterExpr, ()> {
         return Err(());
     }
     let key = parts[0].trim().to_string();
-    let value = if parts.len() > 1 { parts[1].trim().to_string() } else { String::new() };
+    let value = if parts.len() > 1 {
+        parts[1].trim().to_string()
+    } else {
+        String::new()
+    };
     Ok(FilterExpr { key, op, value })
 }
 
@@ -293,7 +318,9 @@ fn filter_matches(value: &Value, key: &str, op: FilterOp, filter_val: &str) -> b
         Value::Object(map) => map.get(key),
         _ => None,
     };
-    let Some(field) = field_val else { return false; };
+    let Some(field) = field_val else {
+        return false;
+    };
     let field_str = match field {
         Value::String(s) => s.clone(),
         Value::Number(n) => n.to_string(),
@@ -303,18 +330,22 @@ fn filter_matches(value: &Value, key: &str, op: FilterOp, filter_val: &str) -> b
     match op {
         FilterOp::Eq => field_str == filter_val,
         FilterOp::Ne => field_str != filter_val,
-        FilterOp::Gt => {
-            field_str.parse::<f64>().map(|f| f > filter_val.parse::<f64>().unwrap_or(0.0)).unwrap_or(false)
-        }
-        FilterOp::Lt => {
-            field_str.parse::<f64>().map(|f| f < filter_val.parse::<f64>().unwrap_or(0.0)).unwrap_or(false)
-        }
-        FilterOp::Gte => {
-            field_str.parse::<f64>().map(|f| f >= filter_val.parse::<f64>().unwrap_or(0.0)).unwrap_or(false)
-        }
-        FilterOp::Lte => {
-            field_str.parse::<f64>().map(|f| f <= filter_val.parse::<f64>().unwrap_or(0.0)).unwrap_or(false)
-        }
+        FilterOp::Gt => field_str
+            .parse::<f64>()
+            .map(|f| f > filter_val.parse::<f64>().unwrap_or(0.0))
+            .unwrap_or(false),
+        FilterOp::Lt => field_str
+            .parse::<f64>()
+            .map(|f| f < filter_val.parse::<f64>().unwrap_or(0.0))
+            .unwrap_or(false),
+        FilterOp::Gte => field_str
+            .parse::<f64>()
+            .map(|f| f >= filter_val.parse::<f64>().unwrap_or(0.0))
+            .unwrap_or(false),
+        FilterOp::Lte => field_str
+            .parse::<f64>()
+            .map(|f| f <= filter_val.parse::<f64>().unwrap_or(0.0))
+            .unwrap_or(false),
         FilterOp::Contains => field_str.contains(filter_val),
     }
 }

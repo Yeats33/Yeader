@@ -1,6 +1,6 @@
 //! HTTP client wrapper using reqwest.
 
-use reqwest::{header::HeaderMap, Client, Method, Response};
+use reqwest::{Client, Method, Response, header::HeaderMap};
 use thiserror::Error;
 
 use crate::encoding::{decode_bytes, extract_charset_from_content_type};
@@ -52,7 +52,12 @@ impl HttpClient {
         .await
     }
 
-    pub async fn post_json(&self, url: &str, body: &str, headers: &HeaderMap) -> Result<HttpResponse> {
+    pub async fn post_json(
+        &self,
+        url: &str,
+        body: &str,
+        headers: &HeaderMap,
+    ) -> Result<HttpResponse> {
         self.request(
             Method::POST,
             url,
@@ -80,9 +85,7 @@ impl HttpClient {
         }
 
         if let Some((body, content_type)) = body {
-            builder = builder
-                .header("Content-Type", content_type)
-                .body(body);
+            builder = builder.header("Content-Type", content_type).body(body);
         }
 
         let resp = builder.send().await?;
@@ -136,17 +139,11 @@ async fn decode_response(resp: Response) -> Result<HttpResponse> {
 
     let body = if let Some(ct) = content_type {
         let charset = extract_charset_from_content_type(&ct);
-        decode_bytes(&bytes, charset.as_deref())
-            .map_err(|e| HttpError::Decoding(e.to_string()))?
+        decode_bytes(&bytes, charset.as_deref()).map_err(|e| HttpError::Decoding(e.to_string()))?
     } else {
         // Default to UTF-8, fallback to chardet
-        decode_bytes(&bytes, None)
-            .map_err(|e| HttpError::Decoding(e.to_string()))?
+        decode_bytes(&bytes, None).map_err(|e| HttpError::Decoding(e.to_string()))?
     };
 
-    Ok(HttpResponse {
-        url,
-        body,
-        status,
-    })
+    Ok(HttpResponse { url, body, status })
 }

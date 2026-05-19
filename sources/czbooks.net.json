@@ -1,0 +1,106 @@
+{
+  "format": "yeader.source-pack",
+  "version": 1,
+  "name": "小說狂人 (czbooks.net)",
+  "sources": [
+    {
+      "id": "czbooks-net",
+      "name": "小說狂人",
+      "mediaType": "novel",
+      "homepage": "https://czbooks.net/",
+      "tags": ["中文", "繁體", "免費"],
+      "enabled": true,
+      "requestDefaults": {
+        "headers": {
+          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+        },
+        "encoding": "UTF-8",
+        "timeoutMs": 15000
+      },
+      "variables": {},
+      "capabilities": [
+        {
+          "kind": "search",
+          "request": {
+            "url": "https://czbooks.net/s",
+            "method": "POST",
+            "headers": {
+              "Content-Type": "application/x-www-form-urlencoded",
+              "charset": "GBK"
+            },
+            "body": "type=articlename&s={{key}}&submit="
+          },
+          "item": {
+            "engine": "css",
+            "query": ".line"
+          },
+          "fields": {
+            "name": { "engine": "css", "query": "a.1@text" },
+            "author": { "engine": "css", "query": "a.2@text" },
+            "bookUrl": { "engine": "css", "query": "a.1@href" },
+            "coverUrl": { "engine": "css", "query": "img.cover@src", "fallback": [{ "engine": "text", "query": "" }] }
+          }
+        },
+        {
+          "kind": "detail",
+          "request": {
+            "url": "{{bookUrl}}"
+          },
+          "item": {
+            "engine": "css",
+            "query": ".novel-detail"
+          },
+          "fields": {
+            "name": { "engine": "css", "query": ".info-wrap .title" },
+            "author": { "engine": "css", "query": ".info .author a" },
+            "coverUrl": { "engine": "css", "query": ".thumbnail img", "output": "src" },
+            "intro": { "engine": "css", "query": ".description" },
+            "kind": { "engine": "css", "query": "#novel-category" }
+          }
+        },
+        {
+          "kind": "toc",
+          "request": {
+            "url": "{{bookUrl}}"
+          },
+          "item": {
+            "engine": "css",
+            "query": "#chapter-list li a"
+          },
+          "fields": {
+            "chapterName": { "engine": "text", "query": "" },
+            "chapterUrl": { "engine": "css", "query": "", "output": "href" }
+          }
+        },
+        {
+          "kind": "content",
+          "request": {
+            "url": "{{chapterUrl}}"
+          },
+          "fields": {
+            "title": { "engine": "css", "query": ".chapter-detail .name" },
+            "content": { "engine": "css", "query": ".chapter-detail .content", "output": "html" },
+            "nextContentUrl": { "engine": "css", "query": "a.next-chapter", "output": "href" }
+          }
+        },
+        {
+          "kind": "list",
+          "request": {
+            "url": "https://czbooks.net/c/{{category}}"
+          },
+          "item": {
+            "engine": "css",
+            "query": ".novel-item"
+          },
+          "fields": {
+            "name": { "engine": "css", "query": ".novel-item-title@text" },
+            "author": { "engine": "css", "query": ".novel-item-author@text" },
+            "bookUrl": { "engine": "css", "query": "a@href" },
+            "coverUrl": { "engine": "css", "query": "img@src" },
+            "kind": { "engine": "css", "query": ".novel-item-state@text" }
+          }
+        }
+      ]
+    }
+  ]
+}

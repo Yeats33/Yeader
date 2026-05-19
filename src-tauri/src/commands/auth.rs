@@ -109,9 +109,7 @@ pub async fn get_auth_session(
 }
 
 #[tauri::command]
-pub async fn clear_auth_session(
-    state: tauri::State<'_, AppState>,
-) -> Result<(), String> {
+pub async fn clear_auth_session(state: tauri::State<'_, AppState>) -> Result<(), String> {
     let db = state.db.lock().map_err(|e| e.to_string())?;
     let repo = AuthRepo::new(&db);
 
@@ -128,8 +126,7 @@ pub async fn clear_auth_session(
 fn recover_evm_address(message: &str, signature_hex: &str) -> Result<String, String> {
     // Strip "0x" prefix
     let sig_hex = signature_hex.strip_prefix("0x").unwrap_or(signature_hex);
-    let sig_bytes =
-        hex::decode(sig_hex).map_err(|e| format!("Invalid signature hex: {e}"))?;
+    let sig_bytes = hex::decode(sig_hex).map_err(|e| format!("Invalid signature hex: {e}"))?;
 
     if sig_bytes.len() != 65 {
         return Err(format!(
@@ -139,11 +136,11 @@ fn recover_evm_address(message: &str, signature_hex: &str) -> Result<String, Str
     }
 
     let v = sig_bytes[64];
-    let recovery_id = RecoveryId::try_from(v - 27)
-        .map_err(|e| format!("Invalid recovery id {v}: {e:?}"))?;
+    let recovery_id =
+        RecoveryId::try_from(v - 27).map_err(|e| format!("Invalid recovery id {v}: {e:?}"))?;
 
-    let sig = Signature::from_slice(&sig_bytes[..64])
-        .map_err(|e| format!("Invalid signature: {e}"))?;
+    let sig =
+        Signature::from_slice(&sig_bytes[..64]).map_err(|e| format!("Invalid signature: {e}"))?;
 
     // Build EIP-191 message hash
     let msg_hash = eip191_hash(message);

@@ -54,7 +54,12 @@ pub fn apply_replace_rules(text: &str, rules: &[ReplaceRule]) -> String {
         if !rule.enabled {
             continue;
         }
-        result = apply_replace(&result, &rule.pattern, &rule.replacement, rule.replace_first);
+        result = apply_replace(
+            &result,
+            &rule.pattern,
+            &rule.replacement,
+            rule.replace_first,
+        );
     }
 
     result

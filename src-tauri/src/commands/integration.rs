@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use notify::RecursiveMode;
-use notify_debouncer_mini::{new_debouncer, DebouncedEventKind};
+use notify_debouncer_mini::{DebouncedEventKind, new_debouncer};
 use tauri::{AppHandle, Emitter, Manager};
 
 static SO_NOVEL_RUNNING: AtomicBool = AtomicBool::new(false);
@@ -67,7 +67,8 @@ pub fn get_command_version(name: &str) -> Result<String, String> {
 
 #[tauri::command]
 pub fn open_url_cmd(url: &str) -> Result<(), String> {
-    tauri_plugin_opener::open_url(url, None::<&str>).map_err(|e| format!("Failed to open URL: {}", e))
+    tauri_plugin_opener::open_url(url, None::<&str>)
+        .map_err(|e| format!("Failed to open URL: {}", e))
 }
 
 #[tauri::command]
@@ -132,7 +133,9 @@ pub async fn start_so_novel_webui(app: AppHandle) -> Result<(), String> {
 
 fn is_ebook_file(path: &std::path::Path, download_dir: &PathBuf) -> bool {
     // Only accept .epub files directly in download_dir root (skip "Book EPUB/" subdirectories)
-    let Some(parent) = path.parent() else { return false };
+    let Some(parent) = path.parent() else {
+        return false;
+    };
     if parent != download_dir {
         return false;
     }
@@ -157,12 +160,18 @@ fn watch_download_dir(download_dir: PathBuf, app: AppHandle) {
         }
     };
 
-    if let Err(e) = debouncer.watcher().watch(&download_dir, RecursiveMode::Recursive) {
+    if let Err(e) = debouncer
+        .watcher()
+        .watch(&download_dir, RecursiveMode::Recursive)
+    {
         tracing::error!("Failed to watch directory: {}", e);
         return;
     }
 
-    tracing::info!("Watching so-novel download directory: {}", download_dir.display());
+    tracing::info!(
+        "Watching so-novel download directory: {}",
+        download_dir.display()
+    );
 
     for res in rx {
         match res {
@@ -260,17 +269,16 @@ fn ensure_user_config(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     if !config_path.exists() {
         std::fs::create_dir_all(&config_dir)
             .map_err(|e| format!("Failed to create config dir: {}", e))?;
-        let default_content =
-            if let Some(bundle_path) = so_novel_bundle_config(app) {
-                if bundle_path.exists() {
-                    std::fs::read_to_string(&bundle_path)
-                        .unwrap_or_else(|_| so_novel_default_config().to_string())
-                } else {
-                    so_novel_default_config().to_string()
-                }
+        let default_content = if let Some(bundle_path) = so_novel_bundle_config(app) {
+            if bundle_path.exists() {
+                std::fs::read_to_string(&bundle_path)
+                    .unwrap_or_else(|_| so_novel_default_config().to_string())
             } else {
                 so_novel_default_config().to_string()
-            };
+            }
+        } else {
+            so_novel_default_config().to_string()
+        };
         std::fs::write(&config_path, default_content)
             .map_err(|e| format!("Failed to write config: {}", e))?;
     }
@@ -339,7 +347,8 @@ qidian =
 enabled = 0
 host = 127.0.0.1
 port = your port
-"#}
+"#
+}
 
 #[tauri::command]
 pub fn get_so_novel_config(app: tauri::AppHandle) -> Result<String, String> {
@@ -371,8 +380,8 @@ pub fn list_so_novel_rules(app: tauri::AppHandle) -> Result<Vec<String>, String>
         return Ok(vec![]);
     }
     let mut rules = vec![];
-    for entry in std::fs::read_dir(&rules_dir)
-        .map_err(|e| format!("Failed to read rules dir: {}", e))?
+    for entry in
+        std::fs::read_dir(&rules_dir).map_err(|e| format!("Failed to read rules dir: {}", e))?
     {
         let entry = entry.map_err(|e| format!("Failed to read entry: {}", e))?;
         let path = entry.path();
@@ -404,8 +413,7 @@ pub fn delete_so_novel_rule(app: tauri::AppHandle, name: String) -> Result<(), S
     let rules_dir = so_novel_rules_dir(&app)?;
     let rule_path = rules_dir.join(format!("{}.json", name));
     if rule_path.exists() {
-        std::fs::remove_file(&rule_path)
-            .map_err(|e| format!("Failed to delete rule: {}", e))?;
+        std::fs::remove_file(&rule_path).map_err(|e| format!("Failed to delete rule: {}", e))?;
     }
     Ok(())
 }

@@ -63,7 +63,10 @@ pub fn trim_rule_start(input: &str) -> &str {
     input.trim_start_matches(|ch: char| ch == '@' || ch.is_whitespace())
 }
 
-fn first_top_level_delimiter<'a>(input: &'a str, delimiters: &[&'a str]) -> Option<(&'a str, usize)> {
+fn first_top_level_delimiter<'a>(
+    input: &'a str,
+    delimiters: &[&'a str],
+) -> Option<(&'a str, usize)> {
     let mut state = ScanState::default();
 
     for (index, ch) in input.char_indices() {

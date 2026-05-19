@@ -43,12 +43,10 @@ export class BookSourceAdapter {
     }
 
     let chapters: Chapter[] = [];
-    if (bookInfo.toc_url) {
-      try {
-        chapters = await fetchToc(bookInfo.toc_url, this.source.bookSourceUrl);
-      } catch {
-        chapters = [];
-      }
+    try {
+      chapters = await fetchToc(bookId, this.source.bookSourceUrl);
+    } catch {
+      chapters = [];
     }
 
     return { chapters, bookInfo };
@@ -63,10 +61,16 @@ export class BookSourceAdapter {
       throw new Error(`Chapter not found: ${chapterId}`);
     }
 
-    const content = await fetchContent(chapter.url, this.source.bookSourceUrl);
+    const chapterIndex = toc.chapters.findIndex((ch) => ch.url === chapterId);
+    const content = await fetchContent(
+      chapter.url,
+      bookId,
+      this.source.bookSourceUrl,
+      chapterIndex + 1,
+    );
 
-    const prevIndex = toc.chapters.findIndex((ch) => ch.url === chapterId) - 1;
-    const nextIndex = toc.chapters.findIndex((ch) => ch.url === chapterId) + 1;
+    const prevIndex = chapterIndex - 1;
+    const nextIndex = chapterIndex + 1;
 
     return {
       title: chapter.title,

@@ -20,8 +20,8 @@ pub async fn save_style_to_local_storage(
     }
 
     let style_file_path = config_dir.join("reader_style.json");
-    let json_data = serde_json::to_string(style)
-        .map_err(|e| format!("Failed to serialize style: {}", e))?;
+    let json_data =
+        serde_json::to_string(style).map_err(|e| format!("Failed to serialize style: {}", e))?;
 
     fs::write(&style_file_path, json_data)
         .map_err(|e| format!("Failed to write style to file: {}", e))?;

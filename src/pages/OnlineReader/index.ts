@@ -65,9 +65,7 @@ export async function initOnlineReader(
       `;
     }
 
-    const chapters = bookInfo.toc_url
-      ? await fetchToc(bookInfo.toc_url, sourceUrl)
-      : [];
+    const chapters = await fetchToc(bookUrl, sourceUrl);
 
     if (tocEl) {
       if (chapters.length === 0) {
@@ -78,8 +76,8 @@ export async function initOnlineReader(
           <ul class="toc-list">
             ${chapters
               .map(
-                (ch) => `
-              <li class="toc-item" data-chapter-url="${escapeHtml(ch.url)}" data-source-url="${escapeHtml(sourceUrl)}">
+                (ch, index) => `
+                <li class="toc-item" data-chapter-url="${escapeHtml(ch.url)}" data-source-url="${escapeHtml(sourceUrl)}" data-chapter-index="${String(index + 1)}">
                 <span class="toc-title">${escapeHtml(ch.title)}</span>
                 ${ch.is_vip ? '<span class="vip-badge">VIP</span>' : ""}
                 ${ch.is_volume ? '<span class="volume-badge">卷</span>' : ""}

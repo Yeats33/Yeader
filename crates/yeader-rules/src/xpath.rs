@@ -259,7 +259,10 @@ fn get_xpath_string_list<'a>(document: &'a Html, xpath: &str) -> Vec<String> {
         }
         // Otherwise extract text from matched elements
         let elements = evaluate_xpath_path(document, xpath);
-        return elements.iter().map(|e| collapse_whitespace(&element_text_string(e))).collect();
+        return elements
+            .iter()
+            .map(|e| collapse_whitespace(&element_text_string(e)))
+            .collect();
     };
 
     let elements = evaluate_xpath_path(document, path_part);
@@ -271,7 +274,10 @@ fn get_xpath_string_list<'a>(document: &'a Html, xpath: &str) -> Vec<String> {
     if let Some(ext) = extractor {
         extract_from_elements(elements, ext)
     } else {
-        elements.iter().map(|e| collapse_whitespace(&element_text_string(e))).collect()
+        elements
+            .iter()
+            .map(|e| collapse_whitespace(&element_text_string(e)))
+            .collect()
     }
 }
 
@@ -300,7 +306,9 @@ fn xpath_to_css(xpath: &str) -> Option<String> {
     let xpath = xpath.trim();
 
     // Normalize: remove leading // or /
-    let normalized = xpath.strip_prefix("//").or_else(|| xpath.strip_prefix('/'))?;
+    let normalized = xpath
+        .strip_prefix("//")
+        .or_else(|| xpath.strip_prefix('/'))?;
 
     // Split by / to get path segments
     let segments: Vec<&str> = normalized.split('/').filter(|s| !s.is_empty()).collect();
@@ -428,13 +436,12 @@ fn parse_predicate(content: &str) -> Option<(String, String)> {
 }
 
 fn is_extractor(token: &str) -> bool {
-    matches!(
-        token,
-        "text" | "textNodes" | "ownText" | "html" | "all"
-    ) || matches!(
-        token,
-        "href" | "src" | "class" | "id" | "data-url" | "content" | "alt" | "value"
-    ) || token.starts_with('@')
+    matches!(token, "text" | "textNodes" | "ownText" | "html" | "all")
+        || matches!(
+            token,
+            "href" | "src" | "class" | "id" | "data-url" | "content" | "alt" | "value"
+        )
+        || token.starts_with('@')
 }
 
 fn extract_from_elements(elements: Vec<ElementRef<'_>>, extractor: &str) -> Vec<String> {
@@ -516,7 +523,10 @@ fn get_elements_single<'a>(roots: Vec<ElementRef<'a>>, rule: &str) -> Vec<Elemen
                 "children" => true,
                 s if s.starts_with("class.") => {
                     let class = s.strip_prefix("class.").unwrap().trim();
-                    elem.value().attr("class").map(|c| c.split_whitespace().any(|x| x == class)).unwrap_or(false)
+                    elem.value()
+                        .attr("class")
+                        .map(|c| c.split_whitespace().any(|x| x == class))
+                        .unwrap_or(false)
                 }
                 s if s.starts_with("id.") => {
                     let id = s.strip_prefix("id.").unwrap().trim();

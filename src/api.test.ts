@@ -10,6 +10,9 @@ import {
   deleteBookSources,
   deleteDisabledBookSources,
   enableAllBookSources,
+  fetchBookInfo,
+  fetchContent,
+  fetchToc,
   listBookSources,
   listBooks,
   resetInvokeAdapterForTests,
@@ -191,4 +194,47 @@ test("deleteBookSources deletes all requested sources", async () => {
 
   const sources = await listBookSources();
   assert.equal(sources.length, 0);
+});
+
+test("reader commands pass camelCase Tauri arguments", async () => {
+  resetInvokeAdapterForTests();
+  const calls: Array<{ command: string; args: InvokeArgs }> = [];
+
+  setInvokeAdapterForTests(async <T>(command: string, args?: InvokeArgs): Promise<T> => {
+    calls.push({ command, args });
+    if (command === "fetch_book_info") {
+      return { name: "测试书籍", author: "作者" } as T;
+    }
+    if (command === "fetch_toc") {
+      return [] as T;
+    }
+    if (command === "fetch_content") {
+      return "正文" as T;
+    }
+    throw new Error(`Unexpected command: ${command}`);
+  });
+
+  await fetchBookInfo("book-1", "source-1");
+  await fetchToc("book-1", "source-1");
+  await fetchContent("chapter-1", "book-1", "source-1", 2);
+
+  assert.equal(JSON.stringify(calls), JSON.stringify([
+    {
+      command: "fetch_book_info",
+      args: { bookUrl: "book-1", sourceId: "source-1" },
+    },
+    {
+      command: "fetch_toc",
+      args: { bookUrl: "book-1", sourceId: "source-1" },
+    },
+    {
+      command: "fetch_content",
+      args: {
+        chapterUrl: "chapter-1",
+        bookUrl: "book-1",
+        sourceId: "source-1",
+        chapterIndex: 2,
+      },
+    },
+  ]));
 });

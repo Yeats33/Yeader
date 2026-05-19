@@ -3,7 +3,10 @@
 use rusqlite::params;
 use serde_json::Map;
 
-use yeader_models::{Book, BookGroup, Bookmark, LegacyBookSource, LegacyReplaceRule, LegacyRssSource, ReadingProgress, YeaderSource};
+use yeader_models::{
+    Book, BookGroup, Bookmark, LegacyBookSource, LegacyReplaceRule, LegacyRssSource,
+    ReadingProgress, YeaderSource,
+};
 
 use crate::Database;
 
@@ -816,9 +819,10 @@ impl<'a> BookmarkRepo<'a> {
     }
 
     pub fn delete_by_book(&self, book_url: &str) -> rusqlite::Result<usize> {
-        self.0
-            .conn()
-            .execute("DELETE FROM bookmarks WHERE book_url = ?1", params![book_url])
+        self.0.conn().execute(
+            "DELETE FROM bookmarks WHERE book_url = ?1",
+            params![book_url],
+        )
     }
 }
 
@@ -1391,7 +1395,11 @@ mod tests {
             extra: Map::new(),
         };
         repo.upsert(&book).unwrap();
-        assert!(repo.find_by_url("https://example.com/book/1").unwrap().is_some());
+        assert!(
+            repo.find_by_url("https://example.com/book/1")
+                .unwrap()
+                .is_some()
+        );
     }
 
     #[test]
@@ -1435,7 +1443,8 @@ mod tests {
             book_type: None,
             intro: None,
             extra: Map::new(),
-        }).unwrap();
+        })
+        .unwrap();
         repo.upsert(&Book {
             url: "https://example.com/2".into(),
             name: "Book 2".into(),
@@ -1448,7 +1457,8 @@ mod tests {
             book_type: None,
             intro: None,
             extra: Map::new(),
-        }).unwrap();
+        })
+        .unwrap();
 
         let group1 = repo.list_by_group(1).unwrap();
         assert_eq!(group1.len(), 1);
@@ -1485,7 +1495,8 @@ mod tests {
             id: 42,
             name: "Test".into(),
             sort_order: 5,
-        }).unwrap();
+        })
+        .unwrap();
         let found = repo.find_by_id(42).unwrap().unwrap();
         assert_eq!(found.name, "Test");
         assert_eq!(found.sort_order, 5);
@@ -1500,7 +1511,8 @@ mod tests {
             id: 1,
             name: "To Delete".into(),
             sort_order: 0,
-        }).unwrap();
+        })
+        .unwrap();
         assert!(repo.delete(1).unwrap());
         assert!(!repo.delete(1).unwrap());
         assert_eq!(repo.list_all().unwrap().len(), 0);
@@ -1542,10 +1554,16 @@ mod tests {
             offset: 0,
             note: None,
             created_at: "2026-01-01T00:00:00Z".into(),
-        }).unwrap();
+        })
+        .unwrap();
         assert!(repo.delete(1).unwrap());
         assert!(!repo.delete(1).unwrap());
-        assert_eq!(repo.list_by_book("https://example.com/book/1").unwrap().len(), 0);
+        assert_eq!(
+            repo.list_by_book("https://example.com/book/1")
+                .unwrap()
+                .len(),
+            0
+        );
     }
 
     #[test]
@@ -1561,7 +1579,8 @@ mod tests {
             offset: 0,
             note: None,
             created_at: "2026-01-01T00:00:00Z".into(),
-        }).unwrap();
+        })
+        .unwrap();
         repo.upsert(&Bookmark {
             id: 2,
             book_url: "https://example.com/book/x".into(),
@@ -1570,10 +1589,15 @@ mod tests {
             offset: 0,
             note: None,
             created_at: "2026-01-01T00:00:00Z".into(),
-        }).unwrap();
+        })
+        .unwrap();
 
         let deleted = repo.delete_by_book("https://example.com/book/x").unwrap();
         assert_eq!(deleted, 2);
-        assert!(repo.list_by_book("https://example.com/book/x").unwrap().is_empty());
+        assert!(
+            repo.list_by_book("https://example.com/book/x")
+                .unwrap()
+                .is_empty()
+        );
     }
 }

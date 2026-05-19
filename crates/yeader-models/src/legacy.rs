@@ -385,7 +385,13 @@ impl BookMark {
             existing.height = height;
             existing.cfi = cfi;
         } else {
-            self.list.push(Mark { page, content, width, height, cfi });
+            self.list.push(Mark {
+                page,
+                content,
+                width,
+                height,
+                cfi,
+            });
         }
     }
 
