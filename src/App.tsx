@@ -10,10 +10,10 @@ import { loadTheme, getCurrentTheme, getColorMode } from "./theme.ts";
 import { renderBookshelfPage, initBookshelfHandlers } from "./pages/Bookshelf.ts";
 import { renderSearchPage, initSearchHandlers } from "./pages/Search.ts";
 import { renderReaderPage, initReader } from "./pages/Reader/index.ts";
-import { renderIntegrationPage, initIntegrationPage } from "./pages/Integration.ts";
+import { IntegrationPage } from "./pages/Integration.tsx";
 import { renderSoNovelWebuiPage, initSoNovelWebuiHandlers } from "./pages/SoNovelWebui.ts";
-import { renderSoNovelConfigPage, initSoNovelConfigHandlers } from "./pages/SoNovelConfig.ts";
-import { renderSoNovelRulesPage, initSoNovelRulesHandlers } from "./pages/SoNovelRules.ts";
+import { SoNovelConfigPage } from "./pages/SoNovelConfig.tsx";
+import { SoNovelRulesPage } from "./pages/SoNovelRules.tsx";
 import { renderSettingsPage, initSettingsHandlers } from "./pages/Settings.ts";
 import { AccountPage } from "./pages/Account.tsx";
 import { renderOnlineReaderPage, initOnlineReader } from "./pages/OnlineReader/index.ts";
@@ -46,31 +46,10 @@ function resolvePage(routePath: string): LegacyPageDefinition | null {
     };
   }
 
-  if (matchRoute("/integration", { path: routePath })) {
-    return {
-      render: () => renderIntegrationPage(),
-      init: initIntegrationPage,
-    };
-  }
-
   if (matchRoute("/integration/so-novel/webui", { path: routePath })) {
     return {
       render: () => renderSoNovelWebuiPage(),
       init: initSoNovelWebuiHandlers,
-    };
-  }
-
-  if (matchRoute("/integration/so-novel/config", { path: routePath })) {
-    return {
-      render: () => renderSoNovelConfigPage(),
-      init: initSoNovelConfigHandlers,
-    };
-  }
-
-  if (matchRoute("/integration/so-novel/rules", { path: routePath })) {
-    return {
-      render: () => renderSoNovelRulesPage(),
-      init: initSoNovelRulesHandlers,
     };
   }
 
@@ -161,7 +140,7 @@ export function App() {
 
   return (
     <>
-      {route.path === "/account" ? <AccountPage /> : page ? <LegacyPage page={page} routeKey={route.path} /> : <NotFoundPage />}
+      {route.path === "/account" ? <AccountPage /> : route.path === "/integration" ? <IntegrationPage /> : route.path === "/integration/so-novel/config" ? <SoNovelConfigPage /> : route.path === "/integration/so-novel/rules" ? <SoNovelRulesPage /> : page ? <LegacyPage page={page} routeKey={route.path} /> : <NotFoundPage />}
       {!hideNav ? <NavBar routePath={route.path} /> : null}
     </>
   );

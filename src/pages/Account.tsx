@@ -152,14 +152,14 @@ export function AccountPage() {
       }
     });
 
-    onSessionChange((nextState) => {
+    const unsubscribeSession = onSessionChange((nextState) => {
       if (!disposed) {
         setState(nextState);
         setStep(nextState.status === "authenticated" ? "authenticated" : "idle");
       }
     });
 
-    setupAccountListener(async (address) => {
+    const unsubscribeAccount = setupAccountListener(async (address) => {
       if (disposed) return;
 
       if (address && getSessionState().status !== "authenticated") {
@@ -180,6 +180,8 @@ export function AccountPage() {
 
     return () => {
       disposed = true;
+      unsubscribeSession();
+      unsubscribeAccount();
     };
   }, []);
 

@@ -64,8 +64,7 @@ pub async fn verify_evm_auth(
     }
 
     // 2. Consume the nonce from the message to prevent replay
-    let nonce = extract_nonce(&message)
-        .ok_or_else(|| "Missing nonce in message".to_string())?;
+    let nonce = extract_nonce(&message).ok_or_else(|| "Missing nonce in message".to_string())?;
     let consumed = repo
         .consume_nonce(&nonce)
         .map_err(|e| format!("Nonce check failed: {e}"))?;
@@ -146,8 +145,7 @@ fn recover_evm_address(message: &str, signature_hex: &str) -> Result<String, Str
     }
 
     let v = sig_bytes[64];
-    let recovery_id =
-        RecoveryId::try_from(v - 27).map_err(|e| format!("Invalid recovery id {v}: {e:?}"))?;
+    let recovery_id = recovery_id_from_signature_v(v)?;
 
     let sig =
         Signature::from_slice(&sig_bytes[..64]).map_err(|e| format!("Invalid signature: {e}"))?;
@@ -163,6 +161,16 @@ fn recover_evm_address(message: &str, signature_hex: &str) -> Result<String, Str
     let address = pubkey_to_eth_address(&recovered_key);
 
     Ok(address)
+}
+
+fn recovery_id_from_signature_v(v: u8) -> Result<RecoveryId, String> {
+    let normalized = match v {
+        0 | 1 => v,
+        27 | 28 => v - 27,
+        _ => return Err(format!("Invalid recovery id {v}")),
+    };
+
+    RecoveryId::try_from(normalized).map_err(|e| format!("Invalid recovery id {v}: {e:?}"))
 }
 
 fn eip191_hash(message: &str) -> k256::elliptic_curve::FieldBytes<k256::Secp256k1> {
@@ -208,5 +216,19 @@ mod tests {
     fn test_extract_nonce() {
         let msg = "yeader.cc wants you to sign in with your Ethereum account.\n\nNonce: abc-123";
         assert_eq!(extract_nonce(msg), Some("abc-123".to_string()));
+    }
+
+    #[test]
+    fn recovery_id_accepts_wallet_v_encodings() {
+        assert!(recovery_id_from_signature_v(0).is_ok());
+        assert!(recovery_id_from_signature_v(1).is_ok());
+        assert!(recovery_id_from_signature_v(27).is_ok());
+        assert!(recovery_id_from_signature_v(28).is_ok());
+    }
+
+    #[test]
+    fn recovery_id_rejects_invalid_values_without_underflow() {
+        assert!(recovery_id_from_signature_v(26).is_err());
+        assert!(recovery_id_from_signature_v(255).is_err());
     }
 }

@@ -5,8 +5,11 @@ import { AUTH_CHECKING, type AuthState } from "./types.ts";
 let currentSession: AuthState = { ...AUTH_CHECKING };
 let sessionListeners: Array<(state: AuthState) => void> = [];
 
-export function onSessionChange(fn: (state: AuthState) => void): void {
+export function onSessionChange(fn: (state: AuthState) => void): () => void {
   sessionListeners.push(fn);
+  return () => {
+    sessionListeners = sessionListeners.filter((listener) => listener !== fn);
+  };
 }
 
 function notifyListeners(): void {

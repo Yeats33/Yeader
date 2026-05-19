@@ -1,14 +1,34 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{Child, Command};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
 use notify::RecursiveMode;
 use notify_debouncer_mini::{DebouncedEventKind, new_debouncer};
 use tauri::{AppHandle, Emitter, Manager};
 
-static SO_NOVEL_RUNNING: AtomicBool = AtomicBool::new(false);
+static SO_NOVEL_PROCESS: OnceLock<Mutex<Option<Child>>> = OnceLock::new();
+static SO_NOVEL_WATCHER_RUNNING: AtomicBool = AtomicBool::new(false);
+
+fn so_novel_process() -> &'static Mutex<Option<Child>> {
+    SO_NOVEL_PROCESS.get_or_init(|| Mutex::new(None))
+}
+
+fn update_process_running(process: &mut Option<Child>) -> bool {
+    let Some(child) = process.as_mut() else {
+        return false;
+    };
+
+    match child.try_wait() {
+        Ok(Some(_)) | Err(_) => {
+            *process = None;
+            false
+        }
+        Ok(None) => true,
+    }
+}
 
 fn get_so_novel_dir() -> &'static str {
     if cfg!(target_os = "macos") {
@@ -87,10 +107,10 @@ pub fn run_command(name: &str, args: Vec<String>) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn start_so_novel_webui(app: AppHandle) -> Result<(), String> {
-    if SO_NOVEL_RUNNING.load(Ordering::SeqCst) {
+    let mut process = so_novel_process().lock().map_err(|e| e.to_string())?;
+    if update_process_running(&mut process) {
         return Ok(());
     }
-    SO_NOVEL_RUNNING.store(true, Ordering::SeqCst);
 
     let app_dir = app
         .path()
@@ -114,7 +134,7 @@ pub async fn start_so_novel_webui(app: AppHandle) -> Result<(), String> {
     let java_bin = get_java_bin();
     let jar_path = so_novel_dir.join("app.jar");
 
-    std::process::Command::new(java_bin)
+    let child = std::process::Command::new(java_bin)
         .args([
             "-XX:+UseZGC",
             "-XX:+ZGenerational",
@@ -126,12 +146,18 @@ pub async fn start_so_novel_webui(app: AppHandle) -> Result<(), String> {
         .current_dir(&config_dir)
         .spawn()
         .map_err(|e| format!("Failed to start so-novel: {}", e))?;
+    *process = Some(child);
 
-    let download_dir_clone = download_dir.clone();
-    let app_clone = app.clone();
-    std::thread::spawn(move || {
-        watch_download_dir(download_dir_clone, app_clone);
-    });
+    if SO_NOVEL_WATCHER_RUNNING
+        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+        .is_ok()
+    {
+        let download_dir_clone = download_dir.clone();
+        let app_clone = app.clone();
+        std::thread::spawn(move || {
+            watch_download_dir(download_dir_clone, app_clone);
+        });
+    }
 
     Ok(())
 }
@@ -161,6 +187,7 @@ fn watch_download_dir(download_dir: PathBuf, app: AppHandle) {
         Ok(d) => d,
         Err(e) => {
             tracing::error!("Failed to create debouncer: {}", e);
+            SO_NOVEL_WATCHER_RUNNING.store(false, Ordering::SeqCst);
             return;
         }
     };
@@ -170,6 +197,7 @@ fn watch_download_dir(download_dir: PathBuf, app: AppHandle) {
         .watch(&download_dir, RecursiveMode::Recursive)
     {
         tracing::error!("Failed to watch directory: {}", e);
+        SO_NOVEL_WATCHER_RUNNING.store(false, Ordering::SeqCst);
         return;
     }
 
@@ -213,42 +241,38 @@ fn watch_download_dir(download_dir: PathBuf, app: AppHandle) {
             Err(e) => tracing::error!("Watch error: {:?}", e),
         }
     }
+    SO_NOVEL_WATCHER_RUNNING.store(false, Ordering::SeqCst);
 }
 
 #[tauri::command]
 pub fn is_so_novel_running() -> bool {
-    SO_NOVEL_RUNNING.load(Ordering::SeqCst)
+    let Ok(mut process) = so_novel_process().lock() else {
+        return false;
+    };
+    update_process_running(&mut process)
 }
 
 #[tauri::command]
 pub fn stop_so_novel() -> Result<(), String> {
-    if !SO_NOVEL_RUNNING.load(Ordering::SeqCst) {
+    let mut process = so_novel_process().lock().map_err(|e| e.to_string())?;
+    let Some(child) = process.as_mut() else {
+        return Ok(());
+    };
+
+    if child
+        .try_wait()
+        .map_err(|e| format!("Failed to query so-novel process: {}", e))?
+        .is_some()
+    {
+        *process = None;
         return Ok(());
     }
 
-    let output = if cfg!(target_os = "macos") {
-        Command::new("pgrep").arg("-f").arg("so-novel").output()
-    } else if cfg!(target_os = "windows") {
-        Command::new("tasklist").output()
-    } else {
-        Command::new("pgrep").arg("-f").arg("so-novel").output()
-    };
-
-    if let Ok(out) = output {
-        let stdout = String::from_utf8_lossy(&out.stdout);
-        for line in stdout.lines() {
-            let pid = if cfg!(target_os = "macos") || cfg!(target_os = "linux") {
-                line.split_whitespace().next()
-            } else {
-                None
-            };
-            if let Some(pid_str) = pid {
-                let _ = Command::new("kill").arg(pid_str).spawn();
-            }
-        }
-    }
-
-    SO_NOVEL_RUNNING.store(false, Ordering::SeqCst);
+    child
+        .kill()
+        .map_err(|e| format!("Failed to stop so-novel: {}", e))?;
+    let _ = child.wait();
+    *process = None;
     Ok(())
 }
 
@@ -404,10 +428,20 @@ fn validate_rule_name(name: &str) -> Result<(), String> {
     if name.is_empty() {
         return Err("Rule name cannot be empty".to_string());
     }
-    if !name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-') {
+    if !name
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+    {
         return Err("Rule name must contain only [A-Za-z0-9_-] characters".to_string());
     }
     Ok(())
+}
+
+fn validate_rule_file_name(name: &str) -> Result<(), String> {
+    let Some(rule_name) = name.strip_suffix(".json") else {
+        return Err("Rule file name must end with .json".to_string());
+    };
+    validate_rule_name(rule_name)
 }
 
 #[tauri::command]
@@ -449,6 +483,7 @@ pub fn get_so_novel_active_rule(app: tauri::AppHandle) -> Result<String, String>
 
 #[tauri::command]
 pub fn set_so_novel_active_rule(app: tauri::AppHandle, name: String) -> Result<(), String> {
+    validate_rule_file_name(&name)?;
     let config = get_so_novel_config(app.clone())?;
     let new_config: String = config
         .lines()
@@ -463,4 +498,38 @@ pub fn set_so_novel_active_rule(app: tauri::AppHandle, name: String) -> Result<(
         .collect::<Vec<_>>()
         .join("\n");
     save_so_novel_config(app, new_config)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn ebook_file_must_be_epub_directly_under_download_dir() {
+        let download_dir = PathBuf::from("/tmp/yeader-downloads");
+
+        assert!(is_ebook_file(
+            Path::new("/tmp/yeader-downloads/book.epub"),
+            &download_dir,
+        ));
+        assert!(!is_ebook_file(
+            Path::new("/tmp/yeader-downloads/book.txt"),
+            &download_dir,
+        ));
+        assert!(!is_ebook_file(
+            Path::new("/tmp/yeader-downloads/nested/book.epub"),
+            &download_dir,
+        ));
+    }
+
+    #[test]
+    fn rule_file_names_must_be_safe_json_files() {
+        assert!(validate_rule_file_name("main.json").is_ok());
+        assert!(validate_rule_file_name("no-search.json").is_ok());
+        assert!(validate_rule_file_name("nested/main.json").is_err());
+        assert!(validate_rule_file_name("../main.json").is_err());
+        assert!(validate_rule_file_name("main.toml").is_err());
+        assert!(validate_rule_file_name(".json").is_err());
+    }
 }

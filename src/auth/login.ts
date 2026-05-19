@@ -32,8 +32,9 @@ export async function signIn(): Promise<void> {
   setAuthenticated(account.address, result.chain_id);
 }
 
-export function setupAccountListener(onAccountChange: (address: string | null) => void): void {
-  appKit.subscribeAccount((state) => {
+export function setupAccountListener(onAccountChange: (address: string | null) => void): () => void {
+  const cleanup = appKit.subscribeAccount((state) => {
     onAccountChange(state.address ?? null);
   });
+  return typeof cleanup === "function" ? cleanup : () => {};
 }

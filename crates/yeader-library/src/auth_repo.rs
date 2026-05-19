@@ -41,7 +41,7 @@ impl<'a> AuthRepo<'a> {
         let mut stmt = self.db.conn().prepare(
             "SELECT wallet_address, chain_id, created_at, expires_at
              FROM auth_sessions
-             WHERE expires_at > datetime('now')
+             WHERE unixepoch(expires_at) > unixepoch('now')
              ORDER BY created_at DESC
              LIMIT 1",
         )?;
@@ -72,7 +72,7 @@ impl<'a> AuthRepo<'a> {
 
     pub fn consume_nonce(&self, nonce: &str) -> rusqlite::Result<bool> {
         let count = self.db.conn().execute(
-            "DELETE FROM auth_nonces WHERE nonce = ?1 AND expires_at > datetime('now')",
+            "DELETE FROM auth_nonces WHERE nonce = ?1 AND unixepoch(expires_at) > unixepoch('now')",
             params![nonce],
         )?;
         Ok(count > 0)
@@ -80,7 +80,7 @@ impl<'a> AuthRepo<'a> {
 
     pub fn cleanup_expired_nonces(&self) -> rusqlite::Result<usize> {
         self.db.conn().execute(
-            "DELETE FROM auth_nonces WHERE expires_at <= datetime('now')",
+            "DELETE FROM auth_nonces WHERE unixepoch(expires_at) <= unixepoch('now')",
             [],
         )
     }
@@ -188,5 +188,49 @@ mod tests {
 
         repo.clear_session().unwrap();
         assert!(repo.find_valid_session().unwrap().is_none());
+    }
+
+    #[test]
+    fn iso8601_session_expired_earlier_today_is_not_found() {
+        let db = test_db();
+        let repo = AuthRepo::new(&db);
+
+        let expires_at: String = db
+            .conn()
+            .query_row(
+                "SELECT strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-1 minute')",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+
+        repo.save_session(&AuthSession {
+            wallet_address: "0xabc".into(),
+            chain_id: 1,
+            created_at: "2026-01-01T00:00:00Z".into(),
+            expires_at,
+        })
+        .unwrap();
+
+        assert!(repo.find_valid_session().unwrap().is_none());
+    }
+
+    #[test]
+    fn iso8601_nonce_expired_earlier_today_is_not_consumed() {
+        let db = test_db();
+        let repo = AuthRepo::new(&db);
+
+        let expires_at: String = db
+            .conn()
+            .query_row(
+                "SELECT strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-1 minute')",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+
+        repo.save_nonce("expired-today", &expires_at).unwrap();
+
+        assert!(!repo.consume_nonce("expired-today").unwrap());
     }
 }
