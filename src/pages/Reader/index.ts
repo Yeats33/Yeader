@@ -28,13 +28,13 @@ export async function renderReaderPage(bookUrl: string): Promise<string> {
     if (book) {
       state.sourceUrl = book.source_url;
     }
-  } catch (e) {
-    console.error("[Reader] getBook failed:", e);
+  } catch {
   }
 
   const savedProgress = await getReadingProgress(state.bookUrl);
   if (savedProgress) {
     state.currentChapterIndex = savedProgress.chapter_index;
+    state.currentOffset = savedProgress.offset;
   }
 
   await loadReaderStyle(state);
@@ -44,8 +44,7 @@ export async function renderReaderPage(bookUrl: string): Promise<string> {
     try {
       const toc = await getEpubToc(state.bookUrl);
       state.chapters = toc;
-    } catch (e) {
-      console.error("[Reader] getEpubToc failed:", e);
+    } catch {
     }
   } else {
     try {
@@ -53,8 +52,7 @@ export async function renderReaderPage(bookUrl: string): Promise<string> {
       state.bookInfo = bookInfo;
 
       state.chapters = await fetchToc(state.bookUrl, state.sourceUrl);
-    } catch (e) {
-      console.error("[Reader] fetchBookInfo failed:", e);
+    } catch {
       state.bookInfo = { name: "未知书籍", author: "未知作者" };
       state.chapters = [];
     }

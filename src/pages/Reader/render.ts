@@ -1,4 +1,22 @@
 import type { ReaderState } from "./types.ts";
+import type { Chapter } from "../../types.ts";
+
+const CHAPTER_NUMBER_PATTERN =
+  /第[一二三四五六七八九十百千万\d]+[章回节集卷部]|Chapter\s*\d+|\bVol\.?\s*\d+|\d+[.\s、]/i;
+
+function shouldAutoNumber(chapters: Chapter[]): boolean {
+  if (chapters.length === 0) return false;
+  const sample = chapters.slice(0, Math.min(5, chapters.length));
+  return !sample.some((ch) => CHAPTER_NUMBER_PATTERN.test(ch.title));
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
 export function renderReaderContent(state: ReaderState): string {
   const {
@@ -13,6 +31,7 @@ export function renderReaderContent(state: ReaderState): string {
     showSettings,
     showBookmarks,
     bookmarks,
+    chineseScript,
   } = state;
 
   return `
@@ -25,6 +44,13 @@ export function renderReaderContent(state: ReaderState): string {
         <button class="btn-icon" id="reader-settings-btn" title="设置">&#x2699;</button>
       </header>
 
+      <div class="reader-searchbar">
+        <input type="search" id="chapter-search-input" placeholder="搜索当前章节" value="${escapeHtml(state.searchQuery)}" />
+        <button class="btn-icon" id="chapter-search-prev" title="上一个匹配">&#x2191;</button>
+        <button class="btn-icon" id="chapter-search-next" title="下一个匹配">&#x2193;</button>
+        <span class="chapter-search-count" id="chapter-search-count">${state.searchMatchCount === 0 ? "0 / 0" : `${state.searchMatchIndex + 1} / ${state.searchMatchCount}`}</span>
+      </div>
+
       <main class="reader-body" id="reader-body">
         <div class="loading">加载中...</div>
       </main>
@@ -35,16 +61,26 @@ export function renderReaderContent(state: ReaderState): string {
           <h2>目录</h2>
           <button class="btn-icon" id="toc-close">&#x2715;</button>
         </div>
+        <div class="toc-tools">
+          <input type="search" id="toc-search-input" placeholder="搜索章节或编号" />
+          <div class="toc-jump">
+            <input type="number" id="toc-jump-input" min="1" max="${chapters.length}" placeholder="章节" />
+            <button class="ctrl-btn" id="toc-jump-btn">跳转</button>
+          </div>
+        </div>
         <ul class="toc-list">
-          ${chapters
-            .map(
-              (ch, i) => `
-            <li class="toc-item ${i === currentChapterIndex ? "active" : ""}" data-chapter="${i}">
-              ${ch.title}
-            </li>
-          `,
-            )
-            .join("")}
+          ${(() => {
+            const autoNumber = shouldAutoNumber(chapters);
+            return chapters
+              .map(
+                (ch, i) => `
+              <li class="toc-item ${i === currentChapterIndex ? "active" : ""}" data-chapter="${i}">
+                ${autoNumber ? `第${i + 1}章 ` : ""}${ch.title}
+              </li>
+            `,
+              )
+              .join("");
+          })()}
         </ul>
       </nav>
       ` : ""}
@@ -105,6 +141,14 @@ export function renderReaderContent(state: ReaderState): string {
             <option value="serif" ${fontFamily === "serif" ? "selected" : ""}>Serif</option>
             <option value="sans-serif" ${fontFamily === "sans-serif" ? "selected" : ""}>Sans Serif</option>
           </select>
+        </div>
+        <div class="setting-row">
+          <label>字形</label>
+          <div class="theme-selector">
+            <button class="theme-btn ${chineseScript === "original" ? "active" : ""}" data-script="original">原文</button>
+            <button class="theme-btn ${chineseScript === "simplified" ? "active" : ""}" data-script="simplified">简体</button>
+            <button class="theme-btn ${chineseScript === "traditional" ? "active" : ""}" data-script="traditional">繁體</button>
+          </div>
         </div>
       </div>
     </div>

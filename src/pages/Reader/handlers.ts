@@ -1,5 +1,6 @@
 import type { ReaderState } from "./types.ts";
 import type { Theme } from "../../utils/themeManager";
+import type { ChineseScript } from "../../utils/chineseConvert.ts";
 
 export async function initReaderHandlers(
   container: HTMLElement,
@@ -10,6 +11,39 @@ export async function initReaderHandlers(
   const { themeManager } = await import("../../utils/themeManager");
   const { applyReaderStyle, applyReaderStyleToContent, saveReaderStyleSettings } = await import("./style.ts");
   const { saveCurrentBookmark, deleteBookmark } = await import("./bookmarks.ts");
+  const { saveCurrentReadingProgress } = await import("./chapter.ts");
+  let progressSaveTimer: number | undefined;
+
+  const scheduleProgressSave = () => {
+    if (progressSaveTimer !== undefined) {
+      window.clearTimeout(progressSaveTimer);
+    }
+    progressSaveTimer = window.setTimeout(() => {
+      progressSaveTimer = undefined;
+      saveCurrentReadingProgress(state).catch(() => {
+      });
+    }, 500);
+  };
+
+  const flushProgressSave = async (): Promise<void> => {
+    if (progressSaveTimer !== undefined) {
+      window.clearTimeout(progressSaveTimer);
+      progressSaveTimer = undefined;
+    }
+    await saveCurrentReadingProgress(state);
+  };
+
+  const goToChapter = async (chapterIndex: number): Promise<void> => {
+    if (chapterIndex < 0 || chapterIndex >= state.chapters.length) return;
+    if (readerBody) {
+      state.currentOffset = readerBody.scrollTop;
+      await flushProgressSave();
+    }
+    state.currentChapterIndex = chapterIndex;
+    state.currentOffset = 0;
+    await loadCurrentChapter(container);
+    updateChapterSearch();
+  };
 
   // Query elements
   const tocEl = container.querySelector<HTMLElement>("#reader-toc");
@@ -30,10 +64,135 @@ export async function initReaderHandlers(
   const saveBookmarkBtn = container.querySelector<HTMLButtonElement>("#save-bookmark-btn");
   const themeBtns = container.querySelectorAll<HTMLButtonElement>(".theme-btn");
   const fontFamilySelect = container.querySelector<HTMLSelectElement>("#font-family-select");
+  const tocSearchInput = container.querySelector<HTMLInputElement>("#toc-search-input");
+  const tocJumpInput = container.querySelector<HTMLInputElement>("#toc-jump-input");
+  const tocJumpBtn = container.querySelector<HTMLButtonElement>("#toc-jump-btn");
+  const chapterSearchInput = container.querySelector<HTMLInputElement>("#chapter-search-input");
+  const chapterSearchPrev = container.querySelector<HTMLButtonElement>("#chapter-search-prev");
+  const chapterSearchNext = container.querySelector<HTMLButtonElement>("#chapter-search-next");
+  const chapterSearchCount = container.querySelector<HTMLElement>("#chapter-search-count");
+  let chapterSearchTimer: number | undefined;
+
+  const updateChapterSearchCount = () => {
+    if (!chapterSearchCount) return;
+    chapterSearchCount.textContent = state.searchMatchCount === 0
+      ? "0 / 0"
+      : `${state.searchMatchIndex + 1} / ${state.searchMatchCount}`;
+  };
+
+  const clearChapterHighlights = () => {
+    container.querySelectorAll<HTMLElement>("mark.reader-search-hit").forEach((mark) => {
+      const parent = mark.parentNode;
+      if (!parent) return;
+      parent.replaceChild(document.createTextNode(mark.textContent ?? ""), mark);
+      parent.normalize();
+    });
+  };
+
+  const scrollToSearchMatch = () => {
+    const matches = container.querySelectorAll<HTMLElement>("mark.reader-search-hit");
+    const match = matches[state.searchMatchIndex];
+    if (!match || !readerBody) return;
+    const targetTop = match.offsetTop - readerBody.clientHeight * 0.25;
+    readerBody.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+    matches.forEach((el, index) => {
+      el.classList.toggle("current", index === state.searchMatchIndex);
+    });
+  };
+
+  const updateChapterSearch = () => {
+    clearChapterHighlights();
+    const query = state.searchQuery.trim();
+    state.searchMatchIndex = 0;
+    state.searchMatchCount = 0;
+    if (!query) {
+      updateChapterSearchCount();
+      return;
+    }
+
+    const article = container.querySelector<HTMLElement>(".chapter-content");
+    if (!article) {
+      updateChapterSearchCount();
+      return;
+    }
+
+    const lowerQuery = query.toLocaleLowerCase();
+    const walker = document.createTreeWalker(article, NodeFilter.SHOW_TEXT, {
+      acceptNode(node) {
+        if (!node.textContent?.toLocaleLowerCase().includes(lowerQuery)) {
+          return NodeFilter.FILTER_REJECT;
+        }
+        const parent = node.parentElement;
+        if (parent?.closest("mark.reader-search-hit")) {
+          return NodeFilter.FILTER_REJECT;
+        }
+        return NodeFilter.FILTER_ACCEPT;
+      },
+    });
+    const textNodes: Text[] = [];
+    while (textNodes.length < 500) {
+      const node = walker.nextNode();
+      if (!node) break;
+      textNodes.push(node as Text);
+    }
+
+    textNodes.forEach((node) => {
+      const text = node.nodeValue ?? "";
+      const fragment = document.createDocumentFragment();
+      let position = 0;
+      let searchFrom = 0;
+      while (true) {
+        const index = text.toLocaleLowerCase().indexOf(lowerQuery, searchFrom);
+        if (index < 0) break;
+        if (index > position) {
+          fragment.appendChild(document.createTextNode(text.slice(position, index)));
+        }
+        const mark = document.createElement("mark");
+        mark.className = "reader-search-hit";
+        mark.textContent = text.slice(index, index + query.length);
+        fragment.appendChild(mark);
+        state.searchMatchCount += 1;
+        position = index + query.length;
+        searchFrom = position;
+      }
+      if (position < text.length) {
+        fragment.appendChild(document.createTextNode(text.slice(position)));
+      }
+      node.parentNode?.replaceChild(fragment, node);
+    });
+
+    updateChapterSearchCount();
+    scrollToSearchMatch();
+  };
+
+  const scheduleChapterSearch = () => {
+    if (chapterSearchTimer !== undefined) {
+      window.clearTimeout(chapterSearchTimer);
+    }
+    chapterSearchTimer = window.setTimeout(() => {
+      chapterSearchTimer = undefined;
+      updateChapterSearch();
+    }, 150);
+  };
+
+  const selectSearchMatch = (direction: number) => {
+    if (state.searchMatchCount === 0) return;
+    state.searchMatchIndex =
+      (state.searchMatchIndex + direction + state.searchMatchCount) % state.searchMatchCount;
+    updateChapterSearchCount();
+    scrollToSearchMatch();
+  };
 
   // Navigation
   container.querySelectorAll<HTMLElement>("[data-nav]").forEach((el) => {
-    el.addEventListener("click", () => navigate(el.dataset.nav!));
+    el.addEventListener("click", () => {
+      if (readerBody) {
+        state.currentOffset = readerBody.scrollTop;
+        saveCurrentReadingProgress(state).catch(() => {
+        });
+      }
+      navigate(el.dataset.nav!);
+    });
   });
 
   // TOC toggle
@@ -45,6 +204,37 @@ export async function initReaderHandlers(
   tocBtn?.addEventListener("click", () => {
     state.showToc = !state.showToc;
     tocEl?.classList.toggle("hidden", !state.showToc);
+  });
+
+  tocSearchInput?.addEventListener("input", () => {
+    const query = tocSearchInput.value.trim().toLocaleLowerCase();
+    container.querySelectorAll<HTMLElement>(".toc-item").forEach((el) => {
+      const index = Number(el.dataset.chapter ?? 0);
+      const title = state.chapters[index]?.title ?? "";
+      const chapterNumber = String(index + 1);
+      const matches = !query
+        || title.toLocaleLowerCase().includes(query)
+        || chapterNumber.includes(query);
+      el.classList.toggle("hidden", !matches);
+    });
+  });
+
+  const jumpToRequestedChapter = () => {
+    const requested = Number(tocJumpInput?.value ?? 0);
+    const targetIndex = requested - 1;
+    if (!Number.isInteger(requested) || targetIndex < 0 || targetIndex >= state.chapters.length) {
+      return;
+    }
+    state.showToc = false;
+    tocEl?.classList.add("hidden");
+    goToChapter(targetIndex);
+  };
+
+  tocJumpBtn?.addEventListener("click", jumpToRequestedChapter);
+  tocJumpInput?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      jumpToRequestedChapter();
+    }
   });
 
   // Settings toggle
@@ -67,6 +257,25 @@ export async function initReaderHandlers(
       bookmarksPanel?.classList.add("hidden");
     }
   });
+
+  readerBody?.addEventListener("scroll", () => {
+    state.currentOffset = readerBody.scrollTop;
+    scheduleProgressSave();
+  }, { passive: true });
+
+  chapterSearchInput?.addEventListener("input", () => {
+    state.searchQuery = chapterSearchInput.value;
+    scheduleChapterSearch();
+  });
+
+  chapterSearchInput?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      selectSearchMatch(e.shiftKey ? -1 : 1);
+    }
+  });
+
+  chapterSearchPrev?.addEventListener("click", () => selectSearchMatch(-1));
+  chapterSearchNext?.addEventListener("click", () => selectSearchMatch(1));
 
   // Font size slider
   fontSizeSlider?.addEventListener("input", () => {
@@ -120,18 +329,31 @@ export async function initReaderHandlers(
     applyReaderStyleToContent(state);
   });
 
+  // Chinese script toggle
+  container.querySelectorAll<HTMLButtonElement>("[data-script]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const script = btn.dataset.script as ChineseScript;
+      if (script && script !== state.chineseScript) {
+        state.chineseScript = script;
+        container.querySelectorAll<HTMLButtonElement>("[data-script]").forEach((b) => {
+          b.classList.toggle("active", b.dataset.script === script);
+        });
+        await loadCurrentChapter(container);
+        updateChapterSearch();
+      }
+    });
+  });
+
   // Navigation buttons
   prevBtn?.addEventListener("click", () => {
     if (state.currentChapterIndex > 0) {
-      state.currentChapterIndex--;
-      loadCurrentChapter(container);
+      goToChapter(state.currentChapterIndex - 1);
     }
   });
 
   nextBtn?.addEventListener("click", () => {
     if (state.currentChapterIndex < state.chapters.length - 1) {
-      state.currentChapterIndex++;
-      loadCurrentChapter(container);
+      goToChapter(state.currentChapterIndex + 1);
     }
   });
 
@@ -139,10 +361,9 @@ export async function initReaderHandlers(
   container.querySelectorAll<HTMLElement>(".toc-item").forEach((el) => {
     el.addEventListener("click", () => {
       const idx = parseInt(el.dataset.chapter!);
-      state.currentChapterIndex = idx;
       state.showToc = false;
       tocEl?.classList.add("hidden");
-      loadCurrentChapter(container);
+      goToChapter(idx);
     });
   });
 
@@ -176,10 +397,9 @@ export async function initReaderHandlers(
       const index = parseInt(el.dataset.index!);
       const bookmark = state.bookmarks[index];
       if (bookmark) {
-        state.currentChapterIndex = bookmark.page;
         state.showBookmarks = false;
         bookmarksPanel?.classList.add("hidden");
-        loadCurrentChapter(container);
+        goToChapter(bookmark.page);
       }
     });
   });
@@ -192,15 +412,13 @@ export async function initReaderHandlers(
       case "ArrowLeft":
       case "h":
         if (state.currentChapterIndex > 0) {
-          state.currentChapterIndex--;
-          loadCurrentChapter(container);
+          goToChapter(state.currentChapterIndex - 1);
         }
         break;
       case "ArrowRight":
       case "l":
         if (state.currentChapterIndex < state.chapters.length - 1) {
-          state.currentChapterIndex++;
-          loadCurrentChapter(container);
+          goToChapter(state.currentChapterIndex + 1);
         }
         break;
       case "t":
@@ -240,15 +458,14 @@ export async function initReaderHandlers(
       case "Home":
       case "g":
         if (e.key === "g" && !e.shiftKey) break;
-        state.currentChapterIndex = 0;
-        loadCurrentChapter(container);
+        goToChapter(0);
         break;
       case "End":
-        state.currentChapterIndex = state.chapters.length - 1;
-        loadCurrentChapter(container);
+        goToChapter(state.chapters.length - 1);
         break;
     }
   });
 
   await loadCurrentChapter(container);
+  updateChapterSearch();
 }
