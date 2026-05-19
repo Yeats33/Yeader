@@ -73,6 +73,16 @@ export async function initReaderHandlers(
   const chapterSearchCount = container.querySelector<HTMLElement>("#chapter-search-count");
   let chapterSearchTimer: number | undefined;
 
+  const scrollCurrentTocItemIntoView = () => {
+    const currentItem = container.querySelector<HTMLElement>(
+      `.toc-item[data-chapter="${state.currentChapterIndex}"]`,
+    );
+    if (!currentItem || currentItem.classList.contains("hidden")) return;
+    requestAnimationFrame(() => {
+      currentItem.scrollIntoView({ block: "center" });
+    });
+  };
+
   const updateChapterSearchCount = () => {
     if (!chapterSearchCount) return;
     chapterSearchCount.textContent = state.searchMatchCount === 0
@@ -204,6 +214,9 @@ export async function initReaderHandlers(
   tocBtn?.addEventListener("click", () => {
     state.showToc = !state.showToc;
     tocEl?.classList.toggle("hidden", !state.showToc);
+    if (state.showToc) {
+      scrollCurrentTocItemIntoView();
+    }
   });
 
   tocSearchInput?.addEventListener("input", () => {
@@ -424,6 +437,9 @@ export async function initReaderHandlers(
       case "t":
         state.showToc = !state.showToc;
         tocEl?.classList.toggle("hidden", !state.showToc);
+        if (state.showToc) {
+          scrollCurrentTocItemIntoView();
+        }
         break;
       case "b":
         state.showBookmarks = !state.showBookmarks;

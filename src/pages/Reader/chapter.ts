@@ -95,6 +95,42 @@ export async function saveCurrentReadingProgress(state: ReaderState): Promise<vo
   });
 }
 
+function updateCurrentChapterChrome(container: HTMLElement, state: ReaderState): void {
+  const chapter = state.chapters[state.currentChapterIndex];
+  const position = state.chapters.length > 0
+    ? `${state.currentChapterIndex + 1} / ${state.chapters.length}`
+    : "0 / 0";
+
+  const prevBtn = container.querySelector<HTMLButtonElement>("#prev-chapter");
+  const nextBtn = container.querySelector<HTMLButtonElement>("#next-chapter");
+  const indicator = container.querySelector<HTMLElement>(".chapter-indicator");
+  const headerChapter = container.querySelector<HTMLElement>(".reader-current-chapter");
+  const currentPosition = container.querySelector<HTMLElement>(".toc-current-position");
+  const currentTitle = container.querySelector<HTMLElement>(".toc-current-title");
+  const chapterTitle = chapter?.title ?? "未选择章节";
+
+  container.querySelectorAll<HTMLElement>(".toc-item").forEach((el) => {
+    const idx = parseInt(el.dataset.chapter!);
+    const isCurrent = idx === state.currentChapterIndex;
+    el.classList.toggle("active", isCurrent);
+    if (isCurrent) {
+      el.setAttribute("aria-current", "true");
+    } else {
+      el.removeAttribute("aria-current");
+    }
+  });
+
+  if (prevBtn) prevBtn.disabled = state.currentChapterIndex === 0;
+  if (nextBtn) nextBtn.disabled = state.currentChapterIndex >= state.chapters.length - 1;
+  if (indicator) indicator.textContent = position;
+  if (currentPosition) currentPosition.textContent = position;
+  if (headerChapter) {
+    headerChapter.textContent = chapterTitle;
+    headerChapter.title = chapterTitle;
+  }
+  if (currentTitle) currentTitle.textContent = chapterTitle;
+}
+
 function restoreScrollOffset(readerBody: HTMLElement, offset: number): void {
   if (offset <= 0) {
     readerBody.scrollTop = 0;
@@ -116,16 +152,13 @@ export async function loadCurrentChapter(
   const { applyReaderStyleToContent } = await import("./style.ts");
 
   const readerBody = container.querySelector<HTMLElement>("#reader-body");
-  const prevBtn = container.querySelector<HTMLButtonElement>("#prev-chapter");
-  const nextBtn = container.querySelector<HTMLButtonElement>("#next-chapter");
-  const indicator = container.querySelector<HTMLElement>(".chapter-indicator");
-  const tocItems = container.querySelectorAll<HTMLElement>(".toc-item");
 
   if (!readerBody) return;
 
   const chapter = state.chapters[state.currentChapterIndex];
   if (!chapter) {
     readerBody.innerHTML = '<div class="error-msg">加载章节失败</div>';
+    updateCurrentChapterChrome(container, state);
     return;
   }
 
@@ -142,14 +175,7 @@ export async function loadCurrentChapter(
     readerBody.innerHTML = `<div class="error-msg">加载内容失败: ${e instanceof Error ? e.message : String(e)}</div>`;
   }
 
-  tocItems.forEach((el) => {
-    const idx = parseInt(el.dataset.chapter!);
-    el.classList.toggle("active", idx === state.currentChapterIndex);
-  });
-
-  if (prevBtn) prevBtn.disabled = state.currentChapterIndex === 0;
-  if (nextBtn) nextBtn.disabled = state.currentChapterIndex >= state.chapters.length - 1;
-  if (indicator) indicator.textContent = `${state.currentChapterIndex + 1} / ${state.chapters.length || 1}`;
+  updateCurrentChapterChrome(container, state);
 
   await saveCurrentReadingProgress(state);
 }

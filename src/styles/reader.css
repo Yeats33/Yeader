@@ -21,14 +21,39 @@
   z-index: 10;
 }
 
+.reader-title-group {
+  display: flex;
+  align-items: baseline;
+  flex: 1;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
 .reader-title {
+  flex: 0 1 45%;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text);
   font-size: 15px;
   font-weight: 600;
-  color: var(--color-text);
-  flex: 1;
-  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.reader-current-chapter {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reader-current-chapter::before {
+  content: "/";
+  margin-right: 0.5rem;
+  color: var(--color-text-muted);
 }
 
 .reader-body {
@@ -141,6 +166,37 @@
 }
 
 .toc-header h2 { font-size: 15px; font-weight: 600; }
+
+.toc-current {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.25rem 0.5rem;
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.toc-current-label,
+.toc-current-position {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.toc-current-position {
+  text-align: right;
+}
+
+.toc-current-title {
+  grid-column: 1 / -1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .toc-tools {
   display: flex;

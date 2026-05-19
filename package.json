@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "test": "node --test --experimental-strip-types src/**/*.test.ts",
+    "test": "node --test --experimental-strip-types \"src/**/*.test.ts\"",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri"

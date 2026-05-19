@@ -33,6 +33,11 @@ export function renderReaderContent(state: ReaderState): string {
     bookmarks,
     chineseScript,
   } = state;
+  const currentChapter = chapters[currentChapterIndex];
+  const currentChapterTitle = currentChapter?.title ?? "未选择章节";
+  const currentChapterPosition = chapters.length > 0
+    ? `${currentChapterIndex + 1} / ${chapters.length}`
+    : "0 / 0";
 
   return `
     <div class="page page-reader theme-${theme}" style="--font-size:${fontSize}px; --line-height:${lineHeight}; --font-family:${fontFamily};" tabindex="-1">
@@ -40,7 +45,10 @@ export function renderReaderContent(state: ReaderState): string {
         <button class="btn-icon" data-nav="/" title="返回">&#x2190;</button>
         <button class="btn-icon" id="reader-toc-btn" title="目录" ${chapters.length === 0 ? "disabled" : ""}>&#x2630;</button>
         <button class="btn-icon" id="reader-bookmarks-btn" title="书签">&#x1f516;</button>
-        <h1 class="reader-title">${bookInfo?.name ?? ""}</h1>
+        <div class="reader-title-group">
+          <h1 class="reader-title">${escapeHtml(bookInfo?.name ?? "")}</h1>
+          <span class="reader-current-chapter" title="${escapeHtml(currentChapterTitle)}">${escapeHtml(currentChapterTitle)}</span>
+        </div>
         <button class="btn-icon" id="reader-settings-btn" title="设置">&#x2699;</button>
       </header>
 
@@ -61,6 +69,11 @@ export function renderReaderContent(state: ReaderState): string {
           <h2>目录</h2>
           <button class="btn-icon" id="toc-close">&#x2715;</button>
         </div>
+        <div class="toc-current" id="toc-current">
+          <span class="toc-current-label">当前章节</span>
+          <span class="toc-current-position">${currentChapterPosition}</span>
+          <strong class="toc-current-title">${escapeHtml(currentChapterTitle)}</strong>
+        </div>
         <div class="toc-tools">
           <input type="search" id="toc-search-input" placeholder="搜索章节或编号" />
           <div class="toc-jump">
@@ -74,8 +87,8 @@ export function renderReaderContent(state: ReaderState): string {
             return chapters
               .map(
                 (ch, i) => `
-              <li class="toc-item ${i === currentChapterIndex ? "active" : ""}" data-chapter="${i}">
-                ${autoNumber ? `第${i + 1}章 ` : ""}${ch.title}
+              <li class="toc-item ${i === currentChapterIndex ? "active" : ""}" data-chapter="${i}" ${i === currentChapterIndex ? 'aria-current="true"' : ""}>
+                ${escapeHtml(`${autoNumber ? `第${i + 1}章 ` : ""}${ch.title}`)}
               </li>
             `,
               )
@@ -109,7 +122,7 @@ export function renderReaderContent(state: ReaderState): string {
 
       <div class="reader-controls" id="reader-controls">
         <button class="ctrl-btn" id="prev-chapter" ${currentChapterIndex === 0 ? "disabled" : ""}>上一章</button>
-        <span class="chapter-indicator">${currentChapterIndex + 1} / ${chapters.length || 1}</span>
+        <span class="chapter-indicator">${currentChapterPosition}</span>
         <button class="ctrl-btn" id="next-chapter" ${currentChapterIndex >= chapters.length - 1 ? "disabled" : ""}>下一章</button>
       </div>
 
