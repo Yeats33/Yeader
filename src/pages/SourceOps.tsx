@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
 import { navigate } from "../router.ts";
 import { listYeaderSources } from "../api.ts";
-import type { YeaderSource } from "../types.ts";
+import type { YeaderCapability, YeaderSource } from "../types.ts";
 
 type SourceOpsTab = "import" | "sources";
 
@@ -216,8 +216,85 @@ function DonateDialog({ source, onClose }: { source: YeaderSource; onClose: () =
   );
 }
 
+const capabilityLabels: Record<YeaderCapability["kind"], string> = {
+  search: "搜索",
+  detail: "详情",
+  toc: "目录",
+  content: "正文",
+  feed: "订阅",
+  list: "列表",
+  asset: "资源",
+};
+
+function capabilitySummary(capability: YeaderCapability): string {
+  const parts = [];
+  const method = capability.request?.method ?? "GET";
+  if (capability.request?.url) {
+    parts.push(`${method} ${capability.request.url}`);
+  }
+
+  const fieldCount = Object.keys(capability.fields ?? {}).length;
+  if (fieldCount > 0) {
+    parts.push(`${fieldCount} 个字段`);
+  }
+
+  if (capability.actions && capability.actions.length > 0) {
+    parts.push(`${capability.actions.length} 个动作`);
+  }
+
+  return parts.join(" · ") || "未配置请求";
+}
+
+function SourceFeatureList({ source }: { source: YeaderSource }) {
+  const capabilities = source.capabilities ?? [];
+
+  if (capabilities.length === 0) {
+    return <p className="muted-text">这个书源还没有定义功能。</p>;
+  }
+
+  return (
+    <div className="source-feature-list">
+      {capabilities.map((capability, index) => {
+        const fields = Object.entries(capability.fields ?? {});
+        return (
+          <div className="source-feature-card" key={`${capability.kind}-${index}`}>
+            <div className="source-feature-card-header">
+              <div>
+                <span className="source-feature-kind">{capabilityLabels[capability.kind]}</span>
+                <h3>{capability.kind}</h3>
+              </div>
+              <span className="source-feature-engine">{capability.item?.engine ?? "direct"}</span>
+            </div>
+
+            <p className="source-feature-summary">{capabilitySummary(capability)}</p>
+
+            {fields.length > 0 ? (
+              <div className="source-feature-fields">
+                {fields.map(([fieldName, selector]) => (
+                  <span className="source-feature-field" key={fieldName}>
+                    <strong>{fieldName}</strong>
+                    <span>{selector.engine}</span>
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function SourceListTab({ sources }: { sources: YeaderSource[] }) {
   const [donationSource, setDonationSource] = useState<YeaderSource | null>(null);
+  const enabledCount = sources.filter((source) => source.enabled).length;
+  const [selectedSourceId, setSelectedSourceId] = useState(() => sources[0]?.id ?? "");
+
+  useEffect(() => {
+    if (!sources.some((source) => source.id === selectedSourceId)) {
+      setSelectedSourceId(sources[0]?.id ?? "");
+    }
+  }, [selectedSourceId, sources]);
 
   if (sources.length === 0) {
     return (
@@ -229,7 +306,7 @@ function SourceListTab({ sources }: { sources: YeaderSource[] }) {
     );
   }
 
-  const enabledCount = sources.filter((source) => source.enabled).length;
+  const selectedSource = sources.find((source) => source.id === selectedSourceId) ?? sources[0];
 
   return (
     <div className="source-ops-panel">
@@ -240,34 +317,75 @@ function SourceListTab({ sources }: { sources: YeaderSource[] }) {
         </div>
         <span className="source-summary-chip available">启用:{enabledCount} 全部:{sources.length}</span>
       </div>
-      <div className="source-list">
-        {sources.map((source) => (
-          <div className="source-card" data-source-id={source.id} key={source.id}>
-            <div className="source-card-header">
-              <h3>{source.name}</h3>
-              <span className={`source-status ${source.enabled ? "enabled" : "disabled"}`}>{source.enabled ? "启用" : "禁用"}</span>
-            </div>
-            <div className="source-card-meta">
-              {source.homepage ? <a href={source.homepage} target="_blank" rel="noreferrer">{source.homepage}</a> : null}
-            </div>
-            {(source.publisher || source.donateUrl) ? (
-              <div className="source-card-publisher">
-                {source.publisher ? <span>发布者:{source.publisher}</span> : null}
-                {source.donateUrl ? (
-                  <button className="source-donate-btn" type="button" onClick={() => setDonationSource(source)}>Donate</button>
-                ) : null}
-              </div>
-            ) : null}
-            <div className="source-card-caps">
-              {source.capabilities && source.capabilities.length > 0
-                ? source.capabilities.map((capability, index) => <span className="cap-tag" key={`${capability.kind}-${index}`}>{capability.kind}</span>)
-                : <span className="muted-text">无能力定义</span>}
-            </div>
-            <div className="source-card-tags">
-              {(source.tags ?? []).map((tag) => <span className="tag" key={tag}>{tag}</span>)}
-            </div>
+
+      <div className="source-detail-layout">
+        <aside className="source-picker">
+          <label htmlFor="source-detail-select">选择书源</label>
+          <select
+            id="source-detail-select"
+            className="form-input"
+            value={selectedSource.id}
+            onChange={(event) => setSelectedSourceId(event.target.value)}
+          >
+            {sources.map((source) => (
+              <option key={source.id} value={source.id}>{source.name}</option>
+            ))}
+          </select>
+
+          <div className="source-picker-list" role="list">
+            {sources.map((source) => (
+              <button
+                className={`source-picker-item ${source.id === selectedSource.id ? "active" : ""}`}
+                data-source-id={source.id}
+                key={source.id}
+                type="button"
+                onClick={() => setSelectedSourceId(source.id)}
+              >
+                <span>{source.name}</span>
+                <small>{(source.capabilities ?? []).length} 项功能</small>
+              </button>
+            ))}
           </div>
-        ))}
+        </aside>
+
+        <section className="source-detail-panel">
+          <div className="source-detail-header">
+            <div>
+              <h3>{selectedSource.name}</h3>
+              <span className={`source-status ${selectedSource.enabled ? "enabled" : "disabled"}`}>{selectedSource.enabled ? "启用" : "禁用"}</span>
+            </div>
+            {selectedSource.donateUrl ? (
+              <button className="source-donate-btn donate-action-primary" type="button" onClick={() => setDonationSource(selectedSource)}>Donate</button>
+            ) : null}
+          </div>
+
+          <div className="source-detail-meta">
+            {selectedSource.homepage ? (
+              <a href={selectedSource.homepage} target="_blank" rel="noreferrer">{selectedSource.homepage}</a>
+            ) : <span className="muted-text">无主页</span>}
+            {selectedSource.publisher ? <span>发布者:{selectedSource.publisher}</span> : null}
+            {selectedSource.version ? <span>版本:{selectedSource.version}</span> : null}
+          </div>
+
+          <div className="source-detail-tags">
+            {(selectedSource.tags ?? []).map((tag) => <span className="tag" key={tag}>{tag}</span>)}
+          </div>
+
+          <div className="source-defaults">
+            <span>默认请求</span>
+            <strong>{selectedSource.requestDefaults?.encoding ?? "auto"}</strong>
+            <strong>{selectedSource.requestDefaults?.timeoutMs ? `${selectedSource.requestDefaults.timeoutMs}ms` : "默认超时"}</strong>
+            <strong>{Object.keys(selectedSource.requestDefaults?.headers ?? {}).length} 个 header</strong>
+          </div>
+
+          <div className="source-feature-section">
+            <div className="source-feature-section-header">
+              <h3>功能</h3>
+              <span>{(selectedSource.capabilities ?? []).length} 项</span>
+            </div>
+            <SourceFeatureList source={selectedSource} />
+          </div>
+        </section>
       </div>
       {donationSource ? <DonateDialog source={donationSource} onClose={() => setDonationSource(null)} /> : null}
     </div>
