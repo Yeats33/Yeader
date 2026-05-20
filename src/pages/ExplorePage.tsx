@@ -189,7 +189,7 @@ export function ExploreTab({ sources }: { sources: YeaderSource[] }) {
     return (
       <div className="source-ops-panel">
         <div className="empty-state">
-          <p>暂无启用的书源。</p>
+          <p>暂无启用的来源。</p>
         </div>
       </div>
     );
@@ -214,7 +214,7 @@ export function ExploreTab({ sources }: { sources: YeaderSource[] }) {
             className="form-input explore-source-select"
             value={selectedSourceId}
             onChange={(event) => setSelectedSourceId(event.target.value)}
-            aria-label="切换书源"
+            aria-label="切换来源"
           >
             {enabledSources.map((source) => (
               <option key={source.id} value={source.id}>
@@ -226,7 +226,7 @@ export function ExploreTab({ sources }: { sources: YeaderSource[] }) {
       </div>
 
       {grouped.length === 0 ? (
-        <p className="explore-empty">该书源未提供分类发现。</p>
+        <p className="explore-empty">该来源未提供分类发现。</p>
       ) : (
         <div className="explore-sidebar-layout">
           <aside className="explore-sidebar">

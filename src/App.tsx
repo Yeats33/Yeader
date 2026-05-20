@@ -8,6 +8,8 @@ import { loadTheme, getCurrentTheme, getColorModePreference, watchSystemColorMod
 
 import { BookshelfPage } from "./pages/BookshelfPage.tsx";
 import { SearchPage } from "./pages/SearchPage.tsx";
+import { DiscoverPage } from "./pages/DiscoverPage.tsx";
+import { SourcesPage } from "./pages/SourcesPage.tsx";
 import { ReaderPage } from "./pages/Reader/index.tsx";
 import { IntegrationPage } from "./pages/Integration.tsx";
 import { SoNovelWebuiPage } from "./pages/SoNovelWebui.tsx";
@@ -33,7 +35,9 @@ function NotFoundPage() {
 }
 
 function CurrentRoutePage({ routePath }: { routePath: string }) {
-  if (routePath === "/") return <BookshelfPage />;
+  if (routePath === "/" || routePath === "/library") return <BookshelfPage />;
+  if (routePath === "/discover") return <DiscoverPage />;
+  if (routePath === "/sources") return <SourcesPage />;
   if (routePath === "/search") return <SearchPage />;
   if (routePath === "/account") return <AccountPage />;
   if (routePath === "/settings") return <SettingsPage />;

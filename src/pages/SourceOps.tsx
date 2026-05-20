@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
 import { navigate } from "../router.ts";
-import { listYeaderSources } from "../api.ts";
 import type { YeaderCapability, YeaderSource } from "../types.ts";
 import { ExploreTab } from "./ExplorePage.tsx";
 import { SourceSearchTab } from "./SourceSearch.tsx";
+import { useYeaderSources } from "./useYeaderSources.ts";
 
 type SourceOpsTab = "import" | "sources" | "explore" | "search";
 
@@ -24,7 +24,7 @@ function detectSourceFromUrl(url: string, sources: YeaderSource[]): YeaderSource
   return null;
 }
 
-function ImportTab({ sources }: { sources: YeaderSource[] }) {
+export function ImportTab({ sources }: { sources: YeaderSource[] }) {
   const enabledSources = useMemo(() => sources.filter((source) => source.enabled), [sources]);
   const [url, setUrl] = useState("");
   const [selectedSourceId, setSelectedSourceId] = useState(() => enabledSources[0]?.id ?? "");
@@ -54,7 +54,7 @@ function ImportTab({ sources }: { sources: YeaderSource[] }) {
 
     const source = enabledSources.find((candidate) => candidate.id === selectedSourceId);
     if (!source) {
-      setError("请选择书源");
+      setError("请选择来源");
       return;
     }
 
@@ -65,7 +65,7 @@ function ImportTab({ sources }: { sources: YeaderSource[] }) {
     return (
       <div className="source-ops-panel">
         <div className="empty-state">
-          <p>暂无启用的书源，请先在设置中添加书源。</p>
+          <p>暂无启用的来源，请先添加规则源、RSS 或插件。</p>
         </div>
       </div>
     );
@@ -76,15 +76,15 @@ function ImportTab({ sources }: { sources: YeaderSource[] }) {
       <div className="source-ops-panel import-form">
         <div className="source-ops-panel-header">
           <div>
-            <h2>通过链接打开书籍</h2>
-            <p className="import-desc">粘贴小说页面链接，自动匹配可用书源并进入在线阅读。</p>
+            <h2>通过链接转换内容</h2>
+            <p className="import-desc">粘贴页面链接，自动匹配可用来源并进入统一阅读视图。</p>
           </div>
           <span className="source-summary-chip available">启用:{enabledSources.length} 全部:{sources.length}</span>
         </div>
 
         <div className="source-ops-form-grid">
           <div className="form-group">
-            <label htmlFor="import-source">选择书源</label>
+            <label htmlFor="import-source">选择来源</label>
             <select
               id="import-source"
               className="form-input"
@@ -110,7 +110,7 @@ function ImportTab({ sources }: { sources: YeaderSource[] }) {
             />
           </div>
 
-          <button className="btn-primary source-ops-submit" type="button" onClick={openOnlineReader}>打开</button>
+          <button className="btn-primary source-ops-submit" type="button" onClick={openOnlineReader}>转换</button>
         </div>
 
         {error ? <div><p className="error-msg">{error}</p></div> : null}
@@ -251,7 +251,7 @@ function SourceFeatureList({ source }: { source: YeaderSource }) {
   const capabilities = source.capabilities ?? [];
 
   if (capabilities.length === 0) {
-    return <p className="muted-text">这个书源还没有定义功能。</p>;
+    return <p className="muted-text">这个来源还没有定义功能。</p>;
   }
 
   return (
@@ -287,7 +287,7 @@ function SourceFeatureList({ source }: { source: YeaderSource }) {
   );
 }
 
-function SourceListTab({ sources }: { sources: YeaderSource[] }) {
+export function SourceListTab({ sources }: { sources: YeaderSource[] }) {
   const [donationSource, setDonationSource] = useState<YeaderSource | null>(null);
   const enabledCount = sources.filter((source) => source.enabled).length;
   const [selectedSourceId, setSelectedSourceId] = useState(() => sources[0]?.id ?? "");
@@ -302,7 +302,7 @@ function SourceListTab({ sources }: { sources: YeaderSource[] }) {
     return (
       <div className="source-ops-panel">
         <div className="empty-state">
-          <p>暂无书源，请导入书源配置。</p>
+          <p>暂无来源，请导入规则源、RSS 或安装插件。</p>
         </div>
       </div>
     );
@@ -314,15 +314,15 @@ function SourceListTab({ sources }: { sources: YeaderSource[] }) {
     <div className="source-ops-panel">
       <div className="source-ops-panel-header">
         <div>
-          <h2>Yeader 书源</h2>
-          <p className="import-desc">当前可用于在线搜索、详情、目录和正文抓取的书源。</p>
+          <h2>规则来源</h2>
+          <p className="import-desc">当前可用于搜索、列表、详情、目录和正文抓取的本地规则来源。</p>
         </div>
         <span className="source-summary-chip available">启用:{enabledCount} 全部:{sources.length}</span>
       </div>
 
       <div className="source-detail-layout">
         <aside className="source-picker">
-          <label htmlFor="source-detail-select">选择书源</label>
+          <label htmlFor="source-detail-select">选择来源</label>
           <select
             id="source-detail-select"
             className="form-input"
@@ -394,44 +394,52 @@ function SourceListTab({ sources }: { sources: YeaderSource[] }) {
   );
 }
 
+export function PluginMarketPanel() {
+  return (
+    <section className="source-ops-panel plugin-market-panel">
+      <div className="source-ops-panel-header">
+        <div>
+          <h2>插件市场</h2>
+          <p className="import-desc">复杂网站适配器来自独立插件仓库，Yeader 只负责市场、安装、权限和本地 Wasm 运行时。</p>
+        </div>
+        <span className="source-summary-chip available">外部索引</span>
+      </div>
+
+      <div className="plugin-market-grid">
+        <div className="plugin-market-card">
+          <strong>免费插件</strong>
+          <span>不需要登录即可安装和使用。</span>
+        </div>
+        <div className="plugin-market-card">
+          <strong>Token 启用</strong>
+          <span>需要 EVM 登录，并由 Yeader 校验登录地址是否有满足条件的历史 ERC-20 转账。</span>
+        </div>
+        <div className="plugin-market-card">
+          <strong>多链捐赠</strong>
+          <span>作者可声明 EVM、Tron、Bitcoin、Solana 捐赠地址；捐赠不等同身份。</span>
+        </div>
+      </div>
+
+      <div className="plugin-market-meta">
+        <span>身份：EVM 单地址</span>
+        <span>验证：unverified / signature-pending / verified</span>
+        <span>索引：../YeaderPlugins/registry/plugins.json</span>
+      </div>
+    </section>
+  );
+}
+
 export function SourceOpsPage() {
   const [tab, setTab] = useState<SourceOpsTab>("explore");
-  const [sources, setSources] = useState<YeaderSource[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-
-    listYeaderSources()
-      .then((loadedSources) => {
-        if (!cancelled) {
-          setSources(loadedSources);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setSources([]);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { sources, loading } = useYeaderSources();
 
   return (
     <div className="page page-source-ops">
       <header className="page-header">
-        <button className="btn-icon" type="button" onClick={() => navigate("/")} title="返回书架">
+        <button className="btn-icon" type="button" onClick={() => navigate("/")} title="返回阅读">
           &#x2190;
         </button>
-        <h1>书源管理</h1>
+        <h1>来源</h1>
         <button className="btn-icon" type="button" onClick={() => navigate("/settings")} title="设置">
           &#x2699;
         </button>
@@ -441,8 +449,8 @@ export function SourceOpsPage() {
         <div className="source-ops-tabs">
           <button className={`tab-btn ${tab === "explore" ? "active" : ""}`} type="button" onClick={() => setTab("explore")}>发现</button>
           <button className={`tab-btn ${tab === "search" ? "active" : ""}`} type="button" onClick={() => setTab("search")}>搜索</button>
-          <button className={`tab-btn ${tab === "import" ? "active" : ""}`} type="button" onClick={() => setTab("import")}>链接导入</button>
-          <button className={`tab-btn ${tab === "sources" ? "active" : ""}`} type="button" onClick={() => setTab("sources")}>书源列表</button>
+          <button className={`tab-btn ${tab === "import" ? "active" : ""}`} type="button" onClick={() => setTab("import")}>链接</button>
+          <button className={`tab-btn ${tab === "sources" ? "active" : ""}`} type="button" onClick={() => setTab("sources")}>规则来源</button>
         </div>
 
         <div className="source-ops-content">

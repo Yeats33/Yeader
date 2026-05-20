@@ -6,7 +6,7 @@ import type { Book } from "../types.ts";
 
 type BookViewMode = "grid" | "list";
 
-type BookshelfFilter = "all" | "local" | "network";
+type BookshelfFilter = "all" | "local" | "web";
 
 function getProgressText(book: Book): string {
   const progress = book.reading_progress ?? 0;
@@ -125,14 +125,14 @@ export function BookshelfPage() {
   }, []);
 
   const localBooks = useMemo(() => books.filter((book) => book.source_url === "local://epub"), [books]);
-  const networkBooks = useMemo(() => books.filter((book) => book.source_url !== "local://epub"), [books]);
-  const visibleBooks = filter === "local" ? localBooks : filter === "network" ? networkBooks : books;
+  const webBooks = useMemo(() => books.filter((book) => book.source_url !== "local://epub"), [books]);
+  const visibleBooks = filter === "local" ? localBooks : filter === "web" ? webBooks : books;
 
   async function deleteBook(book: Book) {
     if (deletingUrl) return;
     setDeletingUrl(book.url);
     try {
-      const confirmed = await ask(`确定要从书架删除《${book.name}》吗？`, {
+      const confirmed = await ask(`确定要从阅读库删除《${book.name}》吗？`, {
         title: "确认删除",
         kind: "warning",
         okLabel: "删除",
@@ -192,19 +192,19 @@ export function BookshelfPage() {
   return (
     <div className="page page-bookshelf" data-view-mode={viewMode} data-filter={filter}>
       <header className="page-header">
-        <h1>书架</h1>
+        <h1>阅读</h1>
         <div className="view-toggle">
           <button className={`btn-toggle ${viewMode === "grid" ? "active" : ""}`} type="button" onClick={() => setViewMode("grid")} title="网格视图">&#x1F5BC;</button>
           <button className={`btn-toggle ${viewMode === "list" ? "active" : ""}`} type="button" onClick={() => setViewMode("list")} title="列表视图">&#x2630;</button>
         </div>
-        <button className="btn-icon" type="button" onClick={() => navigate("/search")} title="搜索">&#x1F50D;</button>
+        <button className="btn-icon" type="button" onClick={() => navigate("/discover")} title="发现">&#x1F50D;</button>
         <button className="btn-icon" type="button" onClick={() => navigate("/settings")} title="设置">&#x2699;</button>
       </header>
 
       <div className="shelf-tabs">
         <button className={`tab-btn ${filter === "all" ? "active" : ""}`} type="button" onClick={() => setFilter("all")}>全部 ({books.length})</button>
-        <button className={`tab-btn ${filter === "local" ? "active" : ""}`} type="button" onClick={() => setFilter("local")}>本地书籍 ({localBooks.length})</button>
-        <button className={`tab-btn ${filter === "network" ? "active" : ""}`} type="button" onClick={() => setFilter("network")}>网络书籍 ({networkBooks.length})</button>
+        <button className={`tab-btn ${filter === "local" ? "active" : ""}`} type="button" onClick={() => setFilter("local")}>本地文件 ({localBooks.length})</button>
+        <button className={`tab-btn ${filter === "web" ? "active" : ""}`} type="button" onClick={() => setFilter("web")}>网站内容 ({webBooks.length})</button>
       </div>
 
       <div className="import-dropdown">
@@ -225,8 +225,8 @@ export function BookshelfPage() {
       {loading ? <div className="loading">加载中...</div> : null}
       {!loading && books.length === 0 ? (
         <div className="empty-state">
-          <p>书架为空</p>
-          <button className="btn-primary" type="button" onClick={() => navigate("/search")}>去搜索书籍</button>
+          <p>内容库为空</p>
+          <button className="btn-primary" type="button" onClick={() => navigate("/discover")}>添加内容</button>
         </div>
       ) : null}
       {!loading && books.length > 0 ? (

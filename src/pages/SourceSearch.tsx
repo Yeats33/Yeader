@@ -87,11 +87,11 @@ export function SourceSearchTab({ sources }: { sources: YeaderSource[] }) {
       return;
     }
     if (!selectedSource) {
-      setError("请选择书源");
+      setError("请选择来源");
       return;
     }
     if (!supportsSearch) {
-      setError("当前书源不支持搜索");
+      setError("当前来源不支持搜索");
       return;
     }
     setError("");
@@ -119,7 +119,7 @@ export function SourceSearchTab({ sources }: { sources: YeaderSource[] }) {
     return (
       <div className="source-ops-panel">
         <div className="empty-state">
-          <p>暂无启用的书源。</p>
+          <p>暂无启用的来源。</p>
         </div>
       </div>
     );
@@ -130,7 +130,7 @@ export function SourceSearchTab({ sources }: { sources: YeaderSource[] }) {
       <div className="explore-hero">
         <div className="explore-hero-text">
           <span className="explore-hero-eyebrow">搜索</span>
-          <h2 className="explore-hero-title">书源内搜索</h2>
+          <h2 className="explore-hero-title">来源内搜索</h2>
           <p className="explore-hero-meta">
             {selectedSource ? selectedSource.name : ""}
             {selectedSource ? (supportsSearch ? " · 支持搜索" : " · 不支持搜索") : ""}
@@ -141,7 +141,7 @@ export function SourceSearchTab({ sources }: { sources: YeaderSource[] }) {
             className="form-input explore-source-select"
             value={selectedSourceId}
             onChange={(event) => setSelectedSourceId(event.target.value)}
-            aria-label="切换书源"
+            aria-label="切换来源"
           >
             {enabledSources.map((source) => (
               <option key={source.id} value={source.id}>
@@ -156,7 +156,7 @@ export function SourceSearchTab({ sources }: { sources: YeaderSource[] }) {
         <input
           type="text"
           className="form-input source-search-input"
-          placeholder={supportsSearch ? `在「${selectedSource?.name ?? ""}」搜索…` : "当前书源不支持搜索"}
+          placeholder={supportsSearch ? `在「${selectedSource?.name ?? ""}」搜索…` : "当前来源不支持搜索"}
           value={keyword}
           onChange={(event) => setKeyword(event.target.value)}
           onKeyDown={onKeyDown}
@@ -174,7 +174,7 @@ export function SourceSearchTab({ sources }: { sources: YeaderSource[] }) {
       </div>
 
       {!supportsSearch ? (
-        <p className="explore-status">该书源没有定义 search 能力，请到「书源列表」检查或换源。</p>
+        <p className="explore-status">该来源没有定义 search 能力，请到「来源」检查或切换。</p>
       ) : null}
       {error ? <p className="explore-error">{error}</p> : null}
       {loading ? <SkeletonGrid /> : null}

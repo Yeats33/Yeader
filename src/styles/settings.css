@@ -595,6 +595,54 @@
   font-weight: 650;
 }
 
+.plugin-market-panel {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.plugin-market-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.plugin-market-card {
+  display: grid;
+  gap: 0.35rem;
+  min-height: 96px;
+  padding: 0.875rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+}
+
+.plugin-market-card strong {
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.plugin-market-card span,
+.plugin-market-meta span {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.plugin-market-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.875rem;
+}
+
+.plugin-market-meta span {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-bg);
+}
+
 .source-card {
   display: flex;
   flex-direction: column;
@@ -852,6 +900,10 @@
   .source-list-card-header,
   .source-item,
   .source-ops-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .plugin-market-grid {
     grid-template-columns: 1fr;
   }
 
