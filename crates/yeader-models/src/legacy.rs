@@ -217,6 +217,12 @@ mod tests {
             Some("https://example.com/search?key={{key}}")
         );
         assert!(source.enabled);
+        assert_eq!(source.extra.get("enabledReview"), Some(&Value::Bool(true)));
+        assert_eq!(
+            source.extra.get("enabledCookieJar"),
+            Some(&Value::Bool(true))
+        );
+        assert_eq!(source.extra.get("respondTime"), Some(&Value::from(1234)));
 
         // ruleSearch is now a first-class field, not in extra
         assert!(source.rule_search.is_some());

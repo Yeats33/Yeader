@@ -8,7 +8,7 @@ export interface YeaderSourcePack {
 export interface YeaderSource {
   id: string;
   name: string;
-  mediaType: "novel" | "rss" | "comic" | "audio" | "video" | "generic";
+  mediaType: "novel" | "rss" | "comic" | "audio" | "video" | "drama" | "generic";
   version?: string;
   homepage?: string;
   publisher?: string;
@@ -16,6 +16,8 @@ export interface YeaderSource {
   tags?: string[];
   enabled: boolean;
   requestDefaults?: YeaderRequestDefaults;
+  auth?: YeaderAuthConfig;
+  compatibility?: YeaderCompatibilityProfile;
   variables?: Record<string, string>;
   exploreCategories?: YeaderExploreCategory[];
   capabilities?: YeaderCapability[];
@@ -40,10 +42,26 @@ export interface YeaderRequestDefaults {
   encoding?: string;
   timeoutMs?: number;
   impersonate?: string;
+  cookieJar?: boolean;
+}
+
+export interface YeaderAuthConfig {
+  loginUrl?: string;
+  loginUi?: string;
+  loginCheckScript?: string;
+  cookieJar?: boolean;
+}
+
+export interface YeaderCompatibilityProfile {
+  originFormat: string;
+  originVersion?: string;
+  features?: string[];
+  requires?: string[];
+  notes?: string[];
 }
 
 export interface YeaderCapability {
-  kind: "search" | "detail" | "toc" | "content" | "feed" | "list" | "asset";
+  kind: "search" | "detail" | "toc" | "content" | "feed" | "list" | "review" | "asset";
   request?: YeaderRequest;
   item?: YeaderSelector;
   fields?: Record<string, YeaderSelector>;
@@ -227,13 +245,20 @@ export interface LegacyBookSource {
   bookUrlPattern?: string;
   loginCheckJs?: string;
   bookSourceType?: number;
+  enabledReview?: boolean;
+  enabledCookieJar?: boolean;
   enabledExplore?: boolean;
   exploreUrl?: string;
   loginUrl?: string;
+  loginUi?: string;
+  jsLib?: string;
   header?: string;
   customOrder?: number;
   weight?: number;
   lastUpdateTime?: number;
+  respondTime?: number;
+  customButton?: boolean;
+  eventListener?: boolean;
   bookSourceComment?: string;
   ruleSearch?: {
     bookList?: string;
@@ -285,6 +310,8 @@ export interface LegacyBookSource {
     imageDecode?: string;
     payAction?: string;
   };
+  ruleExplore?: unknown;
+  ruleReview?: unknown;
   enabled: boolean;
   lastTestAvailable?: boolean;
   lastTestedAt?: string;

@@ -51,6 +51,10 @@ pub struct YeaderSource {
     #[serde(default)]
     pub request_defaults: YeaderRequestDefaults,
     #[serde(default)]
+    pub auth: Option<YeaderAuthConfig>,
+    #[serde(default)]
+    pub compatibility: Option<YeaderCompatibilityProfile>,
+    #[serde(default)]
     pub variables: BTreeMap<String, String>,
     #[serde(default)]
     pub explore_categories: Vec<YeaderExploreCategory>,
@@ -97,7 +101,41 @@ pub enum YeaderMediaType {
     Comic,
     Audio,
     Video,
+    Drama,
     Generic,
+}
+
+/// Login/session hints for sources that need user identity.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct YeaderAuthConfig {
+    #[serde(default)]
+    pub login_url: Option<String>,
+    #[serde(default)]
+    pub login_ui: Option<String>,
+    #[serde(default)]
+    pub login_check_script: Option<String>,
+    #[serde(default)]
+    pub cookie_jar: bool,
+    #[serde(flatten, default)]
+    pub extra: Map<String, Value>,
+}
+
+/// Compatibility metadata retained during external source import.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct YeaderCompatibilityProfile {
+    pub origin_format: String,
+    #[serde(default)]
+    pub origin_version: Option<String>,
+    #[serde(default)]
+    pub features: Vec<String>,
+    #[serde(default)]
+    pub requires: Vec<String>,
+    #[serde(default)]
+    pub notes: Vec<String>,
+    #[serde(flatten, default)]
+    pub extra: Map<String, Value>,
 }
 
 /// A single executable source capability.
@@ -127,6 +165,7 @@ pub enum YeaderCapabilityKind {
     Content,
     Feed,
     List,
+    Review,
     Asset,
 }
 
@@ -165,6 +204,8 @@ pub struct YeaderRequestDefaults {
     /// gates. Unset = use the default `reqwest` path.
     #[serde(default)]
     pub impersonate: Option<String>,
+    #[serde(default)]
+    pub cookie_jar: bool,
 }
 
 /// Pagination template for request variables.
@@ -337,6 +378,35 @@ impl From<&LegacyBookSource> for YeaderSource {
             capabilities.push(capability);
         }
 
+        let legacy_rule_explore = legacy_extra_value(source, "ruleExplore");
+        let legacy_rule_review = legacy_extra_value(source, "ruleReview");
+
+        if source.explore_url.is_some() || legacy_rule_explore.is_some() {
+            let mut capability = YeaderCapability::new(
+                YeaderCapabilityKind::List,
+                source
+                    .explore_url
+                    .as_ref()
+                    .map(|url| YeaderRequest::get(url.clone())),
+            );
+            if let Some(rule) = legacy_rule_explore {
+                capability
+                    .extra
+                    .insert("legacyRuleExplore".to_string(), rule);
+            }
+            capabilities.push(capability);
+        }
+
+        if legacy_extra_bool(source, "enabledReview") || legacy_rule_review.is_some() {
+            let mut capability = YeaderCapability::new(YeaderCapabilityKind::Review, None);
+            if let Some(rule) = legacy_rule_review {
+                capability
+                    .extra
+                    .insert("legacyRuleReview".to_string(), rule);
+            }
+            capabilities.push(capability);
+        }
+
         Self {
             id: source.book_source_url.clone(),
             name: source.book_source_name.clone(),
@@ -352,11 +422,14 @@ impl From<&LegacyBookSource> for YeaderSource {
                 encoding: None,
                 timeout_ms: None,
                 impersonate: None,
+                cookie_jar: legacy_extra_bool(source, "enabledCookieJar"),
             },
+            auth: legacy_auth_config(source),
+            compatibility: Some(legacy_compatibility_profile(source)),
             variables: BTreeMap::new(),
             explore_categories: Vec::new(),
             capabilities,
-            extra: Map::new(),
+            extra: legacy_source_extra(source),
         }
     }
 }
@@ -382,6 +455,15 @@ impl From<&LegacyRssSource> for YeaderSource {
             tags: Vec::new(),
             enabled: source.enabled,
             request_defaults: YeaderRequestDefaults::default(),
+            auth: None,
+            compatibility: Some(YeaderCompatibilityProfile {
+                origin_format: "legado.rssSource".to_string(),
+                origin_version: None,
+                features: vec!["feed".to_string()],
+                requires: Vec::new(),
+                notes: Vec::new(),
+                extra: source.extra.clone(),
+            }),
             variables: BTreeMap::new(),
             explore_categories: Vec::new(),
             capabilities: vec![capability],
@@ -448,6 +530,140 @@ fn legacy_selector(rule: &String) -> YeaderSelector {
         fallback: Vec::new(),
         extra: Map::new(),
     }
+}
+
+fn legacy_extra_bool(source: &LegacyBookSource, key: &str) -> bool {
+    source
+        .extra
+        .get(key)
+        .and_then(Value::as_bool)
+        .unwrap_or(false)
+}
+
+fn legacy_extra_string(source: &LegacyBookSource, key: &str) -> Option<String> {
+    source
+        .extra
+        .get(key)
+        .and_then(Value::as_str)
+        .map(str::to_string)
+}
+
+fn legacy_extra_i64(source: &LegacyBookSource, key: &str) -> Option<i64> {
+    source.extra.get(key).and_then(Value::as_i64)
+}
+
+fn legacy_extra_value(source: &LegacyBookSource, key: &str) -> Option<Value> {
+    source.extra.get(key).cloned()
+}
+
+fn legacy_auth_config(source: &LegacyBookSource) -> Option<YeaderAuthConfig> {
+    let login_ui = legacy_extra_string(source, "loginUi");
+    let cookie_jar = legacy_extra_bool(source, "enabledCookieJar");
+    if source.login_url.is_none()
+        && login_ui.is_none()
+        && source.login_check_js.is_none()
+        && !cookie_jar
+    {
+        return None;
+    }
+
+    Some(YeaderAuthConfig {
+        login_url: source.login_url.clone(),
+        login_ui,
+        login_check_script: source.login_check_js.clone(),
+        cookie_jar,
+        extra: Map::new(),
+    })
+}
+
+fn legacy_compatibility_profile(source: &LegacyBookSource) -> YeaderCompatibilityProfile {
+    let mut features = Vec::new();
+    let mut requires = Vec::new();
+    let mut notes = Vec::new();
+
+    if source.search_url.is_some() || source.rule_search.is_some() {
+        features.push("search".to_string());
+    }
+    if source.rule_book_info.is_some() {
+        features.push("detail".to_string());
+    }
+    if source.rule_toc.is_some() {
+        features.push("toc".to_string());
+    }
+    if source.rule_content.is_some() {
+        features.push("content".to_string());
+    }
+    if source.enabled_explore.unwrap_or(false)
+        || source.explore_url.is_some()
+        || source.extra.contains_key("ruleExplore")
+    {
+        features.push("explore".to_string());
+    }
+    if legacy_extra_bool(source, "enabledReview") || source.extra.contains_key("ruleReview") {
+        features.push("review".to_string());
+    }
+    if source.extra.contains_key("jsLib")
+        || source
+            .search_url
+            .as_deref()
+            .is_some_and(|value| value.contains("<js>"))
+        || source
+            .explore_url
+            .as_deref()
+            .is_some_and(|value| value.contains("<js>"))
+    {
+        requires.push("javaScript".to_string());
+    }
+    if source.login_url.is_some()
+        || source.extra.contains_key("loginUi")
+        || source.login_check_js.is_some()
+    {
+        requires.push("login".to_string());
+    }
+    if legacy_extra_bool(source, "enabledCookieJar") {
+        requires.push("cookieJar".to_string());
+    }
+    if legacy_extra_bool(source, "eventListener") {
+        requires.push("eventListener".to_string());
+    }
+    if legacy_extra_bool(source, "customButton") {
+        notes.push("usesCustomButton".to_string());
+    }
+
+    YeaderCompatibilityProfile {
+        origin_format: "legado.bookSource".to_string(),
+        origin_version: source.book_source_type.map(|value| value.to_string()),
+        features,
+        requires,
+        notes,
+        extra: Map::new(),
+    }
+}
+
+fn legacy_source_extra(source: &LegacyBookSource) -> Map<String, Value> {
+    let mut extra = source.extra.clone();
+    if let Some(value) = source.book_url_pattern.as_ref() {
+        extra.insert(
+            "legacyBookUrlPattern".to_string(),
+            Value::String(value.clone()),
+        );
+    }
+    if let Some(value) = source.book_source_comment.as_ref() {
+        extra.insert("comment".to_string(), Value::String(value.clone()));
+    }
+    if let Some(value) = legacy_extra_i64(source, "respondTime") {
+        extra.insert("legacyRespondTime".to_string(), Value::from(value));
+    }
+    if let Some(value) = source.custom_order {
+        extra.insert("legacyCustomOrder".to_string(), Value::from(value));
+    }
+    if let Some(value) = source.weight {
+        extra.insert("legacyWeight".to_string(), Value::from(value));
+    }
+    if let Some(value) = legacy_extra_string(source, "jsLib") {
+        extra.insert("legacyJsLib".to_string(), Value::String(value.clone()));
+    }
+    extra
 }
 
 fn split_tags(raw: Option<&str>) -> Vec<String> {
@@ -565,6 +781,20 @@ mod tests {
             YeaderSelectorEngine::LegacyLegado
         );
         assert_eq!(native.capabilities[0].fields["title"].query, "tag.a@text");
+        assert_eq!(native.request_defaults.cookie_jar, true);
+        assert_eq!(native.auth.as_ref().map(|auth| auth.cookie_jar), Some(true));
+        let compatibility = native
+            .compatibility
+            .as_ref()
+            .expect("compatibility profile");
+        assert_eq!(compatibility.origin_format, "legado.bookSource");
+        assert!(compatibility.features.contains(&"explore".to_string()));
+        assert!(compatibility.features.contains(&"review".to_string()));
+        assert!(compatibility.requires.contains(&"cookieJar".to_string()));
+        assert_eq!(
+            native.extra.get("legacyRespondTime"),
+            Some(&serde_json::Value::from(1234))
+        );
     }
 
     #[test]

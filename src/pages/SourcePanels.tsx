@@ -252,6 +252,7 @@ const capabilityLabels: Record<YeaderCapability["kind"], string> = {
   content: "正文",
   feed: "订阅",
   list: "列表",
+  review: "评论",
   asset: "资源",
 };
 
