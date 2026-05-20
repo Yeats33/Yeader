@@ -387,6 +387,106 @@
   text-decoration: none;
 }
 
+.source-card-publisher {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.source-card-publisher span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-donate-btn {
+  flex: 0 0 auto;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-info);
+  background: var(--color-surface);
+  font-size: 12px;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.donate-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(15 23 42 / 0.42);
+}
+
+.donate-modal {
+  width: min(100%, 320px);
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  box-shadow: var(--shadow-lg);
+}
+
+.donate-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.875rem;
+}
+
+.donate-modal-header h3 {
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+.donate-modal-header p {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.donate-qr-frame {
+  display: grid;
+  place-items: center;
+  min-height: 204px;
+  margin-bottom: 0.875rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: #fff;
+}
+
+.donate-qr-frame img {
+  width: 184px;
+  height: 184px;
+}
+
+.donate-address {
+  display: block;
+  overflow-wrap: anywhere;
+  padding: 0.625rem;
+  border-radius: var(--radius);
+  color: var(--color-text);
+  background: var(--color-surface);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.donate-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.875rem;
+}
+
 .cap-tag,
 .tag {
   color: var(--color-text-muted);

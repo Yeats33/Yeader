@@ -8,6 +8,8 @@
       "name": "小說狂人",
       "mediaType": "novel",
       "homepage": "https://czbooks.net/",
+      "publisher": "Yeats",
+      "donateUrl": "ethereum:0x00000073a2c5581b9ea3d79261a567571Dd14E31",
       "tags": ["中文", "繁體", "免費"],
       "enabled": true,
       "requestDefaults": {

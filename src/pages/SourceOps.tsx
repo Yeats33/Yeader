@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import QRCode from "qrcode";
 import { navigate } from "../router.ts";
 import { listYeaderSources } from "../api.ts";
 import type { YeaderSource } from "../types.ts";
@@ -117,7 +118,79 @@ function ImportTab({ sources }: { sources: YeaderSource[] }) {
   );
 }
 
+function donateAddressFromUrl(donateUrl: string): string {
+  if (donateUrl.startsWith("ethereum:")) {
+    return donateUrl.slice("ethereum:".length).split(/[?@/]/)[0] ?? donateUrl;
+  }
+
+  return donateUrl;
+}
+
+function DonateDialog({ source, onClose }: { source: YeaderSource; onClose: () => void }) {
+  const donateUrl = source.donateUrl ?? "";
+  const donateAddress = donateAddressFromUrl(donateUrl);
+  const [qrDataUrl, setQrDataUrl] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    QRCode.toDataURL(donateUrl, {
+      errorCorrectionLevel: "M",
+      margin: 1,
+      width: 184,
+    })
+      .then((dataUrl) => {
+        if (!cancelled) {
+          setQrDataUrl(dataUrl);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setQrDataUrl("");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [donateUrl]);
+
+  async function copyAddress() {
+    await navigator.clipboard.writeText(donateAddress);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1200);
+  }
+
+  return (
+    <div className="donate-modal-backdrop" role="presentation" onClick={onClose}>
+      <div className="donate-modal" role="dialog" aria-modal="true" aria-labelledby="donate-title" onClick={(event) => event.stopPropagation()}>
+        <div className="donate-modal-header">
+          <div>
+            <h3 id="donate-title">支持发布者</h3>
+            <p>{source.publisher ?? source.name}</p>
+          </div>
+          <button className="btn-icon" type="button" onClick={onClose} title="关闭">×</button>
+        </div>
+
+        <div className="donate-qr-frame">
+          {qrDataUrl ? <img src={qrDataUrl} alt="Donate QR code" /> : <span className="muted-text">二维码生成失败</span>}
+        </div>
+
+        <code className="donate-address">{donateAddress}</code>
+
+        <div className="donate-actions">
+          <button className="source-donate-btn" type="button" onClick={copyAddress}>{copied ? "已复制" : "复制地址"}</button>
+          <a className="source-donate-btn" href={donateUrl} target="_blank" rel="noreferrer">打开钱包链接</a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SourceListTab({ sources }: { sources: YeaderSource[] }) {
+  const [donationSource, setDonationSource] = useState<YeaderSource | null>(null);
+
   if (sources.length === 0) {
     return (
       <div className="source-ops-panel">
@@ -149,6 +222,14 @@ function SourceListTab({ sources }: { sources: YeaderSource[] }) {
             <div className="source-card-meta">
               {source.homepage ? <a href={source.homepage} target="_blank" rel="noreferrer">{source.homepage}</a> : null}
             </div>
+            {(source.publisher || source.donateUrl) ? (
+              <div className="source-card-publisher">
+                {source.publisher ? <span>发布者:{source.publisher}</span> : null}
+                {source.donateUrl ? (
+                  <button className="source-donate-btn" type="button" onClick={() => setDonationSource(source)}>Donate</button>
+                ) : null}
+              </div>
+            ) : null}
             <div className="source-card-caps">
               {source.capabilities && source.capabilities.length > 0
                 ? source.capabilities.map((capability, index) => <span className="cap-tag" key={`${capability.kind}-${index}`}>{capability.kind}</span>)
@@ -160,6 +241,7 @@ function SourceListTab({ sources }: { sources: YeaderSource[] }) {
           </div>
         ))}
       </div>
+      {donationSource ? <DonateDialog source={donationSource} onClose={() => setDonationSource(null)} /> : null}
     </div>
   );
 }

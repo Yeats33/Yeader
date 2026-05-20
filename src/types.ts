@@ -101,6 +101,8 @@ export interface YeaderSource {
   mediaType: "novel" | "rss" | "comic" | "audio" | "video" | "generic";
   version?: string;
   homepage?: string;
+  publisher?: string;
+  donateUrl?: string;
   tags?: string[];
   enabled: boolean;
   requestDefaults?: YeaderRequestDefaults;

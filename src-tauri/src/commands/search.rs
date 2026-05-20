@@ -487,6 +487,12 @@ mod yeader_native_tests {
     #[test]
     fn czbooks_detail_selectors_match_current_dom() {
         let source = czbooks_source();
+        assert_eq!(source.publisher.as_deref(), Some("Yeats"));
+        assert_eq!(
+            source.donate_url.as_deref(),
+            Some("ethereum:0x00000073a2c5581b9ea3d79261a567571Dd14E31")
+        );
+
         let detail_cap = source
             .capabilities
             .iter()

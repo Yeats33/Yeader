@@ -1166,6 +1166,8 @@ mod tests {
             media_type: YeaderMediaType::Novel,
             version: Some("1".into()),
             homepage: Some("https://example.com".into()),
+            publisher: Some("Alice".into()),
+            donate_url: Some("https://example.com/donate".into()),
             tags: vec!["native".into()],
             enabled: true,
             request_defaults: YeaderRequestDefaults::default(),
@@ -1179,6 +1181,11 @@ mod tests {
         assert_eq!(all.len(), 1);
         assert_eq!(all[0].id, "native.example");
         assert_eq!(all[0].media_type, YeaderMediaType::Novel);
+        assert_eq!(all[0].publisher.as_deref(), Some("Alice"));
+        assert_eq!(
+            all[0].donate_url.as_deref(),
+            Some("https://example.com/donate")
+        );
     }
 
     #[test]
@@ -1192,6 +1199,8 @@ mod tests {
             media_type: YeaderMediaType::Rss,
             version: None,
             homepage: None,
+            publisher: None,
+            donate_url: None,
             tags: Vec::new(),
             enabled: false,
             request_defaults: YeaderRequestDefaults::default(),

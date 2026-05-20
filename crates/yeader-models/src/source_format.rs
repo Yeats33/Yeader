@@ -41,6 +41,10 @@ pub struct YeaderSource {
     #[serde(default)]
     pub homepage: Option<String>,
     #[serde(default)]
+    pub publisher: Option<String>,
+    #[serde(default)]
+    pub donate_url: Option<String>,
+    #[serde(default)]
     pub tags: Vec<String>,
     #[serde(default = "default_true")]
     pub enabled: bool,
@@ -303,6 +307,8 @@ impl From<&LegacyBookSource> for YeaderSource {
             media_type: YeaderMediaType::Novel,
             version: source.last_update_time.map(|value| value.to_string()),
             homepage: Some(source.book_source_url.clone()),
+            publisher: None,
+            donate_url: None,
             tags: split_tags(source.book_source_group.as_deref()),
             enabled: source.enabled,
             request_defaults: YeaderRequestDefaults {
@@ -333,6 +339,8 @@ impl From<&LegacyRssSource> for YeaderSource {
             media_type: YeaderMediaType::Rss,
             version: None,
             homepage: Some(source.source_url.clone()),
+            publisher: None,
+            donate_url: None,
             tags: Vec::new(),
             enabled: source.enabled,
             request_defaults: YeaderRequestDefaults::default(),
@@ -459,6 +467,8 @@ mod tests {
               "id": "example-novel",
               "name": "Example Novel",
               "mediaType": "novel",
+              "publisher": "Alice",
+              "donateUrl": "https://example.com/donate",
               "tags": ["demo"],
               "capabilities": [
                 {
@@ -489,6 +499,11 @@ mod tests {
 
         assert_eq!(pack.format, "yeader.source-pack");
         assert_eq!(source.media_type, YeaderMediaType::Novel);
+        assert_eq!(source.publisher.as_deref(), Some("Alice"));
+        assert_eq!(
+            source.donate_url.as_deref(),
+            Some("https://example.com/donate")
+        );
         assert_eq!(source.capabilities[0].kind, YeaderCapabilityKind::Search);
         assert_eq!(
             source.capabilities[0].fields["title"].engine,
