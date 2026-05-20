@@ -7,7 +7,7 @@ import { useYeaderSources } from "./useYeaderSources.ts";
 
 type DiscoverTab = "explore" | "search" | "link";
 
-export function DiscoverPage() {
+export function DiscoverPage({ initialSourceId = "" }: { initialSourceId?: string }) {
   const [tab, setTab] = useState<DiscoverTab>("explore");
   const { sources, loading } = useYeaderSources();
 
@@ -29,7 +29,7 @@ export function DiscoverPage() {
 
         <div className="source-ops-content">
           {loading ? <div className="loading">加载中...</div> : null}
-          {!loading && tab === "explore" ? <ExploreTab sources={sources} /> : null}
+          {!loading && tab === "explore" ? <ExploreTab sources={sources} initialSourceId={initialSourceId} /> : null}
           {!loading && tab === "search" ? <SourceSearchTab sources={sources} /> : null}
           {!loading && tab === "link" ? <ImportTab sources={sources} /> : null}
         </div>

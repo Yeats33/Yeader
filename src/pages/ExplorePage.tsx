@@ -87,13 +87,19 @@ function SkeletonGrid() {
   );
 }
 
-export function ExploreTab({ sources }: { sources: YeaderSource[] }) {
+export function ExploreTab({
+  sources,
+  initialSourceId = "",
+}: {
+  sources: YeaderSource[];
+  initialSourceId?: string;
+}) {
   const enabledSources = useMemo(
     () => sources.filter((source) => source.enabled !== false),
     [sources],
   );
   const [selectedSourceId, setSelectedSourceId] = useState<string>(
-    () => enabledSources[0]?.id ?? "",
+    () => initialSourceId || enabledSources[0]?.id || "",
   );
   const [categories, setCategories] = useState<YeaderExploreCategory[]>([]);
   const [selectedCategoryKey, setSelectedCategoryKey] = useState<string>("");
@@ -103,10 +109,14 @@ export function ExploreTab({ sources }: { sources: YeaderSource[] }) {
   const [error, setError] = useState<string>("");
 
   useEffect(() => {
+    if (initialSourceId && enabledSources.some((source) => source.id === initialSourceId)) {
+      setSelectedSourceId(initialSourceId);
+      return;
+    }
     if (!enabledSources.some((source) => source.id === selectedSourceId)) {
       setSelectedSourceId(enabledSources[0]?.id ?? "");
     }
-  }, [enabledSources, selectedSourceId]);
+  }, [enabledSources, initialSourceId, selectedSourceId]);
 
   useEffect(() => {
     if (!selectedSourceId) {

@@ -23,7 +23,7 @@ import {
   sourceKindLabel,
   type SourceKindFilter,
 } from "../content/viewModels.ts";
-import { importYeaderSourcePackJson, importBookSource, listBookSources, deleteBookSource, toggleBookSource, convertBookSource, searchBooks } from "../api.ts";
+import { importYeaderSourcePackJson, importBookSource, listBookSources, deleteBookSource, toggleBookSource, convertBookSource, searchBooks, openUrl } from "../api.ts";
 import type { YeaderCapability, YeaderSource, LegacyBookSource, SearchResult } from "../types.ts";
 
 function detectSourceFromUrl(url: string, sources: YeaderSource[]): YeaderSource | null {
@@ -40,6 +40,15 @@ function detectSourceFromUrl(url: string, sources: YeaderSource[]): YeaderSource
     }
   }
   return null;
+}
+
+function openSourceHomepage(homepage?: string) {
+  if (!homepage) return;
+  openUrl(homepage).catch(() => {});
+}
+
+function browseSource(sourceId: string) {
+  navigate(`/discover/${encodeURIComponent(sourceId)}`);
 }
 
 export function ImportTab({ sources }: { sources: YeaderSource[] }) {
@@ -416,14 +425,27 @@ export function SourceListTab({ sources }: { sources: YeaderSource[] }) {
               <span className={`source-status ${visibleRawSource.enabled ? "enabled" : "disabled"}`}>{visibleRawSource.enabled ? "启用" : "禁用"}</span>
               <span className="source-status">{sourceKindLabel(visibleSelectedSource.kind)}</span>
             </div>
-            {visibleRawSource.donateUrl ? (
-              <button className="source-donate-btn donate-action-primary" type="button" onClick={() => setDonationSource(visibleRawSource)}>Donate</button>
-            ) : null}
+            <div className="source-detail-actions">
+              <button className="btn-secondary" type="button" onClick={() => browseSource(visibleRawSource.id)}>浏览</button>
+              {visibleRawSource.homepage ? (
+                <button className="btn-secondary" type="button" onClick={() => openSourceHomepage(visibleRawSource.homepage)}>打开主页</button>
+              ) : null}
+              {visibleRawSource.donateUrl ? (
+                <button className="source-donate-btn donate-action-primary" type="button" onClick={() => setDonationSource(visibleRawSource)}>Donate</button>
+              ) : null}
+            </div>
           </div>
 
           <div className="source-detail-meta">
             {visibleRawSource.homepage ? (
-              <a href={visibleRawSource.homepage} target="_blank" rel="noreferrer">{visibleRawSource.homepage}</a>
+              <button
+                className="source-homepage-link"
+                type="button"
+                onClick={() => openSourceHomepage(visibleRawSource.homepage)}
+                title={visibleRawSource.homepage}
+              >
+                {visibleRawSource.homepage}
+              </button>
             ) : <span className="muted-text">无主页</span>}
             {visibleRawSource.publisher ? <span>发布者:{visibleRawSource.publisher}</span> : null}
             {visibleRawSource.version ? <span>版本:{visibleRawSource.version}</span> : null}

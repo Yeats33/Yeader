@@ -38,6 +38,10 @@ function CurrentRoutePage({ routePath }: { routePath: string }) {
   if (routePath === "/" || routePath === "/library") return <BookshelfPage />;
   if (routePath === "/feed") return <ThreePanelLayout />;
   if (routePath === "/discover") return <DiscoverPage />;
+  const discoverParams = matchRoute("/discover/:sourceId", { path: routePath });
+  if (discoverParams) {
+    return <DiscoverPage initialSourceId={decodeURIComponent(discoverParams["sourceId"] ?? "")} />;
+  }
   if (routePath === "/sources/rss") return <SourcePanels sourceType="rss" />;
   if (routePath === "/sources/book") return <SourcePanels sourceType="book" />;
   if (routePath === "/sources/plugin") return <SourcePanels sourceType="plugin" />;
