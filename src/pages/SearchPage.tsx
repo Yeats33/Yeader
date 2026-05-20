@@ -24,17 +24,19 @@ function describeScopeLabel(selectedTag: string, selectedSource: string): string
 }
 
 function ResultCard({ result }: { result: SearchResult }) {
+  const target = `/online-reader/${encodeURIComponent(result.book_url)}/${encodeURIComponent(result.source_id)}`;
+
   return (
     <li
       className="result-card"
       data-book-url={result.book_url}
       tabIndex={0}
       role="button"
-      onClick={() => navigate(`/online-reader/${encodeURIComponent(result.book_url)}/${encodeURIComponent(result.source_id)}`)}
+      onClick={() => navigate(target)}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          navigate(`/online-reader/${encodeURIComponent(result.book_url)}/${encodeURIComponent(result.source_id)}`);
+          navigate(target);
         }
       }}
     >
@@ -46,8 +48,11 @@ function ResultCard({ result }: { result: SearchResult }) {
         )}
       </div>
       <div className="result-info">
-        <h3 className="result-title">{result.name}</h3>
-        <p className="result-author">{result.author}</p>
+        <div className="result-heading">
+          <h3 className="result-title" title={result.name}>{result.name}</h3>
+          {result.kind ? <span className="result-kind">{result.kind}</span> : null}
+        </div>
+        {result.author ? <p className="result-author" title={result.author}>{result.author}</p> : null}
         {result.intro ? <p className="result-intro">{result.intro}</p> : null}
         {result.last_chapter ? <p className="result-chapter">最新: {result.last_chapter}</p> : null}
       </div>
@@ -160,6 +165,15 @@ export function SearchPage() {
         <button className="btn-icon" type="button" onClick={() => navigate("/")} title="返回书架">&#x2190;</button>
       </header>
       <div className="search-form">
+        <div className="search-hero">
+          <div>
+            <span className="search-kicker">全局书源搜索</span>
+            <h2>查找书名、作者或关键词</h2>
+          </div>
+          <span className="search-source-count">
+            已启用 {enabledSources.length} 个书源
+          </span>
+        </div>
         <div className="search-source-picker" data-selected-tag={selectedTag} data-selected-source={selectedSource}>
           <div className="search-source-status">{describeScopeLabel(selectedTag, selectedSource)}</div>
           <div className="search-filter-row">
@@ -215,9 +229,15 @@ export function SearchPage() {
         {noSelectedSources ? <div className="empty-state"><p>暂无匹配的启用书源，请先去设置检查标签或书源状态。</p></div> : null}
         {noResults ? <div className="empty-state"><p>未找到相关书籍</p></div> : null}
         {!searching && results.length > 0 ? (
-          <ul className="result-list">
-            {results.map((result, index) => <ResultCard result={result} key={`${result.source_id}-${result.book_url}-${index}`} />)}
-          </ul>
+          <>
+            <div className="search-results-header">
+              <span>找到 {results.length} 个结果</span>
+              <small>{describeScopeLabel(selectedTag, selectedSource)}</small>
+            </div>
+            <ul className="result-list">
+              {results.map((result, index) => <ResultCard result={result} key={`${result.source_id}-${result.book_url}-${index}`} />)}
+            </ul>
+          </>
         ) : null}
       </div>
     </div>

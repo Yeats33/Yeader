@@ -129,7 +129,7 @@ export function SourceSearchTab({ sources }: { sources: YeaderSource[] }) {
     <div className="explore-shell">
       <div className="explore-hero">
         <div className="explore-hero-text">
-          <span className="explore-hero-eyebrow">Search</span>
+          <span className="explore-hero-eyebrow">搜索</span>
           <h2 className="explore-hero-title">书源内搜索</h2>
           <p className="explore-hero-meta">
             {selectedSource ? selectedSource.name : ""}

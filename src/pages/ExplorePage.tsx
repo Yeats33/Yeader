@@ -199,7 +199,7 @@ export function ExploreTab({ sources }: { sources: YeaderSource[] }) {
     <div className="explore-shell">
       <div className="explore-hero">
         <div className="explore-hero-text">
-          <span className="explore-hero-eyebrow">Discover</span>
+          <span className="explore-hero-eyebrow">发现</span>
           <h2 className="explore-hero-title">
             {selectedCategory?.label ?? "选择一个分类"}
           </h2>
