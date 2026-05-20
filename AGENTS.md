@@ -1,5 +1,17 @@
 # Repository Guidelines
 
+## Product Direction
+Yeader is a local-first universal content extraction and reading system, not just a novel reader or RSS client. Its purpose is to turn complex websites into clean, unified, subscribable, and readable content sources on the user's machine.
+
+Position Yeader as an RSS-reader-plus: RSS/Atom feeds are one input type, while website rules and plugins let users convert sites that do not already provide useful feeds. Unlike RSSHub, conversion should happen locally by default rather than through a shared server. Unlike a pure Legado-style reader, the source model should generalize beyond novels to articles, posts, chapters, documentation pages, newsletters, and other readable web content.
+
+Use this product model when designing features:
+- Unified content model: normalize all inputs into sources, feed items, content, reading state, bookmarks, tags, and reader views.
+- Lightweight rule sources: use Legado-inspired book/source rules for simple static sites, simple APIs, blogs, documentation, and novel sites.
+- Local plugins: use plugins for complex sites that need login, JavaScript rendering, multi-step APIs, custom parsing, special settings, or site-specific update logic.
+- Local-first trust boundary: keep extraction, transformation, storage, and reading state on the user's device unless the user explicitly configures a remote service.
+- RSS compatibility: support RSS/Atom import and consumption, but do not let RSS-specific assumptions constrain the broader source and reader model.
+
 ## Project Structure & Module Organization
 `src/` contains the Vite + TypeScript frontend. `src/main.tsx` mounts the React shell, `src/App.tsx` owns top-level routing, and older imperative HTML pages are hosted through `src/legacy/LegacyPage.tsx` while they are migrated incrementally. Current React pages include account, integration, SoNovel config/rules, and settings; bookshelf and reader still use the legacy render/init pattern. Shared hash-route helpers live in `src/routing/`; shared styles start at `src/styles/index.css`. Reader UI modules live under `src/pages/Reader/`; keep reader rendering, handlers, style, chapter loading, and bookmark helpers split by their existing files. `src-tauri/src/` contains the Rust/Tauri host code: `main.rs` boots the app and `lib.rs` wires plugins, logging, and setup. Keep desktop permissions in `src-tauri/capabilities/`, bundle icons in `src-tauri/icons/`, and app metadata/build hooks in `src-tauri/tauri.conf.json`. The root `Cargo.toml` defines the workspace; `package.json` owns frontend scripts.
 
