@@ -51,13 +51,13 @@ pub async fn search_with_yeader_source(
         client
             .post_form(&url, &body, &headers)
             .await
-            .map_err(|e| format!("HTTP error: {}", e))?
+            .map_err(describe_http_error)?
     } else {
         let headers = build_headers(source, &request.headers);
         client
             .get(&url, &headers)
             .await
-            .map_err(|e| format!("HTTP error: {}", e))?
+            .map_err(describe_http_error)?
     };
 
     Ok(extract_listing_results(source, search_cap, &response.body))
@@ -129,10 +129,19 @@ async fn client_get(
     headers: &reqwest::header::HeaderMap,
 ) -> Result<yeader_net::HttpResponse, String> {
     let client = yeader_net::HttpClient::new();
-    client
-        .get(url, headers)
-        .await
-        .map_err(|e| format!("HTTP error: {}", e))
+    client.get(url, headers).await.map_err(describe_http_error)
+}
+
+fn describe_http_error(error: yeader_net::HttpError) -> String {
+    let raw = error.to_string();
+    if raw.contains("403")
+        && (raw.contains("challenges.cloudflare.com")
+            || raw.contains("Just a moment")
+            || raw.contains("cf-mitigated"))
+    {
+        return "该站点开启了 Cloudflare 防护，无法直接访问。请稍后再试或更换书源。".into();
+    }
+    format!("HTTP error: {}", raw)
 }
 
 fn extract_listing_results(
@@ -208,7 +217,7 @@ pub async fn fetch_book_info_yeader(
     let response = client
         .get(&url, &headers)
         .await
-        .map_err(|e| format!("HTTP error: {}", e))?;
+        .map_err(describe_http_error)?;
 
     let analyzer = yeader_rules::CssAnalyzer::new(&response.body);
 
@@ -269,7 +278,7 @@ pub async fn fetch_toc_yeader(
     let response = client
         .get(&url, &headers)
         .await
-        .map_err(|e| format!("HTTP error: {}", e))?;
+        .map_err(describe_http_error)?;
 
     let analyzer = yeader_rules::CssAnalyzer::new(&response.body);
     let fields = &toc_cap.fields;
@@ -348,7 +357,7 @@ pub async fn fetch_content_yeader(
     let response = client
         .get(&url, &headers)
         .await
-        .map_err(|e| format!("HTTP error: {}", e))?;
+        .map_err(describe_http_error)?;
 
     let analyzer = yeader_rules::CssAnalyzer::new(&response.body);
     let fields = &content_cap.fields;

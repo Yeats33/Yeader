@@ -4,8 +4,9 @@ import { navigate } from "../router.ts";
 import { listYeaderSources } from "../api.ts";
 import type { YeaderCapability, YeaderSource } from "../types.ts";
 import { ExploreTab } from "./ExplorePage.tsx";
+import { SourceSearchTab } from "./SourceSearch.tsx";
 
-type SourceOpsTab = "import" | "sources" | "explore";
+type SourceOpsTab = "import" | "sources" | "explore" | "search";
 
 function detectSourceFromUrl(url: string, sources: YeaderSource[]): YeaderSource | null {
   for (const source of sources) {
@@ -394,7 +395,7 @@ function SourceListTab({ sources }: { sources: YeaderSource[] }) {
 }
 
 export function SourceOpsPage() {
-  const [tab, setTab] = useState<SourceOpsTab>("import");
+  const [tab, setTab] = useState<SourceOpsTab>("explore");
   const [sources, setSources] = useState<YeaderSource[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -438,15 +439,17 @@ export function SourceOpsPage() {
 
       <div className="source-ops-shell">
         <div className="source-ops-tabs">
-          <button className={`tab-btn ${tab === "import" ? "active" : ""}`} type="button" onClick={() => setTab("import")}>链接导入</button>
           <button className={`tab-btn ${tab === "explore" ? "active" : ""}`} type="button" onClick={() => setTab("explore")}>发现</button>
+          <button className={`tab-btn ${tab === "search" ? "active" : ""}`} type="button" onClick={() => setTab("search")}>搜索</button>
+          <button className={`tab-btn ${tab === "import" ? "active" : ""}`} type="button" onClick={() => setTab("import")}>链接导入</button>
           <button className={`tab-btn ${tab === "sources" ? "active" : ""}`} type="button" onClick={() => setTab("sources")}>书源列表</button>
         </div>
 
         <div className="source-ops-content">
           {loading ? <div className="loading">加载中...</div> : null}
-          {!loading && tab === "import" ? <ImportTab sources={sources} /> : null}
           {!loading && tab === "explore" ? <ExploreTab sources={sources} /> : null}
+          {!loading && tab === "search" ? <SourceSearchTab sources={sources} /> : null}
+          {!loading && tab === "import" ? <ImportTab sources={sources} /> : null}
           {!loading && tab === "sources" ? <SourceListTab sources={sources} /> : null}
         </div>
       </div>

@@ -767,6 +767,22 @@ body.dark-mode,
 
 .explore-error { color: #d33; }
 
+.source-search-bar {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.source-search-input {
+  flex: 1;
+  font-size: 14px;
+}
+
+.source-search-submit {
+  flex-shrink: 0;
+  min-width: 80px;
+}
+
 /* ---------------------------------------------------------------------------
    Reader
    --------------------------------------------------------------------------- */
