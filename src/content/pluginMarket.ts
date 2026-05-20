@@ -76,6 +76,95 @@ export interface PluginActivationSummary {
   detail: string;
 }
 
+export const EXAMPLE_PLUGIN_REGISTRY: PluginRegistry = {
+  format: "yeader.plugin-registry",
+  version: 1,
+  plugins: [
+    {
+      id: "example.news",
+      name: "Example News",
+      version: "0.1.0",
+      description: "示例免费插件，展示市场条目和权限结构。",
+      license: "MIT",
+      sourceRepo: "https://github.com/example/yeader-plugin-example-news",
+      identity: {
+        chain: "evm",
+        address: "0x0000000000000000000000000000000000000000",
+        verification: "unverified",
+        proof: "",
+      },
+      donations: [
+        {
+          chain: "evm",
+          address: "0x0000000000000000000000000000000000000000",
+          label: "EVM",
+        },
+      ],
+      activation: { mode: "free" },
+      releaseUrl: "https://github.com/example/yeader-plugin-example-news/releases/download/v0.1.0/example-news-plugin.tar.gz",
+      sha256: "0".repeat(64),
+      runtime: "wasm32-wasip1",
+      capabilities: ["feed", "search", "content"],
+      network: ["https://example.com/*"],
+      risk: {
+        requiresLogin: false,
+        touchesPaidContent: false,
+        usesAntiBotWorkarounds: false,
+        requiresBrowserRendering: false,
+      },
+      review: {
+        status: "example",
+        notes: "Schema preview only.",
+      },
+    },
+    {
+      id: "example.paid-news",
+      name: "Example Paid News",
+      version: "0.1.0",
+      description: "示例 Token 启用插件，展示 EVM 历史转账校验字段。",
+      license: "MIT",
+      sourceRepo: "https://github.com/example/yeader-plugin-example-paid-news",
+      identity: {
+        chain: "evm",
+        address: "0x0000000000000000000000000000000000000000",
+        verification: "signature-pending",
+        proof: "",
+      },
+      donations: [],
+      activation: {
+        mode: "token-transfer",
+        token: {
+          chain: "evm",
+          chainId: 1,
+          standard: "erc20",
+          contract: "0x0000000000000000000000000000000000000000",
+          symbol: "TOKEN",
+          decimals: 18,
+          minAmount: "10.0",
+          recipient: "0x0000000000000000000000000000000000000000",
+          verification: "onchain-transfer",
+          loginRequired: true,
+        },
+      },
+      releaseUrl: "https://github.com/example/yeader-plugin-example-paid-news/releases/download/v0.1.0/example-paid-news-plugin.tar.gz",
+      sha256: "0".repeat(64),
+      runtime: "wasm32-wasip1",
+      capabilities: ["feed", "content"],
+      network: ["https://example.com/*"],
+      risk: {
+        requiresLogin: false,
+        touchesPaidContent: false,
+        usesAntiBotWorkarounds: false,
+        requiresBrowserRendering: false,
+      },
+      review: {
+        status: "example",
+        notes: "Schema preview only.",
+      },
+    },
+  ],
+};
+
 export function summarizePluginActivation(activation: PluginActivation): PluginActivationSummary {
   if (activation.mode === "free") {
     return {
@@ -101,4 +190,13 @@ export function identityVerificationLabel(verification: PluginIdentityVerificati
     return "待验证";
   }
   return "未验证";
+}
+
+export function pluginRiskLabels(risk: PluginRisk): string[] {
+  const labels: string[] = [];
+  if (risk.requiresLogin) labels.push("站点登录");
+  if (risk.touchesPaidContent) labels.push("付费内容");
+  if (risk.usesAntiBotWorkarounds) labels.push("反爬适配");
+  if (risk.requiresBrowserRendering) labels.push("浏览器渲染");
+  return labels;
 }

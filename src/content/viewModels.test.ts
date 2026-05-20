@@ -1,7 +1,19 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { contentResultFromSearchResult, contentSourceFromYeaderSource, libraryItemFromBook } from "./viewModels.ts";
-import { identityVerificationLabel, summarizePluginActivation, type PluginRegistryEntry } from "./pluginMarket.ts";
+import {
+  contentResultFromSearchResult,
+  contentSourceFromYeaderSource,
+  filterContentSources,
+  libraryItemFromBook,
+  sourceKindLabel,
+} from "./viewModels.ts";
+import {
+  EXAMPLE_PLUGIN_REGISTRY,
+  identityVerificationLabel,
+  pluginRiskLabels,
+  summarizePluginActivation,
+  type PluginRegistryEntry,
+} from "./pluginMarket.ts";
 
 test("libraryItemFromBook maps local EPUB into a local library item", () => {
   const item = libraryItemFromBook({
@@ -58,6 +70,31 @@ test("contentSourceFromYeaderSource labels RSS and rule-source capabilities", ()
   assert.deepEqual(rss.capabilityLabels, ["订阅"]);
   assert.equal(rule.kind, "rule-source");
   assert.deepEqual(rule.capabilityLabels, ["搜索", "正文"]);
+});
+
+test("filterContentSources supports source management kind tabs", () => {
+  const sources = [
+    contentSourceFromYeaderSource({
+      id: "rss-a",
+      name: "RSS A",
+      mediaType: "rss",
+      enabled: true,
+      capabilities: [{ kind: "feed" }],
+    }),
+    contentSourceFromYeaderSource({
+      id: "rule-a",
+      name: "Rule A",
+      mediaType: "generic",
+      enabled: true,
+      capabilities: [{ kind: "search" }],
+    }),
+  ];
+
+  assert.equal(filterContentSources(sources, "all").length, 2);
+  assert.equal(filterContentSources(sources, "rss")[0]?.id, "rss-a");
+  assert.equal(filterContentSources(sources, "rule-source")[0]?.id, "rule-a");
+  assert.equal(filterContentSources(sources, "plugin").length, 0);
+  assert.equal(sourceKindLabel("legacy"), "Legacy");
 });
 
 test("plugin activation summaries distinguish free and token-gated plugins", () => {
@@ -118,4 +155,17 @@ test("plugin activation summaries distinguish free and token-gated plugins", () 
   assert.equal(summary.loginRequired, true);
   assert.equal(summary.detail, "EVM 1 · 10.0 TOKEN · 0x0000000000000000000000000000000000000000");
   assert.equal(identityVerificationLabel(plugin.identity.verification), "待验证");
+});
+
+test("example plugin registry covers free and token activation previews", () => {
+  assert.equal(EXAMPLE_PLUGIN_REGISTRY.format, "yeader.plugin-registry");
+  assert.equal(EXAMPLE_PLUGIN_REGISTRY.plugins.length, 2);
+
+  const free = EXAMPLE_PLUGIN_REGISTRY.plugins.find((plugin) => plugin.activation.mode === "free");
+  const paid = EXAMPLE_PLUGIN_REGISTRY.plugins.find((plugin) => plugin.activation.mode === "token-transfer");
+
+  assert.equal(free?.id, "example.news");
+  assert.equal(paid?.id, "example.paid-news");
+  assert.equal(paid?.activation.mode, "token-transfer");
+  assert.deepEqual(pluginRiskLabels(free!.risk), []);
 });
