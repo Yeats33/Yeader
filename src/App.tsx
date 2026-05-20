@@ -2,13 +2,12 @@ import { useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { importEpub } from "./api.ts";
 import { NavBar } from "./components/NavBar.tsx";
-import { LegacyPage, type LegacyPageDefinition } from "./legacy/LegacyPage.tsx";
 import { useHashRoute } from "./routing/hashRoute.ts";
 import { matchRoute } from "./routing/matchRoute.ts";
 import { loadTheme, getCurrentTheme, getColorModePreference, watchSystemColorMode } from "./theme.ts";
 
-import { renderSearchPage, initSearchHandlers } from "./pages/Search.ts";
 import { BookshelfPage } from "./pages/BookshelfPage.tsx";
+import { SearchPage } from "./pages/SearchPage.tsx";
 import { ReaderPage } from "./pages/Reader/index.tsx";
 import { IntegrationPage } from "./pages/Integration.tsx";
 import { SoNovelWebuiPage } from "./pages/SoNovelWebui.tsx";
@@ -21,25 +20,6 @@ import { OnlineChapterPage } from "./pages/OnlineReader/chapter.tsx";
 import { SourceOpsPage } from "./pages/SourceOps.tsx";
 
 const HIDE_NAV_ROUTES = ["/integration/so-novel/webui"];
-
-function resolvePage(routePath: string): LegacyPageDefinition | null {
-  if (matchRoute("/search", { path: routePath })) {
-    return {
-      render: renderSearchPage,
-      init: initSearchHandlers,
-    };
-  }
-
-  if (matchRoute("/account", { path: routePath })) {
-    return null;
-  }
-
-  if (matchRoute("/settings", { path: routePath })) {
-    return null;
-  }
-
-  return null;
-}
 
 function NotFoundPage() {
   const { navigate } = useHashRoute();
@@ -54,6 +34,7 @@ function NotFoundPage() {
 
 function CurrentRoutePage({ routePath }: { routePath: string }) {
   if (routePath === "/") return <BookshelfPage />;
+  if (routePath === "/search") return <SearchPage />;
   if (routePath === "/account") return <AccountPage />;
   if (routePath === "/settings") return <SettingsPage />;
   if (routePath === "/integration") return <IntegrationPage />;
@@ -88,8 +69,7 @@ function CurrentRoutePage({ routePath }: { routePath: string }) {
     return <ReaderPage bookUrl={readerParams["bookId"] ?? ""} />;
   }
 
-  const page = resolvePage(routePath);
-  return page ? <LegacyPage page={page} routeKey={routePath} /> : <NotFoundPage />;
+  return <NotFoundPage />;
 }
 
 export function App() {
