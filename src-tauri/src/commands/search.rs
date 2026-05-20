@@ -36,7 +36,7 @@ pub async fn search_with_yeader_source(
         .ok_or("Search capability has no request")?;
 
     let url = normalize_request_url(
-        &request.url.replace("{{key}}", keyword),
+        &request.url.replace("{{key}}", &urlencoding::encode(keyword)),
         source.homepage.as_deref(),
     );
 
@@ -47,7 +47,7 @@ pub async fn search_with_yeader_source(
                 .body
                 .as_deref()
                 .unwrap_or("")
-                .replace("{{key}}", keyword),
+                .replace("{{key}}", &urlencoding::encode(keyword)),
         )
     } else {
         None

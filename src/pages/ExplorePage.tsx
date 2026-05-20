@@ -73,17 +73,17 @@ function BookGridCard({ result }: { result: SearchResult }) {
 
 function SkeletonGrid() {
   return (
-    <ul className="explore-book-grid">
-      {Array.from({ length: 8 }).map((_, index) => (
+    <div className="explore-book-grid">
+      {Array.from({ length: 12 }).map((_, index) => (
         <li className="explore-book-card skeleton" key={index}>
           <div className="explore-book-cover" />
           <div className="explore-book-info">
-            <div className="skeleton-line" />
-            <div className="skeleton-line short" />
+            <div className="skeleton-line" style={{ height: '14px', marginBottom: '6px' }} />
+            <div className="skeleton-line short" style={{ height: '11px' }} />
           </div>
         </li>
       ))}
-    </ul>
+    </div>
   );
 }
 
