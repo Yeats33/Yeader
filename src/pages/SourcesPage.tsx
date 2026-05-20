@@ -1,9 +1,9 @@
 import { navigate } from "../router.ts";
-import { PluginMarketPanel, SourceListTab } from "./SourcePanels.tsx";
+import { PluginMarketPanel, SourceInstallPanel, SourceListTab } from "./SourcePanels.tsx";
 import { useYeaderSources } from "./useYeaderSources.ts";
 
 export function SourcesPage() {
-  const { sources, loading } = useYeaderSources();
+  const { sources, loading, refresh } = useYeaderSources();
 
   return (
     <div className="page page-source-ops">
@@ -19,6 +19,7 @@ export function SourcesPage() {
           {loading ? <div className="loading">加载中...</div> : null}
           {!loading ? (
             <>
+              <SourceInstallPanel onImported={() => void refresh()} />
               <PluginMarketPanel />
               <SourceListTab sources={sources} />
             </>

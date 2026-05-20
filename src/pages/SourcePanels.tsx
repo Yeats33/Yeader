@@ -12,11 +12,18 @@ import {
   type PluginRegistryEntry,
 } from "../content/pluginMarket.ts";
 import {
+  SOURCE_REGISTRY_REPOSITORY_URL,
+  SOURCE_REGISTRY_URL,
+  parseSourceRegistry,
+  type SourceRegistryEntry,
+} from "../content/sourceRegistry.ts";
+import {
   contentSourceFromYeaderSource,
   filterContentSources,
   sourceKindLabel,
   type SourceKindFilter,
 } from "../content/viewModels.ts";
+import { importYeaderSourcePackJson } from "../api.ts";
 import type { YeaderCapability, YeaderSource } from "../types.ts";
 
 function detectSourceFromUrl(url: string, sources: YeaderSource[]): YeaderSource | null {
@@ -446,6 +453,183 @@ export function SourceListTab({ sources }: { sources: YeaderSource[] }) {
       ) : null}
       {donationSource ? <DonateDialog source={donationSource} onClose={() => setDonationSource(null)} /> : null}
     </div>
+  );
+}
+
+export function SourceInstallPanel({ onImported }: { onImported: () => void }) {
+  const [registrySources, setRegistrySources] = useState<SourceRegistryEntry[]>([]);
+  const [loadingRegistry, setLoadingRegistry] = useState(false);
+  const [busySourceId, setBusySourceId] = useState<string | null>(null);
+  const [customUrl, setCustomUrl] = useState("");
+  const [customJson, setCustomJson] = useState("");
+  const [message, setMessage] = useState("");
+
+  async function loadRegistry() {
+    setLoadingRegistry(true);
+    setMessage("");
+    try {
+      const response = await fetch(SOURCE_REGISTRY_URL);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const registry = parseSourceRegistry(await response.json());
+      if (!registry) {
+        throw new Error("来源索引格式不正确");
+      }
+      setRegistrySources(registry.sources);
+      setMessage(`已加载 ${registry.sources.length} 个可安装来源`);
+    } catch (error) {
+      setRegistrySources([]);
+      setMessage(`加载来源索引失败: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setLoadingRegistry(false);
+    }
+  }
+
+  async function importPackJson(json: string, successLabel: string) {
+    const imported = await importYeaderSourcePackJson(json);
+    setMessage(`${successLabel}: ${imported.length} 个来源`);
+    onImported();
+  }
+
+  async function installRegistrySource(source: SourceRegistryEntry) {
+    setBusySourceId(source.id);
+    setMessage("");
+    try {
+      const response = await fetch(source.packUrl);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      await importPackJson(await response.text(), `已安装 ${source.name}`);
+    } catch (error) {
+      setMessage(`安装失败: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setBusySourceId(null);
+    }
+  }
+
+  async function importFromUrl() {
+    const url = customUrl.trim();
+    if (!url) {
+      setMessage("请输入 source-pack URL");
+      return;
+    }
+    setBusySourceId("custom-url");
+    setMessage("");
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      await importPackJson(await response.text(), "已导入自定义 URL");
+      setCustomUrl("");
+    } catch (error) {
+      setMessage(`导入失败: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setBusySourceId(null);
+    }
+  }
+
+  async function importFromText() {
+    const json = customJson.trim();
+    if (!json) {
+      setMessage("请粘贴 yeader.source-pack JSON");
+      return;
+    }
+    setBusySourceId("custom-json");
+    setMessage("");
+    try {
+      await importPackJson(json, "已导入自定义 JSON");
+      setCustomJson("");
+    } catch (error) {
+      setMessage(`导入失败: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setBusySourceId(null);
+    }
+  }
+
+  return (
+    <section className="source-ops-panel source-install-panel">
+      <div className="source-ops-panel-header">
+        <div>
+          <h2>安装来源</h2>
+          <p className="import-desc">Yeader 不再内置站点规则；从公共索引下载来源，或导入任意自定义 source-pack JSON。</p>
+        </div>
+        <a className="source-donate-btn" href={SOURCE_REGISTRY_REPOSITORY_URL} target="_blank" rel="noreferrer">来源仓库</a>
+      </div>
+
+      <div className="source-install-actions">
+        <button className="btn-secondary" type="button" disabled={loadingRegistry} onClick={() => void loadRegistry()}>
+          {loadingRegistry ? "加载中..." : "加载公共来源索引"}
+        </button>
+        <span className="muted-text">{SOURCE_REGISTRY_URL}</span>
+      </div>
+
+      {registrySources.length > 0 ? (
+        <div className="plugin-registry-preview source-registry-preview">
+          {registrySources.map((source) => (
+            <article className="plugin-registry-card" key={source.id}>
+              <div className="plugin-registry-card-header">
+                <div>
+                  <h3>{source.name}</h3>
+                  <p>{source.description}</p>
+                </div>
+                <span className="source-status enabled">{source.mediaType}</span>
+              </div>
+              <div className="plugin-registry-meta">
+                <a href={source.homepage} target="_blank" rel="noreferrer">{source.homepage}</a>
+                <span>{source.review.status}</span>
+              </div>
+              <div className="plugin-registry-meta">
+                {source.tags.map((tag) => <span key={tag}>{tag}</span>)}
+              </div>
+              <button
+                className="btn-primary"
+                type="button"
+                disabled={busySourceId !== null}
+                onClick={() => void installRegistrySource(source)}
+              >
+                {busySourceId === source.id ? "安装中..." : "安装来源"}
+              </button>
+            </article>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="custom-source-import">
+        <div className="form-group">
+          <label htmlFor="custom-source-url">自定义 source-pack URL</label>
+          <div className="source-search-bar">
+            <input
+              id="custom-source-url"
+              className="form-input source-search-input"
+              type="url"
+              placeholder="https://example.com/my-source-pack.json"
+              value={customUrl}
+              onChange={(event) => setCustomUrl(event.target.value)}
+            />
+            <button className="btn-secondary" type="button" disabled={busySourceId !== null} onClick={() => void importFromUrl()}>
+              {busySourceId === "custom-url" ? "导入中..." : "导入 URL"}
+            </button>
+          </div>
+        </div>
+        <div className="form-group">
+          <label htmlFor="custom-source-json">粘贴 source-pack JSON</label>
+          <textarea
+            id="custom-source-json"
+            className="form-input custom-source-json"
+            placeholder="{ &quot;format&quot;: &quot;yeader.source-pack&quot;, ... }"
+            value={customJson}
+            onChange={(event) => setCustomJson(event.target.value)}
+          />
+          <button className="btn-secondary" type="button" disabled={busySourceId !== null} onClick={() => void importFromText()}>
+            {busySourceId === "custom-json" ? "导入中..." : "导入 JSON"}
+          </button>
+        </div>
+      </div>
+
+      {message ? <p className="explore-status">{message}</p> : null}
+    </section>
   );
 }
 
