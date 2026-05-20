@@ -126,9 +126,22 @@ function donateAddressFromUrl(donateUrl: string): string {
   return donateUrl;
 }
 
+function donateNetworkLabel(donateUrl: string): string {
+  return donateUrl.startsWith("ethereum:") ? "EVM" : "Link";
+}
+
+function shortAddress(value: string): string {
+  if (value.length <= 18) {
+    return value;
+  }
+
+  return `${value.slice(0, 8)}...${value.slice(-6)}`;
+}
+
 function DonateDialog({ source, onClose }: { source: YeaderSource; onClose: () => void }) {
   const donateUrl = source.donateUrl ?? "";
   const donateAddress = donateAddressFromUrl(donateUrl);
+  const networkLabel = donateNetworkLabel(donateUrl);
   const [qrDataUrl, setQrDataUrl] = useState("");
   const [copied, setCopied] = useState(false);
 
@@ -137,8 +150,12 @@ function DonateDialog({ source, onClose }: { source: YeaderSource; onClose: () =
 
     QRCode.toDataURL(donateUrl, {
       errorCorrectionLevel: "M",
-      margin: 1,
-      width: 184,
+      color: {
+        dark: "#111827",
+        light: "#ffffff",
+      },
+      margin: 2,
+      width: 216,
     })
       .then((dataUrl) => {
         if (!cancelled) {
@@ -168,20 +185,31 @@ function DonateDialog({ source, onClose }: { source: YeaderSource; onClose: () =
         <div className="donate-modal-header">
           <div>
             <h3 id="donate-title">支持发布者</h3>
-            <p>{source.publisher ?? source.name}</p>
+            <p>{source.name}</p>
           </div>
           <button className="btn-icon" type="button" onClick={onClose} title="关闭">×</button>
         </div>
 
+        <div className="donate-publisher-card">
+          <span className="donate-network-badge">{networkLabel}</span>
+          <div>
+            <strong>{source.publisher ?? "Unknown publisher"}</strong>
+            <span>{shortAddress(donateAddress)}</span>
+          </div>
+        </div>
+
         <div className="donate-qr-frame">
-          {qrDataUrl ? <img src={qrDataUrl} alt="Donate QR code" /> : <span className="muted-text">二维码生成失败</span>}
+          <div className="donate-qr-surface">
+            {qrDataUrl ? <img src={qrDataUrl} alt="Donate QR code" /> : <span className="muted-text">二维码生成失败</span>}
+          </div>
+          <span>扫码转账或复制地址</span>
         </div>
 
         <code className="donate-address">{donateAddress}</code>
 
         <div className="donate-actions">
-          <button className="source-donate-btn" type="button" onClick={copyAddress}>{copied ? "已复制" : "复制地址"}</button>
-          <a className="source-donate-btn" href={donateUrl} target="_blank" rel="noreferrer">打开钱包链接</a>
+          <button className="source-donate-btn donate-action-secondary" type="button" onClick={copyAddress}>{copied ? "已复制" : "复制地址"}</button>
+          <a className="source-donate-btn donate-action-primary" href={donateUrl} target="_blank" rel="noreferrer">打开钱包链接</a>
         </div>
       </div>
     </div>
