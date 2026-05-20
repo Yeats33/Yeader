@@ -309,7 +309,7 @@ export function SourceListTab({ sources }: { sources: YeaderSource[] }) {
   const pluginCount = pluginRegistryEntries(pluginRegistry).length;
 
   useEffect(() => {
-    if (filter === "plugin" || filter === "legacy") {
+    if (filter === "plugin") {
       return;
     }
     if (!filteredSourceItems.some((source) => source.id === selectedSourceId)) {
@@ -327,7 +327,6 @@ export function SourceListTab({ sources }: { sources: YeaderSource[] }) {
             rss: filterContentSources(sourceItems, "rss").length,
             rule: filterContentSources(sourceItems, "rule-source").length,
             plugin: pluginCount,
-            legacy: 0,
           }}
           onChange={setFilter}
         />
@@ -353,23 +352,17 @@ export function SourceListTab({ sources }: { sources: YeaderSource[] }) {
           rss: filterContentSources(sourceItems, "rss").length,
           rule: filterContentSources(sourceItems, "rule-source").length,
           plugin: pluginCount,
-          legacy: 0,
         }}
         onChange={setFilter}
       />
 
       {filter === "plugin" ? <PluginRegistryPreview registry={pluginRegistry} /> : null}
-      {filter === "legacy" ? (
-        <div className="empty-state source-kind-empty">
-          <p>Legacy 兼容入口保留在旧书源兼容流程中；后续会作为独立导入分组接入。</p>
-        </div>
-      ) : null}
-      {filter !== "plugin" && filter !== "legacy" && filteredSourceItems.length === 0 ? (
+      {filter !== "plugin" && filteredSourceItems.length === 0 ? (
         <div className="empty-state source-kind-empty">
           <p>当前分组暂无来源。</p>
         </div>
       ) : null}
-      {filter !== "plugin" && filter !== "legacy" && filteredSourceItems.length > 0 && visibleRawSource ? (
+      {filter !== "plugin" && filteredSourceItems.length > 0 && visibleRawSource ? (
         <>
       <div className="source-ops-panel-header">
         <div>
@@ -462,7 +455,7 @@ function SourceKindTabs({
   onChange,
 }: {
   filter: SourceKindFilter;
-  counts: { all: number; rss: number; rule: number; plugin: number; legacy: number };
+  counts: { all: number; rss: number; rule: number; plugin: number };
   onChange: (filter: SourceKindFilter) => void;
 }) {
   const tabs: Array<{ filter: SourceKindFilter; label: string; count: number }> = [
@@ -470,7 +463,6 @@ function SourceKindTabs({
     { filter: "rss", label: "RSS", count: counts.rss },
     { filter: "rule-source", label: "规则", count: counts.rule },
     { filter: "plugin", label: "插件", count: counts.plugin },
-    { filter: "legacy", label: "Legacy", count: counts.legacy },
   ];
 
   return (

@@ -271,44 +271,6 @@ function IntegrationContent({ isAuthenticated }: { isAuthenticated: boolean }) {
       {isAuthenticated ? (
         <section className="settings-section">
           <div className="section-header">
-            <h2>书源兼容</h2>
-          </div>
-          <div className="integration-list" id="source-compatibility-list">
-            <div className="integration-card" data-integration="legado">
-              <div className="integration-card-icon">
-                <img
-                  src="https://raw.githubusercontent.com/gedoor/legado/master/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png"
-                  alt="legado logo"
-                  width="48"
-                  height="48"
-                />
-              </div>
-              <div className="integration-card-info">
-                <strong className="integration-card-name">Legado / 开源阅读</strong>
-                <span className="integration-card-desc">支持 legado 书源格式</span>
-              </div>
-              <div className="integration-card-status">
-                <span className="integration-status-chip integration-status-chip--checking">
-                  即将支持
-                </span>
-              </div>
-              <div className="integration-card-actions">
-                <button
-                  className="btn-secondary"
-                  type="button"
-                  onClick={() => openUrl("https://github.com/gedoor/legado")}
-                >
-                  访问 GitHub
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      {isAuthenticated ? (
-        <section className="settings-section">
-          <div className="section-header">
             <h2>可用集成</h2>
           </div>
           <div className="integration-list integration-list--available" id="available-integration-list">

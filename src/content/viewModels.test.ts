@@ -5,7 +5,6 @@ import {
   contentSourceFromYeaderSource,
   filterContentSources,
   libraryItemFromBook,
-  sourceKindLabel,
 } from "./viewModels.ts";
 import {
   getBundledPluginRegistryPreview,
@@ -96,7 +95,6 @@ test("filterContentSources supports source management kind tabs", () => {
   assert.equal(filterContentSources(sources, "rss")[0]?.id, "rss-a");
   assert.equal(filterContentSources(sources, "rule-source")[0]?.id, "rule-a");
   assert.equal(filterContentSources(sources, "plugin").length, 0);
-  assert.equal(sourceKindLabel("legacy"), "Legacy");
 });
 
 test("plugin activation summaries distinguish free and token-gated plugins", () => {

@@ -37,7 +37,7 @@ export interface ContentSource {
   raw: YeaderSource;
 }
 
-export type SourceKindFilter = "all" | "rss" | "rule-source" | "plugin" | "legacy";
+export type SourceKindFilter = "all" | "rss" | "rule-source" | "plugin";
 
 const capabilityLabels: Record<string, string> = {
   search: "搜索",
@@ -103,7 +103,6 @@ export function sourceKindLabel(kind: ContentKind | SourceKindFilter): string {
   if (kind === "rss") return "RSS";
   if (kind === "rule-source") return "规则";
   if (kind === "plugin") return "插件";
-  if (kind === "legacy") return "Legacy";
   if (kind === "local-file") return "本地文件";
   if (kind === "web-content") return "网站内容";
   return "通用";
@@ -113,7 +112,7 @@ export function filterContentSources(sources: ContentSource[], filter: SourceKin
   if (filter === "all") {
     return sources;
   }
-  if (filter === "legacy" || filter === "plugin") {
+  if (filter === "plugin") {
     return [];
   }
   return sources.filter((source) => source.kind === filter);
