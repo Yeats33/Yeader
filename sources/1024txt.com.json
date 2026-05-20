@@ -1,0 +1,103 @@
+{
+  "format": "yeader.source-pack",
+  "version": 1,
+  "name": "燃文小说 (1024txt.com)",
+  "sources": [
+    {
+      "id": "1024txt-com",
+      "name": "燃文小说",
+      "mediaType": "novel",
+      "homepage": "https://www.1024txt.com",
+      "publisher": "Yeats",
+      "tags": ["中文", "简体", "免费", "无搜索"],
+      "enabled": true,
+      "requestDefaults": {
+        "headers": {
+          "Referer": "https://www.1024txt.com/",
+          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36"
+        },
+        "encoding": "GBK",
+        "timeoutMs": 15000
+      },
+      "variables": {},
+      "exploreCategories": [
+        { "key": "xuanhuan", "label": "玄幻小说", "group": "分类" },
+        { "key": "xiuzhen", "label": "修真小说", "group": "分类" },
+        { "key": "dushi", "label": "都市小说", "group": "分类" },
+        { "key": "chuanyue", "label": "穿越小说", "group": "分类" },
+        { "key": "wangyou", "label": "网游小说", "group": "分类" },
+        { "key": "kehuan", "label": "科幻小说", "group": "分类" },
+        { "key": "qita", "label": "其他小说", "group": "分类" },
+        { "key": "wanben", "label": "完本小说", "group": "分类" }
+      ],
+      "capabilities": [
+        {
+          "kind": "list",
+          "request": {
+            "url": "https://www.1024txt.com/{{category}}/1_{{page}}.html",
+            "method": "GET",
+            "pagination": {
+              "variable": "page",
+              "firstPage": 1,
+              "step": 1
+            }
+          },
+          "item": {
+            "engine": "css",
+            "query": "#newscontent .l ul li"
+          },
+          "fields": {
+            "name": { "engine": "css", "query": ".s2 a" },
+            "author": { "engine": "css", "query": ".s5" },
+            "bookUrl": { "engine": "css", "query": ".s2 a", "output": "href" },
+            "lastChapter": { "engine": "css", "query": ".s3 a" }
+          }
+        },
+        {
+          "kind": "detail",
+          "request": {
+            "url": "{{bookUrl}}",
+            "method": "GET"
+          },
+          "item": {
+            "engine": "css",
+            "query": ".box_con"
+          },
+          "fields": {
+            "name": { "engine": "css", "query": "#info h1" },
+            "author": { "engine": "css", "query": "#info p:nth-of-type(1)" },
+            "coverUrl": { "engine": "css", "query": "#fmimg img", "output": "src" },
+            "intro": { "engine": "css", "query": "#intro" },
+            "kind": { "engine": "css", "query": ".con_top a:nth-of-type(2)" }
+          }
+        },
+        {
+          "kind": "toc",
+          "request": {
+            "url": "{{bookUrl}}",
+            "method": "GET"
+          },
+          "item": {
+            "engine": "css",
+            "query": "#list dd a"
+          },
+          "fields": {
+            "chapterName": { "engine": "text", "query": "" },
+            "chapterUrl": { "engine": "css", "query": "", "output": "href" }
+          }
+        },
+        {
+          "kind": "content",
+          "request": {
+            "url": "{{chapterUrl}}",
+            "method": "GET"
+          },
+          "fields": {
+            "title": { "engine": "css", "query": ".bookname h1" },
+            "content": { "engine": "css", "query": "#content", "output": "html" }
+          }
+        }
+      ]
+    }
+  ]
+}

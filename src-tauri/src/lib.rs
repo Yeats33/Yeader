@@ -12,7 +12,10 @@ use tauri::Manager;
 use yeader_library::Database;
 use yeader_models::parse_yeader_source_pack;
 
-const BUILTIN_SOURCE_PACK: &str = include_str!("../../sources/czbooks.net.json");
+const BUILTIN_SOURCE_PACKS: &[&str] = &[
+    include_str!("../../sources/czbooks.net.json"),
+    include_str!("../../sources/1024txt.com.json"),
+];
 
 /// Keep the log guard alive for the entire program lifetime.
 /// Leaking is intentional — the guard must not be dropped until exit.
@@ -44,20 +47,27 @@ pub fn run() {
             let state = AppState::new(db, log_dir, app_dir.clone());
             app.manage(state);
 
-            // Initialize built-in Yeader sources
-            if let Ok(pack) = parse_yeader_source_pack(BUILTIN_SOURCE_PACK)
-                && let Some(app_state) = app.try_state::<AppState>()
-                    && let Ok(db) = app_state.db.lock() {
-                        let repo = yeader_library::YeaderSourceRepo::new(&db);
-                        if let Err(e) = repo.upsert_batch(&pack.sources) {
-                            tracing::warn!("Failed to init built-in sources: {}", e);
-                        } else {
-                            tracing::info!(
-                                "Built-in source pack loaded: {} sources",
-                                pack.sources.len()
-                            );
+            // Initialize built-in Yeader sources.
+            if let Some(app_state) = app.try_state::<AppState>()
+                && let Ok(db) = app_state.db.lock()
+            {
+                let repo = yeader_library::YeaderSourceRepo::new(&db);
+                for pack_json in BUILTIN_SOURCE_PACKS {
+                    match parse_yeader_source_pack(pack_json) {
+                        Ok(pack) => {
+                            if let Err(e) = repo.upsert_batch(&pack.sources) {
+                                tracing::warn!("Failed to init built-in sources: {}", e);
+                            } else {
+                                tracing::info!(
+                                    "Built-in source pack loaded: {} sources",
+                                    pack.sources.len()
+                                );
+                            }
                         }
+                        Err(e) => tracing::warn!("Failed to parse built-in source pack: {}", e),
+                    }
                 }
+            }
 
             tracing::info!("Yeader initialized successfully");
 
