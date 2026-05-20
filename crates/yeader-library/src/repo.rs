@@ -286,11 +286,12 @@ impl<'a> YeaderSourceRepo<'a> {
     }
 
     pub fn set_enabled(&self, id: &str, enabled: bool) -> rusqlite::Result<bool> {
-        let affected = self.db.conn().execute(
-            "UPDATE yeader_sources SET enabled = ?1 WHERE id = ?2",
-            params![enabled as i32, id],
-        )?;
-        Ok(affected > 0)
+        let Some(mut source) = self.find_by_id(id)? else {
+            return Ok(false);
+        };
+        source.enabled = enabled;
+        self.upsert(&source)?;
+        Ok(true)
     }
 
     pub fn delete(&self, id: &str) -> rusqlite::Result<bool> {
@@ -318,14 +319,17 @@ impl<'a> RssSourceRepo<'a> {
     pub fn upsert(&self, src: &LegacyRssSource) -> rusqlite::Result<()> {
         let extra = serde_json::to_string(&src.extra).unwrap_or_default();
         self.db.conn().execute(
-            "INSERT INTO rss_sources (source_url, source_name, source_icon, rule_articles, enabled, extra)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+            "INSERT INTO rss_sources (source_url, source_name, source_icon, rule_articles, enabled, extra, item_count, last_fetched, categories)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
              ON CONFLICT(source_url) DO UPDATE SET
                 source_name = excluded.source_name,
                 source_icon = excluded.source_icon,
                 rule_articles = excluded.rule_articles,
                 enabled = excluded.enabled,
-                extra = excluded.extra",
+                extra = excluded.extra,
+                item_count = excluded.item_count,
+                last_fetched = excluded.last_fetched,
+                categories = excluded.categories",
             params![
                 src.source_url,
                 src.source_name,
@@ -333,6 +337,9 @@ impl<'a> RssSourceRepo<'a> {
                 src.rule_articles,
                 src.enabled as i32,
                 extra,
+                src.extra.get("itemCount").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
+                src.extra.get("lastFetched").and_then(|v| v.as_str()).map(|s| s.to_string()).unwrap_or_default(),
+                src.extra.get("categories").map(|v| v.to_string()).unwrap_or_else(|| "[]".to_string()),
             ],
         )?;
         Ok(())
@@ -343,14 +350,17 @@ impl<'a> RssSourceRepo<'a> {
         for src in sources {
             let extra = serde_json::to_string(&src.extra).unwrap_or_default();
             tx.execute(
-                "INSERT INTO rss_sources (source_url, source_name, source_icon, rule_articles, enabled, extra)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+                "INSERT INTO rss_sources (source_url, source_name, source_icon, rule_articles, enabled, extra, item_count, last_fetched, categories)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
                  ON CONFLICT(source_url) DO UPDATE SET
                     source_name = excluded.source_name,
                     source_icon = excluded.source_icon,
                     rule_articles = excluded.rule_articles,
                     enabled = excluded.enabled,
-                    extra = excluded.extra",
+                    extra = excluded.extra,
+                    item_count = excluded.item_count,
+                    last_fetched = excluded.last_fetched,
+                    categories = excluded.categories",
                 params![
                     src.source_url,
                     src.source_name,
@@ -358,6 +368,9 @@ impl<'a> RssSourceRepo<'a> {
                     src.rule_articles,
                     src.enabled as i32,
                     extra,
+                    src.extra.get("itemCount").and_then(|v| v.as_i64()).unwrap_or(0) as i32,
+                    src.extra.get("lastFetched").and_then(|v| v.as_str()).map(|s| s.to_string()).unwrap_or_default(),
+                    src.extra.get("categories").map(|v| v.to_string()).unwrap_or_else(|| "[]".to_string()),
                 ],
             )?;
         }
@@ -391,6 +404,35 @@ impl<'a> RssSourceRepo<'a> {
             params![url],
         )?;
         Ok(count > 0)
+    }
+
+    pub fn find_by_url(&self, url: &str) -> rusqlite::Result<Option<LegacyRssSource>> {
+        let mut stmt = self.db.conn().prepare(
+            "SELECT source_url, source_name, source_icon, rule_articles, enabled, extra
+             FROM rss_sources WHERE source_url = ?1",
+        )?;
+        let mut rows = stmt.query_map(params![url], |row| {
+            let extra_str: String = row.get(5)?;
+            let extra: Map<String, serde_json::Value> =
+                serde_json::from_str(&extra_str).unwrap_or_default();
+            Ok(LegacyRssSource {
+                source_url: row.get(0)?,
+                source_name: row.get(1)?,
+                source_icon: row.get(2)?,
+                rule_articles: row.get(3)?,
+                enabled: row.get::<_, i32>(4)? != 0,
+                extra,
+            })
+        })?;
+        rows.next().transpose()
+    }
+
+    pub fn set_enabled(&self, url: &str, enabled: bool) -> rusqlite::Result<bool> {
+        let rows = self.db.conn().execute(
+            "UPDATE rss_sources SET enabled = ?1 WHERE source_url = ?2",
+            params![enabled as i32, url],
+        )?;
+        Ok(rows > 0)
     }
 }
 
@@ -1216,6 +1258,66 @@ mod tests {
         assert_eq!(found.name, "Native RSS");
         assert!(!found.enabled);
         assert!(repo.find_by_id("missing").unwrap().is_none());
+    }
+
+    #[test]
+    fn yeader_source_set_enabled_updates_serialized_source() {
+        let db = test_db();
+        let repo = YeaderSourceRepo::new(&db);
+
+        let source = YeaderSource {
+            id: "toggle.example".into(),
+            name: "Toggle Example".into(),
+            media_type: YeaderMediaType::Novel,
+            version: None,
+            homepage: None,
+            publisher: None,
+            donate_url: None,
+            tags: Vec::new(),
+            enabled: true,
+            request_defaults: YeaderRequestDefaults::default(),
+            variables: Default::default(),
+            explore_categories: Vec::new(),
+            capabilities: Vec::new(),
+            extra: Map::new(),
+        };
+
+        repo.upsert(&source).unwrap();
+
+        assert!(repo.set_enabled("toggle.example", false).unwrap());
+        assert!(
+            !repo
+                .find_by_id("toggle.example")
+                .unwrap()
+                .expect("source remains findable")
+                .enabled
+        );
+        assert!(
+            !repo
+                .list_all()
+                .unwrap()
+                .into_iter()
+                .find(|source| source.id == "toggle.example")
+                .expect("source remains listed")
+                .enabled
+        );
+
+        assert!(repo.set_enabled("toggle.example", true).unwrap());
+        assert!(
+            repo.find_by_id("toggle.example")
+                .unwrap()
+                .expect("source remains findable")
+                .enabled
+        );
+        assert!(
+            repo.list_all()
+                .unwrap()
+                .into_iter()
+                .find(|source| source.id == "toggle.example")
+                .expect("source remains listed")
+                .enabled
+        );
+        assert!(!repo.set_enabled("missing.example", false).unwrap());
     }
 
     // --- RssSourceRepo ---

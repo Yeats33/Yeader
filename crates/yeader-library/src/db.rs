@@ -120,9 +120,16 @@ impl Database {
         )?;
         ensure_column(
             &self.conn,
-            "book_sources",
-            "source_json",
-            "TEXT NOT NULL DEFAULT '{}'",
+            "rss_sources",
+            "item_count",
+            "INTEGER NOT NULL DEFAULT 0",
+        )?;
+        ensure_column(&self.conn, "rss_sources", "last_fetched", "TEXT")?;
+        ensure_column(
+            &self.conn,
+            "rss_sources",
+            "categories",
+            "TEXT NOT NULL DEFAULT '[]'",
         )?;
         Ok(())
     }

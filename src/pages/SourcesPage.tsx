@@ -1,5 +1,5 @@
 import { navigate } from "../router.ts";
-import { PluginMarketPanel, SourceInstallPanel, SourceListTab } from "./SourcePanels.tsx";
+import { PluginMarketPanel, SourceInstallPanel, SourceListTab, BookSourceManagementPanel } from "./SourcePanels.tsx";
 import { useYeaderSources } from "./useYeaderSources.ts";
 
 export function SourcesPage() {
@@ -22,6 +22,7 @@ export function SourcesPage() {
               <SourceInstallPanel onImported={() => void refresh()} />
               <PluginMarketPanel />
               <SourceListTab sources={sources} />
+              <BookSourceManagementPanel onRefresh={() => void refresh()} />
             </>
           ) : null}
         </div>

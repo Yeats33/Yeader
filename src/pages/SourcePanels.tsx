@@ -23,8 +23,8 @@ import {
   sourceKindLabel,
   type SourceKindFilter,
 } from "../content/viewModels.ts";
-import { importYeaderSourcePackJson } from "../api.ts";
-import type { YeaderCapability, YeaderSource } from "../types.ts";
+import { importYeaderSourcePackJson, importBookSource, listBookSources, deleteBookSource, toggleBookSource, convertBookSource, searchBooks } from "../api.ts";
+import type { YeaderCapability, YeaderSource, LegacyBookSource, SearchResult } from "../types.ts";
 
 function detectSourceFromUrl(url: string, sources: YeaderSource[]): YeaderSource | null {
   for (const source of sources) {
@@ -763,6 +763,340 @@ export function PluginMarketPanel() {
         <span>验证：unverified / signature-pending / verified</span>
         <a href={registryPreview.sourceUrl} target="_blank" rel="noreferrer">索引：{registryPreview.sourceLabel}</a>
       </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Book Source Management (Legacy Legado format)
+// ---------------------------------------------------------------------------
+
+export function BookSourceManagementPanel({ onRefresh }: { onRefresh: () => void }) {
+  const [sources, setSources] = useState<LegacyBookSource[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+  const [customJson, setCustomJson] = useState("");
+  const [selectedSource, setSelectedSource] = useState<LegacyBookSource | null>(null);
+  const [testingKeyword, setTestingKeyword] = useState("");
+  const [testResults, setTestResults] = useState<SearchResult[]>([]);
+  const [testLoading, setTestLoading] = useState(false);
+
+  async function loadSources() {
+    setLoading(true);
+    setMessage("");
+    try {
+      setSources(await listBookSources());
+    } catch (err) {
+      setMessage(`加载失败: ${err instanceof Error ? err.message : String(err)}`);
+      setSources([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadSources();
+  }, []);
+
+  async function handleImport() {
+    const json = customJson.trim();
+    if (!json) {
+      setMessage("请粘贴 Legado 书源 JSON");
+      return;
+    }
+    setLoading(true);
+    setMessage("");
+    try {
+      const count = await importBookSource(json);
+      setMessage(`已导入 ${count} 个书源`);
+      setCustomJson("");
+      void loadSources();
+      onRefresh();
+    } catch (err) {
+      setMessage(`导入失败: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleToggle(url: string, enabled: boolean) {
+    try {
+      await toggleBookSource(url, enabled);
+      void loadSources();
+    } catch (err) {
+      setMessage(`操作失败: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  async function handleDelete(url: string) {
+    try {
+      await deleteBookSource(url);
+      if (selectedSource?.bookSourceUrl === url) {
+        setSelectedSource(null);
+      }
+      void loadSources();
+    } catch (err) {
+      setMessage(`删除失败: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  async function handleConvert(url: string) {
+    try {
+      await convertBookSource(url);
+      setMessage("已转换为 Yeader 格式");
+      void loadSources();
+      onRefresh();
+    } catch (err) {
+      setMessage(`转换失败: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  async function handleTest() {
+    if (!selectedSource || !testingKeyword.trim()) {
+      setMessage("请选择一个书源并输入搜索关键字");
+      return;
+    }
+    setTestLoading(true);
+    setTestResults([]);
+    try {
+      const results = await searchBooks(selectedSource.bookSourceUrl, testingKeyword);
+      setTestResults(results);
+    } catch (err) {
+      setMessage(`测试失败: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setTestLoading(false);
+    }
+  }
+
+  const enabledCount = sources.filter((s) => s.enabled).length;
+
+  return (
+    <section className="source-ops-panel book-source-panel">
+      <div className="source-ops-panel-header">
+        <div>
+          <h2>书源管理</h2>
+          <p className="import-desc">导入和管理 Legado 格式的书源（搜索规则、详情规则、目录规则、正文规则）。</p>
+        </div>
+        <span className="source-summary-chip available">启用:{enabledCount} 全部:{sources.length}</span>
+      </div>
+
+      <div className="book-source-layout">
+        <aside className="book-source-list">
+          <div className="book-source-list-header">
+            <span>书源列表</span>
+            <button
+              className="btn-secondary"
+              type="button"
+              disabled={loading}
+              onClick={() => void loadSources()}
+            >
+              刷新
+            </button>
+          </div>
+
+          {loading && sources.length === 0 ? (
+            <div className="loading">加载中...</div>
+          ) : sources.length === 0 ? (
+            <div className="empty-state">
+              <p>暂无书源，请导入 Legado 书源 JSON。</p>
+            </div>
+          ) : (
+            <ul className="book-source-items">
+              {sources.map((source) => (
+                <li key={source.bookSourceUrl}>
+                  <button
+                    className={`book-source-item ${selectedSource?.bookSourceUrl === source.bookSourceUrl ? "active" : ""}`}
+                    type="button"
+                    onClick={() => {
+                      setSelectedSource(source);
+                      setTestResults([]);
+                      setTestingKeyword("");
+                    }}
+                  >
+                    <span className="book-source-name">{source.bookSourceName}</span>
+                    <span className={`book-source-status ${source.enabled ? "enabled" : "disabled"}`}>
+                      {source.enabled ? "启用" : "禁用"}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </aside>
+
+        <section className="book-source-detail">
+          {!selectedSource ? (
+            <div className="empty-state">
+              <p>选择一个书源查看详情</p>
+            </div>
+          ) : (
+            <>
+              <div className="book-source-detail-header">
+                <h3>{selectedSource.bookSourceName}</h3>
+                <div className="book-source-detail-actions">
+                  <button
+                    className="btn-secondary"
+                    type="button"
+                    onClick={() => void handleToggle(selectedSource.bookSourceUrl, !selectedSource.enabled)}
+                  >
+                    {selectedSource.enabled ? "禁用" : "启用"}
+                  </button>
+                  <button
+                    className="btn-secondary"
+                    type="button"
+                    onClick={() => void handleConvert(selectedSource.bookSourceUrl)}
+                  >
+                    转换为 Yeader 格式
+                  </button>
+                  <button
+                    className="btn-danger"
+                    type="button"
+                    onClick={() => void handleDelete(selectedSource.bookSourceUrl)}
+                  >
+                    删除
+                  </button>
+                </div>
+              </div>
+
+              <div className="book-source-meta">
+                <span className="book-source-url" title={selectedSource.bookSourceUrl}>
+                  {selectedSource.bookSourceUrl}
+                </span>
+                {selectedSource.bookSourceGroup ? (
+                  <span className="tag">{selectedSource.bookSourceGroup}</span>
+                ) : null}
+                {selectedSource.bookSourceType !== undefined && selectedSource.bookSourceType !== null ? (
+                  <span className="tag">类型:{selectedSource.bookSourceType}</span>
+                ) : null}
+              </div>
+
+              {selectedSource.searchUrl ? (
+                <div className="book-source-rule-section">
+                  <h4>搜索 URL</h4>
+                  <code className="book-source-code">{selectedSource.searchUrl}</code>
+                </div>
+              ) : null}
+
+              {selectedSource.ruleSearch ? (
+                <div className="book-source-rule-section">
+                  <h4>搜索规则</h4>
+                  <div className="book-source-rules">
+                    {Object.entries(selectedSource.ruleSearch).map(([key, value]) =>
+                      value ? (
+                        <div className="book-source-rule-item" key={key}>
+                          <strong>{key}</strong>
+                          <code>{value}</code>
+                        </div>
+                      ) : null
+                    )}
+                  </div>
+                </div>
+              ) : null}
+
+              {selectedSource.ruleBookInfo ? (
+                <div className="book-source-rule-section">
+                  <h4>详情规则</h4>
+                  <div className="book-source-rules">
+                    {Object.entries(selectedSource.ruleBookInfo).map(([key, value]) =>
+                      value ? (
+                        <div className="book-source-rule-item" key={key}>
+                          <strong>{key}</strong>
+                          <code>{value}</code>
+                        </div>
+                      ) : null
+                    )}
+                  </div>
+                </div>
+              ) : null}
+
+              {selectedSource.ruleToc ? (
+                <div className="book-source-rule-section">
+                  <h4>目录规则</h4>
+                  <div className="book-source-rules">
+                    {Object.entries(selectedSource.ruleToc).map(([key, value]) =>
+                      value ? (
+                        <div className="book-source-rule-item" key={key}>
+                          <strong>{key}</strong>
+                          <code>{value}</code>
+                        </div>
+                      ) : null
+                    )}
+                  </div>
+                </div>
+              ) : null}
+
+              {selectedSource.ruleContent ? (
+                <div className="book-source-rule-section">
+                  <h4>正文规则</h4>
+                  <div className="book-source-rules">
+                    {Object.entries(selectedSource.ruleContent).map(([key, value]) =>
+                      value ? (
+                        <div className="book-source-rule-item" key={key}>
+                          <strong>{key}</strong>
+                          <code>{value}</code>
+                        </div>
+                      ) : null
+                    )}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="book-source-test-section">
+                <h4>测试书源</h4>
+                <div className="book-source-test-form">
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="输入搜索关键字"
+                    value={testingKeyword}
+                    onChange={(e) => setTestingKeyword(e.target.value)}
+                  />
+                  <button
+                    className="btn-primary"
+                    type="button"
+                    disabled={testLoading}
+                    onClick={() => void handleTest()}
+                  >
+                    {testLoading ? "测试中..." : "搜索测试"}
+                  </button>
+                </div>
+
+                {testResults.length > 0 ? (
+                  <div className="book-source-test-results">
+                    <p>找到 {testResults.length} 个结果</p>
+                    <ul className="book-source-test-results-list">
+                      {testResults.slice(0, 10).map((result, idx) => (
+                        <li key={idx} className="book-source-test-result-item">
+                          <span className="book-source-test-result-title">{result.name}</span>
+                          {result.author ? <span className="book-source-test-result-author">{result.author}</span> : null}
+                        </li>
+                      ))}
+                    </ul>
+                    {testResults.length > 10 ? (
+                      <p className="muted-text">还有 {testResults.length - 10} 个结果...</p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            </>
+          )}
+        </section>
+      </div>
+
+      <div className="book-source-import-section">
+        <h4>导入书源</h4>
+        <textarea
+          className="form-input custom-source-json"
+          placeholder='[{"bookSourceUrl": "https://...", "bookSourceName": "书源名称", ...}]'
+          value={customJson}
+          onChange={(e) => setCustomJson(e.target.value)}
+        />
+        <button className="btn-secondary" type="button" disabled={loading} onClick={() => void handleImport()}>
+          {loading ? "导入中..." : "导入 JSON"}
+        </button>
+      </div>
+
+      {message ? <p className="explore-status">{message}</p> : null}
     </section>
   );
 }

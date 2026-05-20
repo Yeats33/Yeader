@@ -26,46 +26,68 @@ Every change must pass `npm run build` and `cargo test --workspace` at minimum.
 
 ## Architecture
 
-**Rust workspace** with 7 library crates + 1 Tauri app crate:
+**Rust workspace** with 12 library crates + 1 Tauri app crate:
 
 ```
-src-tauri/          Tauri 2 desktop shell — wires plugins, logging, Tauri commands
+src-tauri/           Tauri 2 desktop shell — wires plugins, logging, Tauri commands
 crates/
-  yeader-models/    Shared domain types (LegacyBookSource, LegacyRssSource, etc.)
-  yeader-protocol/  legado:// URI scheme parsing
-  yeader-backup/    Load & parse legado backup dirs + zip archives
-  yeader-library/   SQLite persistence (book_sources, rss_sources, replace_rules, reading_progress)
-  yeader-net/       HTTP client utilities (stub)
-  yeader-reader/    Reader session orchestration (stub)
-  yeader-rules/     Rule parsing & execution engine (stub)
-src/                Vite + TypeScript frontend (bootstrap stage)
+  yeader-models/     Domain types (LegacyBookSource, YeaderSource, FeedItem, etc.)
+  yeader-protocol/   legado:// URI scheme parsing
+  yeader-backup/     Load & parse legado backup dirs + zip archives
+  yeader-library/    SQLite persistence (sources, subscriptions, books, progress)
+  yeader-net/        HTTP client (reqwest, TLS fingerprint, impersonation)
+  yeader-reader/     EPUB/TXT parsing + content pipeline (BookInfo, Chapter, TOC)
+  yeader-rules/      Rule engine (CSS/JSONPath/XPath/Regex/Text/JS selectors)
+  yeader-sdk/       Plugin runtime (SourcePlugin trait, HostApi interface)
+  yeader-runtime/   Plugin registry + dispatch
+  yeader-crypto/    AES-256-ECB, MD5, base64 utilities
+  yeader-descramble/Image descrambling (vertical block stitching)
+  yeader-http-util/ Request builder utilities
+src/                 Vite + TypeScript frontend
 ```
 
-### Dependency flow
+### Source / Subscription 模型
+
+**Source** = 内容获取模板（可复用）：
+- JSON 标准源（RSS、书源、JS 脚本）
+- 插件源（Wasm，完全自定义）
+
+**Subscription** = 用户实例（状态独立）：
+- 指定 scope（整个源 / 某个分类 / 某本书）
+- 文件夹归属、启用状态、进度
 
 ```
-src-tauri → yeader-protocol → yeader-models
-yeader-backup → yeader-models + zip
-yeader-library → yeader-models + rusqlite
-yeader-reader → yeader-library, yeader-rules, yeader-models
-yeader-rules, yeader-net → yeader-models
+~/.yeader/                    # 数据根目录
+├── sources/                   # 源模板
+│   ├── json/                  # JSON 标准源
+│   └── plugins/               # Wasm 插件
+├── subscriptions/             # 订阅实例
+└── data/                      # 用户数据
 ```
 
 ### Key patterns
 
-- **Legado compatibility**: `yeader-models/src/legacy.rs` defines camelCase serde structs that match legado's JSON format exactly. Extra fields are preserved via `#[serde(flatten)] extra: serde_json::Map`.
-- **Backup loading**: `yeader-backup` supports both extracted directories and `backup*.zip` archives. `load_backup(path)` auto-detects format. Nested zip directory prefixes are stripped. `load_backup_zip_reader(reader)` works on any `Read + Seek`.
-- **SQLite persistence**: `yeader-library` uses `rusqlite` with `CREATE TABLE IF NOT EXISTS` migrations. Repos (`BookSourceRepo`, `RssSourceRepo`, `ReplaceRuleRepo`, `ReadingProgressRepo`) use upsert with `ON CONFLICT DO UPDATE`. Extra JSON fields round-trip through a TEXT column. Batch operations use `unchecked_transaction`. Use `Database::open_in_memory()` in tests.
-- **Tauri commands**: Exposed in `src-tauri/src/lib.rs` via `#[tauri::command]` and registered in the `invoke_handler`. Currently only `parse_legado_import_uri`.
-- **Test fixtures**: Located in `fixtures/legado/` and embedded at compile time with `include_str!()`. Covers book sources, RSS sources, replace rules, sample backup (dir + zip).
+- **Source/Subscription 分离**: Source 是模板（可复用），Subscription 是用户实例（有独立状态和 scope）
+- **Legado 兼容**: `yeader-models/src/legacy.rs` 定义 camelCase serde structs，额外字段通过 `#[serde(flatten)] extra: serde_json::Map` 保留
+- **Rule engine**: `yeader-rules` 支持 CSS/JSONPath/XPath/Regex/Text/JavaScript 选择器，通过 `AnalyzeRule` 执行
+- **Plugin system**: `yeader-sdk` 定义 `SourcePlugin` trait，`yeader-runtime` 实现插件注册和调度
+- **Backup loading**: `yeader-backup` 支持目录和 zip 两种格式，自动检测
+- **SQLite persistence**: `yeader-library` 使用 `rusqlite`，repos 使用 upsert with `ON CONFLICT DO UPDATE`
+- **Tauri commands**: 在 `src-tauri/src/lib.rs` 通过 `#[tauri::command]` 暴露，commands 模块分离到 `src-tauri/src/commands/`
+- **Test fixtures**: 位于 `fixtures/legado/`，通过 `include_str!()` 嵌入
 
-### EPUB Reader Features
+### Page Structure
 
-- **Bookmark system**: Bookmarks saved to `mark.json` alongside each EPUB file via `save_bookmark`/`get_bookmark` Tauri commands
-- **Three themes**: Light/dark/sepia modes via `ThemeManager` (`src/utils/themeManager.ts`) with CSS variable theming
-- **Reader style persistence**: Font family, size, line height, theme saved to `config/reader_style.json` via `save_reader_style`/`get_reader_style` commands
-- **Per-theme content styles**: EPUB content colors adapt to selected theme via `src/utils/bookContentThemes.ts`
-- **Keyboard shortcuts**: `b` toggle bookmarks, `m` save bookmark, `t` toggle TOC, `s` toggle settings, `d` cycle theme
+- `/sources` — 源管理（市场安装、源列表、enable/disable）
+- `/feed` — 订阅页面（三栏布局：订阅列表 → 内容流 → 阅读视图）
+- `/discover` — 发现（浏览分类、搜索、链接转换）
+- `/reader/:bookId` — 阅读器视图
+
+### YeaderHub
+
+- 源市场数据来自 `YeaderHub` 仓库 (`Yeats33/YeaderHub`)
+- `registry/sources.json` 索引所有可用源
+- `sources/` 目录存放源 pack JSON
 
 ### Upstream reference
 

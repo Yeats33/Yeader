@@ -23,6 +23,7 @@ const SAMPLE_SOURCES: YeaderSource[] = [
     name: "源 A",
     mediaType: "generic",
     enabled: true,
+    requestDefaults: { impersonate: "chrome137" },
     capabilities: [{ kind: "search" }],
   },
   {
@@ -63,6 +64,7 @@ test("listYeaderSources reads data from injected invoke adapter", async () => {
   const sources = await listYeaderSources();
   assert.equal(sources.length, 2);
   assert.equal(sources[0]?.name, "源 A");
+  assert.equal(sources[0]?.requestDefaults?.impersonate, "chrome137");
   assert.equal(sources[1]?.mediaType, "rss");
 });
 

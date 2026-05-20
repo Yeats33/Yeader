@@ -6,7 +6,7 @@ mod model;
 mod state;
 mod style;
 
-use commands::{auth, backup, dev, feed, integration, library, reader, search};
+use commands::{auth, backup, dev, feed, integration, library, reader, search, sources};
 use state::AppState;
 use tauri::Manager;
 use yeader_library::Database;
@@ -81,6 +81,15 @@ pub fn run() {
             library::remove_book,
             library::get_reading_progress,
             library::save_reading_progress,
+            sources::list_sources,
+            sources::import_source,
+            sources::delete_source,
+            sources::toggle_source,
+            sources::import_book_source,
+            sources::list_book_sources,
+            sources::delete_book_source,
+            sources::toggle_book_source,
+            sources::convert_book_source,
             search::search_books,
             search::list_explore_categories,
             search::explore_books,
@@ -103,6 +112,10 @@ pub fn run() {
             auth::clear_auth_session,
             feed::fetch_feed,
             feed::probe_feed,
+            feed::save_rss_source,
+            feed::list_rss_sources,
+            feed::delete_rss_source,
+            feed::update_rss_source_metadata,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

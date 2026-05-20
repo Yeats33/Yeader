@@ -16,6 +16,8 @@ import type {
   AuthSessionInfo,
   FeedSource,
   FeedItem,
+  LegacyBookSource,
+  LegacyRssSource,
 } from "./types.ts";
 
 type InvokeAdapter = typeof invoke;
@@ -348,4 +350,52 @@ export async function fetchFeed(url: string): Promise<FeedItem[]> {
 
 export async function probeFeed(url: string): Promise<FeedSource> {
   return await invokeAdapter<FeedSource>("probe_feed", { url });
+}
+
+// ---- Book Source Management (Legacy Legado format) ----
+
+export async function importBookSource(json: string): Promise<number> {
+  return await invokeAdapter<number>("import_book_source", { json });
+}
+
+export async function listBookSources(): Promise<LegacyBookSource[]> {
+  return await invokeAdapter<LegacyBookSource[]>("list_book_sources");
+}
+
+export async function deleteBookSource(url: string): Promise<boolean> {
+  return await invokeAdapter<boolean>("delete_book_source", { url });
+}
+
+export async function toggleBookSource(url: string, enabled: boolean): Promise<boolean> {
+  return await invokeAdapter<boolean>("toggle_book_source", { url, enabled });
+}
+
+export async function convertBookSource(url: string): Promise<YeaderSource> {
+  return await invokeAdapter<YeaderSource>("convert_book_source", { url });
+}
+
+// ---- RSS Source Management ----
+
+export async function saveRssSource(source: FeedSource): Promise<FeedSource> {
+  return await invokeAdapter<FeedSource>("save_rss_source", { source });
+}
+
+export async function listRssSources(): Promise<LegacyRssSource[]> {
+  return await invokeAdapter<LegacyRssSource[]>("list_rss_sources");
+}
+
+export async function deleteRssSource(url: string): Promise<boolean> {
+  return await invokeAdapter<boolean>("delete_rss_source", { url });
+}
+
+export async function updateRssSourceMetadata(
+  url: string,
+  itemCount: number,
+  lastFetched: string,
+): Promise<boolean> {
+  return await invokeAdapter<boolean>("update_rss_source_metadata", {
+    url,
+    item_count: itemCount,
+    last_fetched: lastFetched,
+  });
 }

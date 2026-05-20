@@ -7027,6 +7027,7 @@ dependencies = [
  "notify",
  "notify-debouncer-mini",
  "reqwest 0.12.28",
+ "rusqlite",
  "scraper",
  "serde",
  "serde_json",
@@ -7092,6 +7093,7 @@ name = "yeader-library"
 version = "0.2.1-beta1"
 dependencies = [
  "rusqlite",
+ "serde",
  "serde_json",
  "yeader-models",
 ]

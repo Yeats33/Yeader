@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { fetchFeed } from "../api.ts";
-import type { FeedSource, FeedItem } from "../types.ts";
+import { fetchFeed, listRssSources, listBookSources } from "../api.ts";
+import type { FeedSource, FeedItem, LegacyBookSource, LegacyRssSource } from "../types.ts";
 import type { ViewType, YeaderMediaType } from "../views/types.ts";
 import { resolveView } from "../views/types.ts";
 import { LeftPanel } from "./LeftPanel.tsx";
@@ -8,23 +8,40 @@ import { MiddlePanel } from "./MiddlePanel.tsx";
 import { RightPanel } from "./RightPanel.tsx";
 import { AddSourceModal } from "../components/AddSourceModal.tsx";
 
-const STORAGE_KEY = "yeader_feed_sources";
-
-function loadSources(): FeedSource[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+// Convert LegacyRssSource to FeedSource for display
+function rssToFeedSource(rss: LegacyRssSource): FeedSource {
+  return {
+    id: `rss:${rss.sourceUrl}`,
+    url: rss.sourceUrl,
+    title: rss.sourceName || "RSS Source",
+    description: undefined,
+    link: undefined,
+    iconUrl: rss.sourceIcon,
+    mediaType: "rss",
+    folder: (rss.extra as Record<string, unknown>)?.folder as string | undefined ?? undefined,
+    enabled: rss.enabled,
+    defaultView: undefined,
+  };
 }
 
-function saveSources(sources: FeedSource[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(sources));
+// Convert LegacyBookSource to FeedSource for display
+function bookToFeedSource(book: LegacyBookSource): FeedSource {
+  return {
+    id: `book:${book.bookSourceUrl}`,
+    url: book.bookSourceUrl,
+    title: book.bookSourceName || "Book Source",
+    description: book.bookSourceComment,
+    link: undefined,
+    iconUrl: undefined,
+    mediaType: "novel",
+    folder: book.bookSourceGroup ?? undefined,
+    enabled: book.enabledExplore ?? true,
+    defaultView: undefined,
+  };
 }
 
 export function ThreePanelLayout() {
-  const [sources, setSources] = useState<FeedSource[]>(loadSources);
+  const [sources, setSources] = useState<FeedSource[]>([]);
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [items, setItems] = useState<FeedItem[]>([]);
@@ -32,9 +49,25 @@ export function ThreePanelLayout() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [currentViewType, setCurrentViewType] = useState<ViewType>("article");
 
+  // Load sources from database on mount
   useEffect(() => {
-    saveSources(sources);
-  }, [sources]);
+    async function loadAllSources() {
+      try {
+        const [rssSources, bookSources] = await Promise.all([
+          listRssSources(),
+          listBookSources(),
+        ]);
+        const rssFeeds = rssSources.map(rssToFeedSource);
+        const bookFeeds = bookSources.map(bookToFeedSource);
+        // Merge and deduplicate by URL
+        const allSources = [...rssFeeds, ...bookFeeds];
+        setSources(allSources);
+      } catch {
+        setSources([]);
+      }
+    }
+    loadAllSources();
+  }, []);
 
   const selectedSource = sources.find((s) => s.id === selectedSourceId) ?? null;
   const selectedItem = items.find((i) => i.id === selectedItemId) ?? null;

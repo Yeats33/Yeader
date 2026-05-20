@@ -19,6 +19,7 @@ import { AccountPage } from "./pages/Account.tsx";
 import { OnlineReaderPage } from "./pages/OnlineReader/index.tsx";
 import { OnlineChapterPage } from "./pages/OnlineReader/chapter.tsx";
 import { ThreePanelLayout } from "./panels/ThreePanelLayout.tsx";
+import { SourcePanels } from "./panels/SourcePanels.tsx";
 
 const HIDE_NAV_ROUTES = ["/integration/so-novel/webui", "/feed"];
 
@@ -37,6 +38,9 @@ function CurrentRoutePage({ routePath }: { routePath: string }) {
   if (routePath === "/" || routePath === "/library") return <BookshelfPage />;
   if (routePath === "/feed") return <ThreePanelLayout />;
   if (routePath === "/discover") return <DiscoverPage />;
+  if (routePath === "/sources/rss") return <SourcePanels sourceType="rss" />;
+  if (routePath === "/sources/book") return <SourcePanels sourceType="book" />;
+  if (routePath === "/sources/plugin") return <SourcePanels sourceType="plugin" />;
   if (routePath === "/sources") return <SourcesPage />;
   if (routePath === "/account") return <AccountPage />;
   if (routePath === "/settings") return <SettingsPage />;

@@ -28,6 +28,7 @@ yeader-net.workspace = true
 yeader-protocol.workspace = true
 yeader-reader.workspace = true
 yeader-rules.workspace = true
+rusqlite.workspace = true
 scraper.workspace = true
 http.workspace = true
 uuid.workspace = true

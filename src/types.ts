@@ -39,6 +39,7 @@ export interface YeaderRequestDefaults {
   headers?: Record<string, string>;
   encoding?: string;
   timeoutMs?: number;
+  impersonate?: string;
 }
 
 export interface YeaderCapability {
@@ -208,4 +209,94 @@ export interface FeedItem {
   contentHtml?: string;
   imageUrl?: string;
   read: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Legacy Legado Book Source types
+// ---------------------------------------------------------------------------
+
+export interface LegacyBookSource {
+  bookSourceUrl: string;
+  bookSourceName: string;
+  bookSourceGroup?: string;
+  searchUrl?: string;
+  bookUrlPattern?: string;
+  loginCheckJs?: string;
+  bookSourceType?: number;
+  enabledExplore?: boolean;
+  exploreUrl?: string;
+  loginUrl?: string;
+  header?: string;
+  customOrder?: number;
+  weight?: number;
+  lastUpdateTime?: number;
+  bookSourceComment?: string;
+  ruleSearch?: {
+    bookList?: string;
+    name?: string;
+    author?: string;
+    intro?: string;
+    kind?: string;
+    lastChapter?: string;
+    updateTime?: string;
+    bookUrl?: string;
+    coverUrl?: string;
+    wordCount?: string;
+    checkKeyWord?: string;
+  };
+  ruleBookInfo?: {
+    init?: string;
+    name?: string;
+    author?: string;
+    intro?: string;
+    kind?: string;
+    lastChapter?: string;
+    updateTime?: string;
+    coverUrl?: string;
+    tocUrl?: string;
+    wordCount?: string;
+    canReName?: string;
+    downloadUrls?: string;
+  };
+  ruleToc?: {
+    chapterList?: string;
+    chapterName?: string;
+    chapterUrl?: string;
+    formatJs?: string;
+    isVolume?: string;
+    isVip?: string;
+    isPay?: string;
+    updateTime?: string;
+    nextTocUrl?: string;
+    preUpdateJs?: string;
+  };
+  ruleContent?: {
+    content?: string;
+    title?: string;
+    nextContentUrl?: string;
+    webJs?: string;
+    sourceRegex?: string;
+    replaceRegex?: string;
+    imageStyle?: string;
+    imageDecode?: string;
+    payAction?: string;
+  };
+  enabled: boolean;
+  lastTestAvailable?: boolean;
+  lastTestedAt?: string;
+  lastTestDetail?: string;
+  extra?: Record<string, unknown>;
+}
+
+// ---------------------------------------------------------------------------
+// Legacy Legado RSS Source types
+// ---------------------------------------------------------------------------
+
+export interface LegacyRssSource {
+  sourceUrl: string;
+  sourceName: string;
+  sourceIcon?: string;
+  ruleArticles?: string;
+  enabled: boolean;
+  extra?: Record<string, unknown>;
 }

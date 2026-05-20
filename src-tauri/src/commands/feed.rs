@@ -1,5 +1,8 @@
+use crate::state::AppState;
+use serde_json::Map;
+use tauri::State;
 use uuid::Uuid;
-use yeader_models::{FeedItem, FeedSource};
+use yeader_models::{FeedItem, FeedSource, LegacyRssSource};
 
 /// Parse and normalize a feed (RSS 2.0 or Atom) into FeedItems.
 #[tauri::command]
@@ -25,10 +28,7 @@ pub async fn fetch_feed(url: String) -> Result<Vec<FeedItem>, String> {
                 .map(|l| l.href.clone())
                 .unwrap_or_default();
 
-            let published = entry
-                .published
-                .or(entry.updated)
-                .map(|d| d.to_rfc3339());
+            let published = entry.published.or(entry.updated).map(|d| d.to_rfc3339());
 
             let updated = entry.updated.map(|d| d.to_rfc3339());
 
@@ -39,10 +39,7 @@ pub async fn fetch_feed(url: String) -> Result<Vec<FeedItem>, String> {
                 .map(|s| s.content)
                 .filter(|s| !s.trim().is_empty());
 
-            let content_html = entry
-                .content
-                .and_then(|c| c.body)
-                .filter(|b| !b.is_empty());
+            let content_html = entry.content.and_then(|c| c.body).filter(|b| !b.is_empty());
 
             let image_url = entry
                 .media
@@ -112,4 +109,79 @@ pub async fn probe_feed(url: String) -> Result<FeedSource, String> {
         folder: None,
         enabled: true,
     })
+}
+
+/// Save an RSS source (from probe result) to the database.
+#[tauri::command]
+pub fn save_rss_source(
+    state: State<'_, AppState>,
+    source: FeedSource,
+) -> Result<FeedSource, String> {
+    let db = state.db.lock().unwrap();
+    let repo = yeader_library::RssSourceRepo::new(&db);
+
+    let mut extra = Map::new();
+    extra.insert("itemCount".into(), serde_json::Value::Number(0.into()));
+    extra.insert("lastFetched".into(), serde_json::Value::Null);
+
+    let legacy = LegacyRssSource {
+        source_url: source.url.clone(),
+        source_name: source.title.clone(),
+        source_icon: source
+            .icon_url
+            .as_ref()
+            .map(|s| s.as_str())
+            .unwrap_or("")
+            .to_string(),
+        rule_articles: None,
+        enabled: source.enabled,
+        extra,
+    };
+
+    repo.upsert(&legacy).map_err(|e| e.to_string())?;
+    Ok(source)
+}
+
+/// List all RSS sources from the database.
+#[tauri::command]
+pub fn list_rss_sources(state: State<'_, AppState>) -> Result<Vec<LegacyRssSource>, String> {
+    let db = state.db.lock().unwrap();
+    let repo = yeader_library::RssSourceRepo::new(&db);
+    repo.list_all().map_err(|e| e.to_string())
+}
+
+/// Delete an RSS source by URL.
+#[tauri::command]
+pub fn delete_rss_source(state: State<'_, AppState>, url: String) -> Result<bool, String> {
+    let db = state.db.lock().unwrap();
+    let repo = yeader_library::RssSourceRepo::new(&db);
+    repo.delete(&url).map_err(|e| e.to_string())
+}
+
+/// Update RSS source metadata (item count, last fetched).
+#[tauri::command]
+pub fn update_rss_source_metadata(
+    state: State<'_, AppState>,
+    url: String,
+    item_count: i32,
+    last_fetched: String,
+) -> Result<bool, String> {
+    let db = state.db.lock().unwrap();
+    let mut source = yeader_library::RssSourceRepo::new(&db)
+        .find_by_url(&url)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "RSS source not found".to_string())?;
+
+    source.extra.insert(
+        "itemCount".into(),
+        serde_json::Value::Number(item_count.into()),
+    );
+    source.extra.insert(
+        "lastFetched".into(),
+        serde_json::Value::String(last_fetched),
+    );
+
+    let repo = yeader_library::RssSourceRepo::new(&db);
+    repo.upsert(&source).map_err(|e| e.to_string())?;
+    Ok(true)
 }
