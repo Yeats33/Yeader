@@ -7,8 +7,8 @@ import { useHashRoute } from "./routing/hashRoute.ts";
 import { matchRoute } from "./routing/matchRoute.ts";
 import { loadTheme, getCurrentTheme, getColorModePreference, watchSystemColorMode } from "./theme.ts";
 
-import { renderBookshelfPage, initBookshelfHandlers } from "./pages/Bookshelf.ts";
 import { renderSearchPage, initSearchHandlers } from "./pages/Search.ts";
+import { BookshelfPage } from "./pages/BookshelfPage.tsx";
 import { ReaderPage } from "./pages/Reader/index.tsx";
 import { IntegrationPage } from "./pages/Integration.tsx";
 import { SoNovelWebuiPage } from "./pages/SoNovelWebui.tsx";
@@ -23,13 +23,6 @@ import { SourceOpsPage } from "./pages/SourceOps.tsx";
 const HIDE_NAV_ROUTES = ["/integration/so-novel/webui"];
 
 function resolvePage(routePath: string): LegacyPageDefinition | null {
-  if (matchRoute("/", { path: routePath })) {
-    return {
-      render: renderBookshelfPage,
-      init: initBookshelfHandlers,
-    };
-  }
-
   if (matchRoute("/search", { path: routePath })) {
     return {
       render: renderSearchPage,
@@ -60,6 +53,7 @@ function NotFoundPage() {
 }
 
 function CurrentRoutePage({ routePath }: { routePath: string }) {
+  if (routePath === "/") return <BookshelfPage />;
   if (routePath === "/account") return <AccountPage />;
   if (routePath === "/settings") return <SettingsPage />;
   if (routePath === "/integration") return <IntegrationPage />;
