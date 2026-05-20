@@ -8,7 +8,7 @@ test("matchRoute matches root path", () => {
 });
 
 test("matchRoute matches simple path", () => {
-  const result = matchRoute("/search", { path: "/search" });
+  const result = matchRoute("/discover", { path: "/discover" });
   assert.equal(result === null, false);
 });
 
@@ -19,7 +19,7 @@ test("matchRoute extracts params", () => {
 });
 
 test("matchRoute returns null on mismatch", () => {
-  const result = matchRoute("/search", { path: "/settings" });
+  const result = matchRoute("/discover", { path: "/settings" });
   assert.equal(result, null);
 });
 

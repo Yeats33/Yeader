@@ -77,7 +77,7 @@ export function OnlineReaderPage({ bookUrl, sourceUrl }: OnlineReaderPageProps) 
   return (
     <div className="page page-online-reader">
       <header className="page-header">
-        <button className="btn-icon" type="button" onClick={() => navigate("/search")} title="返回">
+        <button className="btn-icon" type="button" onClick={() => navigate("/discover")} title="返回发现">
           &#x2190;
         </button>
         <h1>{state.bookInfo?.name ?? "加载中..."}</h1>
@@ -106,7 +106,7 @@ export function OnlineReaderPage({ bookUrl, sourceUrl }: OnlineReaderPageProps) 
               disabled={adding}
               onClick={() => void addToShelf(state.bookInfo)}
             >
-              {adding ? "加入中..." : "加入书架"}
+              {adding ? "加入中..." : "加入阅读"}
             </button>
           </>
         ) : null}
