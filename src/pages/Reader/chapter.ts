@@ -28,7 +28,7 @@ function rememberChapterContent(key: string, content: string): void {
   }
 }
 
-async function readChapterContent(state: ReaderState, chapterIndex: number): Promise<string> {
+export async function readChapterContent(state: ReaderState, chapterIndex: number): Promise<string> {
   const { fetchContent, readLocalEpub } = await import("../../api.ts");
   const chapter = state.chapters[chapterIndex];
   if (!chapter) {
