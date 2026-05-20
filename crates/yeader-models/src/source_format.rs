@@ -159,6 +159,12 @@ pub struct YeaderRequestDefaults {
     pub encoding: Option<String>,
     #[serde(default)]
     pub timeout_ms: Option<u64>,
+    /// Optional browser TLS/HTTP2 fingerprint profile (e.g. "chrome", "chrome131",
+    /// "safari18", "firefox139"). When set, requests for this source are routed
+    /// through the impersonating client to defeat Cloudflare-style fingerprint
+    /// gates. Unset = use the default `reqwest` path.
+    #[serde(default)]
+    pub impersonate: Option<String>,
 }
 
 /// Pagination template for request variables.
@@ -345,6 +351,7 @@ impl From<&LegacyBookSource> for YeaderSource {
                 headers: parse_legacy_headers(source.header.as_deref()),
                 encoding: None,
                 timeout_ms: None,
+                impersonate: None,
             },
             variables: BTreeMap::new(),
             explore_categories: Vec::new(),

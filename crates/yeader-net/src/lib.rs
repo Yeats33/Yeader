@@ -2,9 +2,11 @@
 
 pub mod client;
 pub mod encoding;
+pub mod impersonate;
 pub mod url_analyzer;
 
 pub use client::{HttpClient, HttpError, HttpResponse};
+pub use impersonate::{ImpersonateClient, convert_headers, shared_client};
 pub use url_analyzer::{AnalyzedUrl, Method, analyze_url};
 
 use reqwest::header::HeaderMap;

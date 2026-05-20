@@ -14,11 +14,11 @@
       "enabled": true,
       "requestDefaults": {
         "headers": {
-          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
           "Referer": "https://czbooks.net/"
         },
         "encoding": "UTF-8",
-        "timeoutMs": 15000
+        "timeoutMs": 15000,
+        "impersonate": "chrome137"
       },
       "variables": {},
       "exploreCategories": [

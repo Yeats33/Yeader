@@ -35,30 +35,25 @@ pub async fn search_with_yeader_source(
         .as_ref()
         .ok_or("Search capability has no request")?;
 
-    let client = yeader_net::HttpClient::new();
     let url = normalize_request_url(
         &request.url.replace("{{key}}", keyword),
         source.homepage.as_deref(),
     );
 
-    let response = if request.method == "POST" {
-        let headers = build_headers(source, &request.headers);
-        let body = request
-            .body
-            .as_deref()
-            .unwrap_or("")
-            .replace("{{key}}", keyword);
-        client
-            .post_form(&url, &body, &headers)
-            .await
-            .map_err(describe_http_error)?
+    let headers = build_headers(source, &request.headers);
+    let body = if request.method == "POST" {
+        Some(
+            request
+                .body
+                .as_deref()
+                .unwrap_or("")
+                .replace("{{key}}", keyword),
+        )
     } else {
-        let headers = build_headers(source, &request.headers);
-        client
-            .get(&url, &headers)
-            .await
-            .map_err(describe_http_error)?
+        None
     };
+
+    let response = perform_request(source, &url, &headers, body.as_deref()).await?;
 
     Ok(extract_listing_results(source, search_cap, &response.body))
 }
@@ -102,7 +97,7 @@ pub async fn explore_with_yeader_source(
     let url = normalize_request_url(&cleaned, source.homepage.as_deref());
 
     let headers = build_headers(source, &request.headers);
-    let response = client_get(source, &url, &headers).await?;
+    let response = perform_request(source, &url, &headers, None).await?;
 
     Ok(extract_listing_results(source, list_cap, &response.body))
 }
@@ -123,13 +118,40 @@ fn strip_unresolved_placeholders(input: &str) -> String {
     output
 }
 
-async fn client_get(
-    _source: &YeaderSource,
+async fn perform_request(
+    source: &YeaderSource,
     url: &str,
     headers: &reqwest::header::HeaderMap,
+    post_form_body: Option<&str>,
 ) -> Result<yeader_net::HttpResponse, String> {
-    let client = yeader_net::HttpClient::new();
-    client.get(url, headers).await.map_err(describe_http_error)
+    match source.request_defaults.impersonate.as_deref() {
+        Some(profile) if !profile.trim().is_empty() => {
+            let client = yeader_net::shared_client(profile).map_err(describe_http_error)?;
+            let wreq_headers = yeader_net::convert_headers(headers);
+            if let Some(body) = post_form_body {
+                client
+                    .post_form(url, body, &wreq_headers)
+                    .await
+                    .map_err(describe_http_error)
+            } else {
+                client
+                    .get(url, &wreq_headers)
+                    .await
+                    .map_err(describe_http_error)
+            }
+        }
+        _ => {
+            let client = yeader_net::HttpClient::new();
+            if let Some(body) = post_form_body {
+                client
+                    .post_form(url, body, headers)
+                    .await
+                    .map_err(describe_http_error)
+            } else {
+                client.get(url, headers).await.map_err(describe_http_error)
+            }
+        }
+    }
 }
 
 fn describe_http_error(error: yeader_net::HttpError) -> String {
@@ -211,13 +233,9 @@ pub async fn fetch_book_info_yeader(
         .as_ref()
         .ok_or("Detail capability has no request")?;
 
-    let client = yeader_net::HttpClient::new();
     let url = render_book_url_template(&request.url, book_url, source.homepage.as_deref());
     let headers = build_headers(source, &request.headers);
-    let response = client
-        .get(&url, &headers)
-        .await
-        .map_err(describe_http_error)?;
+    let response = perform_request(source, &url, &headers, None).await?;
 
     let analyzer = yeader_rules::CssAnalyzer::new(&response.body);
 
@@ -272,13 +290,9 @@ pub async fn fetch_toc_yeader(
         .as_ref()
         .ok_or("TOC capability has no request")?;
 
-    let client = yeader_net::HttpClient::new();
     let url = render_book_url_template(&request.url, book_url, source.homepage.as_deref());
     let headers = build_headers(source, &request.headers);
-    let response = client
-        .get(&url, &headers)
-        .await
-        .map_err(describe_http_error)?;
+    let response = perform_request(source, &url, &headers, None).await?;
 
     let analyzer = yeader_rules::CssAnalyzer::new(&response.body);
     let fields = &toc_cap.fields;
@@ -330,8 +344,6 @@ pub async fn fetch_content_yeader(
         .find(|c| c.kind == YeaderCapabilityKind::Content)
         .ok_or("Source has no content capability")?;
 
-    let client = yeader_net::HttpClient::new();
-
     let request = content_cap
         .request
         .as_ref()
@@ -354,10 +366,7 @@ pub async fn fetch_content_yeader(
     url = normalize_request_url(&url, source.homepage.as_deref());
 
     let headers = build_headers(source, &request.headers);
-    let response = client
-        .get(&url, &headers)
-        .await
-        .map_err(describe_http_error)?;
+    let response = perform_request(source, &url, &headers, None).await?;
 
     let analyzer = yeader_rules::CssAnalyzer::new(&response.body);
     let fields = &content_cap.fields;
