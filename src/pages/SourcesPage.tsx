@@ -1,5 +1,5 @@
 import { navigate } from "../router.ts";
-import { PluginMarketPanel, SourceListTab } from "./SourceOps.tsx";
+import { PluginMarketPanel, SourceListTab } from "./SourcePanels.tsx";
 import { useYeaderSources } from "./useYeaderSources.ts";
 
 export function SourcesPage() {

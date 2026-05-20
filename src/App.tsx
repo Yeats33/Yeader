@@ -19,7 +19,6 @@ import { SettingsPage } from "./pages/Settings.tsx";
 import { AccountPage } from "./pages/Account.tsx";
 import { OnlineReaderPage } from "./pages/OnlineReader/index.tsx";
 import { OnlineChapterPage } from "./pages/OnlineReader/chapter.tsx";
-import { SourceOpsPage } from "./pages/SourceOps.tsx";
 
 const HIDE_NAV_ROUTES = ["/integration/so-novel/webui"];
 
@@ -45,8 +44,6 @@ function CurrentRoutePage({ routePath }: { routePath: string }) {
   if (routePath === "/integration/so-novel/webui") return <SoNovelWebuiPage />;
   if (routePath === "/integration/so-novel/config") return <SoNovelConfigPage />;
   if (routePath === "/integration/so-novel/rules") return <SoNovelRulesPage />;
-  if (routePath === "/source-ops") return <SourceOpsPage />;
-
   const onlineReaderParams = matchRoute("/online-reader/:bookId/:sourceId", { path: routePath });
   if (onlineReaderParams) {
     return (

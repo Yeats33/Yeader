@@ -18,11 +18,6 @@ import {
   type SourceKindFilter,
 } from "../content/viewModels.ts";
 import type { YeaderCapability, YeaderSource } from "../types.ts";
-import { ExploreTab } from "./ExplorePage.tsx";
-import { SourceSearchTab } from "./SourceSearch.tsx";
-import { useYeaderSources } from "./useYeaderSources.ts";
-
-type SourceOpsTab = "import" | "sources" | "explore" | "search";
 
 function detectSourceFromUrl(url: string, sources: YeaderSource[]): YeaderSource | null {
   for (const source of sources) {
@@ -593,41 +588,5 @@ export function PluginMarketPanel() {
         <a href={registryPreview.sourceUrl} target="_blank" rel="noreferrer">索引：{registryPreview.sourceLabel}</a>
       </div>
     </section>
-  );
-}
-
-export function SourceOpsPage() {
-  const [tab, setTab] = useState<SourceOpsTab>("explore");
-  const { sources, loading } = useYeaderSources();
-
-  return (
-    <div className="page page-source-ops">
-      <header className="page-header">
-        <button className="btn-icon" type="button" onClick={() => navigate("/")} title="返回阅读">
-          &#x2190;
-        </button>
-        <h1>来源</h1>
-        <button className="btn-icon" type="button" onClick={() => navigate("/settings")} title="设置">
-          &#x2699;
-        </button>
-      </header>
-
-      <div className="source-ops-shell">
-        <div className="source-ops-tabs">
-          <button className={`tab-btn ${tab === "explore" ? "active" : ""}`} type="button" onClick={() => setTab("explore")}>发现</button>
-          <button className={`tab-btn ${tab === "search" ? "active" : ""}`} type="button" onClick={() => setTab("search")}>搜索</button>
-          <button className={`tab-btn ${tab === "import" ? "active" : ""}`} type="button" onClick={() => setTab("import")}>链接</button>
-          <button className={`tab-btn ${tab === "sources" ? "active" : ""}`} type="button" onClick={() => setTab("sources")}>规则来源</button>
-        </div>
-
-        <div className="source-ops-content">
-          {loading ? <div className="loading">加载中...</div> : null}
-          {!loading && tab === "explore" ? <ExploreTab sources={sources} /> : null}
-          {!loading && tab === "search" ? <SourceSearchTab sources={sources} /> : null}
-          {!loading && tab === "import" ? <ImportTab sources={sources} /> : null}
-          {!loading && tab === "sources" ? <SourceListTab sources={sources} /> : null}
-        </div>
-      </div>
-    </div>
   );
 }

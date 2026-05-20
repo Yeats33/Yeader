@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { navigate } from "../router.ts";
 import { ExploreTab } from "./ExplorePage.tsx";
-import { ImportTab } from "./SourceOps.tsx";
+import { ImportTab } from "./SourcePanels.tsx";
 import { SourceSearchTab } from "./SourceSearch.tsx";
 import { useYeaderSources } from "./useYeaderSources.ts";
 
