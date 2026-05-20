@@ -62,19 +62,26 @@ function createReaderStyle(state: ReaderState): CSSProperties {
   } as CSSProperties;
 }
 
-async function loadReaderState(encodedBookUrl: string): Promise<ReaderState> {
+async function loadReaderState(
+  encodedBookUrl: string,
+  encodedSourceUrl?: string,
+  encodedChapterUrl?: string,
+): Promise<ReaderState> {
   const state = createInitialState();
   state.bookUrl = decodeURIComponent(encodedBookUrl);
+  state.sourceUrl = encodedSourceUrl ? decodeURIComponent(encodedSourceUrl) : "";
   state.colorModePreference = getColorModePreference();
 
   const isLocalEpub = state.bookUrl.startsWith("local://epub/");
 
-  try {
-    const book = await getBook(state.bookUrl);
-    if (book) {
-      state.sourceUrl = book.source_url;
+  if (!state.sourceUrl) {
+    try {
+      const book = await getBook(state.bookUrl);
+      if (book) {
+        state.sourceUrl = book.source_url;
+      }
+    } catch {
     }
-  } catch {
   }
 
   const savedProgress = await getReadingProgress(state.bookUrl);
@@ -96,6 +103,13 @@ async function loadReaderState(encodedBookUrl: string): Promise<ReaderState> {
     try {
       state.bookInfo = await fetchBookInfo(state.bookUrl, state.sourceUrl);
       state.chapters = await fetchToc(state.bookUrl, state.sourceUrl);
+      if (encodedChapterUrl) {
+        const chapterUrl = decodeURIComponent(encodedChapterUrl);
+        const currentIndex = state.chapters.findIndex((chapter) => chapter.url === chapterUrl);
+        if (currentIndex >= 0) {
+          state.currentChapterIndex = currentIndex;
+        }
+      }
     } catch {
       state.bookInfo = { name: "未知书籍", author: "未知作者" };
       state.chapters = [];
@@ -233,7 +247,15 @@ function BookmarkList({
   });
 }
 
-export function ReaderPage({ bookUrl }: { bookUrl: string }) {
+export function ReaderPage({
+  bookUrl,
+  sourceUrl,
+  chapterUrl,
+}: {
+  bookUrl: string;
+  sourceUrl?: string;
+  chapterUrl?: string;
+}) {
   const [readerState, setReaderState] = useState<ReaderState | null>(null);
   const [chapterState, setChapterState] = useState<ChapterLoadState>({
     status: "loading",
@@ -252,7 +274,7 @@ export function ReaderPage({ bookUrl }: { bookUrl: string }) {
     setReaderState(null);
     setChapterState({ status: "loading", html: "", error: "" });
 
-    loadReaderState(bookUrl)
+    loadReaderState(bookUrl, sourceUrl, chapterUrl)
       .then((state) => {
         if (!cancelled) {
           stateRef.current = state;
@@ -276,7 +298,7 @@ export function ReaderPage({ bookUrl }: { bookUrl: string }) {
         progressSaveTimer.current = undefined;
       }
     };
-  }, [bookUrl]);
+  }, [bookUrl, sourceUrl, chapterUrl]);
 
   useEffect(() => {
     if (!readerState) return;
