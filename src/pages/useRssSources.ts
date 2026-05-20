@@ -15,6 +15,12 @@ export interface RssSourceWithItems extends LegacyRssSource {
   itemCount?: number;
 }
 
+/**
+ * @deprecated Unused legacy RSS hook from the pre-/feed implementation.
+ * Useful pieces to preserve: saveRssSource, deleteRssSource, and
+ * updateRssSourceMetadata after fetch. Prefer wiring those into /feed instead
+ * of adding new callers here.
+ */
 export function useRssSources() {
   const [sources, setSources] = useState<RssSourceWithItems[]>([]);
   const [loading, setLoading] = useState(true);

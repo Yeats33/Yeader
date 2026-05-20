@@ -33,6 +33,8 @@ registerView({
   render: ArticleView,
 });
 
+// Deprecated built-in view: retained for registry compatibility while the
+// bookshelf-shaped plugin item contract is unresolved.
 registerView({
   type: "bookshelf",
   label: "书架",

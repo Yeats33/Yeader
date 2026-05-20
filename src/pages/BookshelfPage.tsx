@@ -9,6 +9,11 @@ type BookViewMode = "grid" | "list";
 
 type BookshelfFilter = "all" | "local" | "web";
 
+/**
+ * @deprecated Compatibility page for the old standalone reading library.
+ * Keep this code until local EPUB import is replaced by the downloadable
+ * Local EPUB plugin from YeaderHub. Do not add new subscription features here.
+ */
 function ItemThumbnail({ item, list = false }: { item: LibraryItem; list?: boolean }) {
   if (item.thumbnailUrl) {
     return (
@@ -93,6 +98,11 @@ function LibraryItemEntry({
   );
 }
 
+/**
+ * @deprecated Use /feed as the aggregate subscription and reading surface.
+ * This page still contains useful EPUB import behavior that should inform the
+ * YeaderHub Local EPUB plugin before the route is removed.
+ */
 export function BookshelfPage() {
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);

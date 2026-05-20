@@ -20,6 +20,12 @@ import type {
 
 export type SourceType = "rss" | "book" | "plugin";
 
+/**
+ * @deprecated Old source-specific three-panel browsing surface.
+ * Keep temporarily as reference for source preview behavior: RSS item preview,
+ * book explore preview, TOC preview, and first-chapter preview. New source
+ * management should live under /sources and user browsing under /discover or /feed.
+ */
 // Source type indicator colors
 export const SOURCE_TYPE_COLORS: Record<SourceType, { bg: string; text: string }> = {
   rss: { bg: "#f97316", text: "#ffffff" },
@@ -386,6 +392,10 @@ function getSourceFeedUrl(source: YeaderSource): string | undefined {
   return source.capabilities?.find((c) => c.kind === "feed")?.request?.url;
 }
 
+/**
+ * @deprecated Use /sources for management, /discover for browsing, and /feed
+ * for subscribed content. Extract useful preview flows before removing this.
+ */
 export function SourcePanels({ sourceType }: SourcePanelsProps) {
   const [allSources, setAllSources] = useState<YeaderSource[]>([]);
   const [filteredSources, setFilteredSources] = useState<YeaderSource[]>([]);

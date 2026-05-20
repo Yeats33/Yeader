@@ -9,6 +9,10 @@ interface RssSourceListProps {
   onDelete: (url: string) => void;
 }
 
+/**
+ * @deprecated Unused legacy RSS list component. Keep as reference for RSS
+ * source deletion, item counts, and last-fetched display while /feed is rebuilt.
+ */
 function formatLastFetched(lastFetched?: string): string {
   if (!lastFetched) return "从未更新";
   try {
@@ -28,6 +32,9 @@ function formatLastFetched(lastFetched?: string): string {
   }
 }
 
+/**
+ * @deprecated Use the /feed left panel for active subscription navigation.
+ */
 export function RssSourceList({
   sources,
   selectedUrl,

@@ -35,6 +35,8 @@ function NotFoundPage() {
 }
 
 function CurrentRoutePage({ routePath }: { routePath: string }) {
+  // Deprecated route surface: keep mounted for compatibility until local EPUB
+  // import moves to the downloadable Local EPUB plugin in YeaderHub.
   if (routePath === "/" || routePath === "/library") return <BookshelfPage />;
   if (routePath === "/feed") return <ThreePanelLayout />;
   if (routePath === "/discover") return <DiscoverPage />;
@@ -42,6 +44,8 @@ function CurrentRoutePage({ routePath }: { routePath: string }) {
   if (discoverParams) {
     return <DiscoverPage initialSourceId={decodeURIComponent(discoverParams["sourceId"] ?? "")} />;
   }
+  // Deprecated route surface: old source-specific three-panel browsers.
+  // Current source management lives at /sources and content browsing at /discover.
   if (routePath === "/sources/rss") return <SourcePanels sourceType="rss" />;
   if (routePath === "/sources/book") return <SourcePanels sourceType="book" />;
   if (routePath === "/sources/plugin") return <SourcePanels sourceType="plugin" />;

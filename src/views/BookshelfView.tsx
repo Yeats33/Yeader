@@ -2,6 +2,11 @@ interface BookshelfViewProps {
   item: Record<string, unknown> | null;
 }
 
+/**
+ * @deprecated Prototype plugin view for folder-style book collections.
+ * Current book subscription rendering is handled directly in /feed RightPanel.
+ * Keep only if the plugin view registry grows real bookshelf-shaped items.
+ */
 export function BookshelfView({ item }: BookshelfViewProps) {
   if (!item) {
     return (
