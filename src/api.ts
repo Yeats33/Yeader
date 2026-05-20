@@ -14,6 +14,8 @@ import type {
   BookMark,
   AuthResult,
   AuthSessionInfo,
+  FeedSource,
+  FeedItem,
 } from "./types.ts";
 
 type InvokeAdapter = typeof invoke;
@@ -338,4 +340,12 @@ export async function getAuthSession(): Promise<AuthSessionInfo | null> {
 
 export async function clearAuthSession(): Promise<void> {
   await invokeAdapter<void>("clear_auth_session");
+}
+
+export async function fetchFeed(url: string): Promise<FeedItem[]> {
+  return await invokeAdapter<FeedItem[]>("fetch_feed", { url });
+}
+
+export async function probeFeed(url: string): Promise<FeedSource> {
+  return await invokeAdapter<FeedSource>("probe_feed", { url });
 }

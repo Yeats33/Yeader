@@ -182,3 +182,30 @@ export interface AuthSessionInfo {
   created_at: string;
   expires_at: string;
 }
+
+export interface FeedSource {
+  id: string;
+  url: string;
+  title: string;
+  description?: string;
+  link?: string;
+  iconUrl?: string;
+  mediaType: string;
+  folder?: string;
+  enabled: boolean;
+  defaultView?: string;
+}
+
+export interface FeedItem {
+  id: string;
+  sourceId: string;
+  title: string;
+  url: string;
+  author?: string;
+  published?: string;
+  updated?: string;
+  summary?: string;
+  contentHtml?: string;
+  imageUrl?: string;
+  read: boolean;
+}

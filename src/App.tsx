@@ -18,8 +18,9 @@ import { SettingsPage } from "./pages/Settings.tsx";
 import { AccountPage } from "./pages/Account.tsx";
 import { OnlineReaderPage } from "./pages/OnlineReader/index.tsx";
 import { OnlineChapterPage } from "./pages/OnlineReader/chapter.tsx";
+import { ThreePanelLayout } from "./panels/ThreePanelLayout.tsx";
 
-const HIDE_NAV_ROUTES = ["/integration/so-novel/webui"];
+const HIDE_NAV_ROUTES = ["/integration/so-novel/webui", "/feed"];
 
 function NotFoundPage() {
   const { navigate } = useHashRoute();
@@ -34,6 +35,7 @@ function NotFoundPage() {
 
 function CurrentRoutePage({ routePath }: { routePath: string }) {
   if (routePath === "/" || routePath === "/library") return <BookshelfPage />;
+  if (routePath === "/feed") return <ThreePanelLayout />;
   if (routePath === "/discover") return <DiscoverPage />;
   if (routePath === "/sources") return <SourcesPage />;
   if (routePath === "/account") return <AccountPage />;
