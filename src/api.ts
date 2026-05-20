@@ -1,8 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
-  LegacyBookSource,
-  LegacyRssSource,
-  LegacyReplaceRule,
   YeaderSource,
   YeaderExploreCategory,
   Book,
@@ -11,7 +8,6 @@ import type {
   BookInfo,
   ReadingProgress,
   ImportSummary,
-  BookSourceAvailability,
   DevModeStatus,
   LogLine,
   ReaderStyle,
@@ -32,10 +28,6 @@ export function resetInvokeAdapterForTests(): void {
   invokeAdapter = invoke;
 }
 
-export async function listBookSources(): Promise<LegacyBookSource[]> {
-  return await invokeAdapter<LegacyBookSource[]>("list_book_sources");
-}
-
 export async function listYeaderSources(): Promise<YeaderSource[]> {
   return await invokeAdapter<YeaderSource[]>("list_yeader_sources");
 }
@@ -52,101 +44,6 @@ export async function importYeaderSourcePackJson(
   json: string,
 ): Promise<YeaderSource[]> {
   return await invokeAdapter<YeaderSource[]>("import_yeader_source_pack_json", { json });
-}
-
-export async function loadBookSourcesFromFile(): Promise<LegacyBookSource[]> {
-  return await invokeAdapter<LegacyBookSource[]>("load_book_sources_from_file");
-}
-
-export async function importBookSourcesJson(
-  json: string,
-): Promise<LegacyBookSource[]> {
-  return await invokeAdapter<LegacyBookSource[]>("import_book_sources_json", { json });
-}
-
-export async function importBookSourcesUrl(
-  url: string,
-): Promise<LegacyBookSource[]> {
-  return await invokeAdapter<LegacyBookSource[]>("import_book_sources_url", { url });
-}
-
-export async function importBookSourcesSubscription(
-  url: string,
-): Promise<LegacyBookSource[]> {
-  return await invokeAdapter<LegacyBookSource[]>("import_book_sources_subscription", { url });
-}
-
-export async function testBookSourcesAvailability(
-  sourceUrls?: string[],
-): Promise<BookSourceAvailability[]> {
-  return await invokeAdapter<BookSourceAvailability[]>("test_book_sources_availability", {
-    sourceUrls,
-  });
-}
-
-export async function deleteBookSource(url: string): Promise<boolean> {
-  return await invokeAdapter<boolean>("delete_book_source", { url });
-}
-
-export async function toggleBookSource(
-  url: string,
-  enabled: boolean,
-): Promise<boolean> {
-  return await invokeAdapter<boolean>("toggle_book_source", { url, enabled });
-}
-
-export async function setBookSourcesEnabled(
-  sourceUrls: string[],
-  enabled: boolean,
-): Promise<number> {
-  let changed = 0;
-  for (const sourceUrl of sourceUrls) {
-    if (await toggleBookSource(sourceUrl, enabled)) {
-      changed += 1;
-    }
-  }
-  return changed;
-}
-
-export async function enableAllBookSources(): Promise<number> {
-  const sources = await listBookSources();
-  return await setBookSourcesEnabled(
-    sources.filter((source) => !source.enabled).map((source) => source.bookSourceUrl),
-    true,
-  );
-}
-
-export async function deleteBookSources(sourceUrls: string[]): Promise<number> {
-  let deleted = 0;
-  for (const sourceUrl of sourceUrls) {
-    if (await deleteBookSource(sourceUrl)) {
-      deleted += 1;
-    }
-  }
-  return deleted;
-}
-
-export async function deleteDisabledBookSources(): Promise<number> {
-  const sources = await listBookSources();
-  return await deleteBookSources(
-    sources.filter((source) => !source.enabled).map((source) => source.bookSourceUrl),
-  );
-}
-
-export async function listRssSources(): Promise<LegacyRssSource[]> {
-  try {
-    return await invokeAdapter<LegacyRssSource[]>("list_rss_sources");
-  } catch {
-    return [];
-  }
-}
-
-export async function listReplaceRules(): Promise<LegacyReplaceRule[]> {
-  try {
-    return await invokeAdapter<LegacyReplaceRule[]>("list_replace_rules");
-  } catch {
-    return [];
-  }
 }
 
 export async function listBooks(): Promise<Book[]> {

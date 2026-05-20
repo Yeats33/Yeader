@@ -1,93 +1,3 @@
-export interface LegacyBookSource {
-  bookSourceUrl: string;
-  bookSourceName: string;
-  bookSourceGroup?: string;
-  subscriptionUrl?: string;
-  searchUrl?: string;
-  enabled: boolean;
-  lastTestAvailable?: boolean;
-  lastTestedAt?: string;
-  lastTestDetail?: string;
-  enabledExplore?: boolean;
-  exploreUrl?: string;
-  loginCheckJs?: string;
-  bookSourceType?: number;
-  ruleSearch?: SearchRule;
-  ruleBookInfo?: BookInfoRule;
-  ruleToc?: TocRule;
-  ruleContent?: ContentRule;
-}
-
-export interface SearchRule {
-  bookList?: string;
-  name?: string;
-  author?: string;
-  intro?: string;
-  kind?: string;
-  lastChapter?: string;
-  updateTime?: string;
-  bookUrl?: string;
-  coverUrl?: string;
-  wordCount?: string;
-  checkKeyWord?: string;
-}
-
-export interface BookInfoRule {
-  init?: string;
-  name?: string;
-  author?: string;
-  intro?: string;
-  kind?: string;
-  lastChapter?: string;
-  updateTime?: string;
-  coverUrl?: string;
-  tocUrl?: string;
-  wordCount?: string;
-  canReName?: string;
-  downloadUrls?: string;
-}
-
-export interface TocRule {
-  chapterList?: string;
-  chapterName?: string;
-  chapterUrl?: string;
-  formatJs?: string;
-  isVolume?: string;
-  isVip?: string;
-  isPay?: string;
-  updateTime?: string;
-  nextTocUrl?: string;
-  preUpdateJs?: string;
-}
-
-export interface ContentRule {
-  content?: string;
-  title?: string;
-  nextContentUrl?: string;
-  webJs?: string;
-  sourceRegex?: string;
-  replaceRegex?: string;
-  imageStyle?: string;
-  imageDecode?: string;
-  payAction?: string;
-}
-
-export interface LegacyRssSource {
-  sourceUrl: string;
-  sourceName: string;
-  sourceIcon: string;
-  enabled: boolean;
-  ruleArticles?: string;
-}
-
-export interface LegacyReplaceRule {
-  id: number;
-  name: string;
-  isEnabled: boolean;
-  pattern: string;
-  replacement: string;
-}
-
 export interface YeaderSourcePack {
   format: "yeader.source-pack";
   version: number;
@@ -225,13 +135,6 @@ export interface ImportSummary {
   book_sources_count: number;
   rss_sources_count: number;
   replace_rules_count: number;
-}
-
-export interface BookSourceAvailability {
-  sourceUrl: string;
-  available: boolean;
-  detail?: string;
-  testedAt?: string;
 }
 
 export interface DevModeStatus {
