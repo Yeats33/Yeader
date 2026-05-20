@@ -8,9 +8,21 @@ interface LeftPanelProps {
 }
 
 const VIRTUAL_COLLECTIONS = [
-  { id: "all", label: "All Items", icon: "📥" },
-  { id: "starred", label: "Starred", icon: "⭐" },
+  { id: "all", label: "全部订阅", icon: "📥" },
+  { id: "starred", label: "收藏", icon: "⭐" },
 ];
+
+function sourceBadge(source: FeedSource): string {
+  if (source.mediaType === "novel") return "书籍";
+  if (source.mediaType === "rss") return "RSS";
+  return "源";
+}
+
+function sourceIcon(source: FeedSource): string {
+  if (source.mediaType === "novel") return "📚";
+  if (source.mediaType === "rss") return "📡";
+  return "🔗";
+}
 
 export function LeftPanel({ sources, selectedSourceId, onSelectSource, onAddSource }: LeftPanelProps) {
   return (
@@ -41,7 +53,7 @@ export function LeftPanel({ sources, selectedSourceId, onSelectSource, onAddSour
           <div className="panel-section-title">Sources</div>
           {sources.length === 0 ? (
             <div style={{ padding: "12px 16px", fontSize: "13px", color: "var(--color-text-muted)" }}>
-              No sources yet. Click + to add an RSS/Atom feed.
+              暂无订阅。点击 + 添加 RSS/Atom，或从发现页加入书籍。
             </div>
           ) : (
             sources.map((source) => (
@@ -53,10 +65,10 @@ export function LeftPanel({ sources, selectedSourceId, onSelectSource, onAddSour
                 {source.iconUrl ? (
                   <img className="source-icon" src={source.iconUrl} alt="" />
                 ) : (
-                  <span className="source-icon">🔗</span>
+                  <span className="source-icon">{sourceIcon(source)}</span>
                 )}
                 <span className="source-name">{source.title}</span>
-                <span className="source-badge">RSS</span>
+                <span className="source-badge">{sourceBadge(source)}</span>
               </div>
             ))
           )}

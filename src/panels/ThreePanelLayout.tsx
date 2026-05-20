@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { fetchFeed, listRssSources, listBookSources } from "../api.ts";
-import type { FeedSource, FeedItem, LegacyBookSource, LegacyRssSource } from "../types.ts";
+import { fetchFeed, listRssSources, listBooks, listYeaderSources } from "../api.ts";
+import type { Book, FeedSource, FeedItem, LegacyRssSource, YeaderSource } from "../types.ts";
 import type { ViewType, YeaderMediaType } from "../views/types.ts";
 import { resolveView } from "../views/types.ts";
 import { LeftPanel } from "./LeftPanel.tsx";
@@ -24,24 +24,64 @@ function rssToFeedSource(rss: LegacyRssSource): FeedSource {
   };
 }
 
-// Convert LegacyBookSource to FeedSource for display
-function bookToFeedSource(book: LegacyBookSource): FeedSource {
+function bookSourcePanelId(sourceUrl: string): string {
+  return `book-source:${sourceUrl}`;
+}
+
+function bookToFeedItem(book: Book): FeedItem {
+  const progress = book.reading_progress ?? 0;
+  const progressLabel = progress > 0
+    ? `阅读至第 ${progress} 项${book.reading_chapter ? ` · ${book.reading_chapter}` : ""}`
+    : "待阅读";
+
   return {
-    id: `book:${book.bookSourceUrl}`,
-    url: book.bookSourceUrl,
-    title: book.bookSourceName || "Book Source",
-    description: book.bookSourceComment,
-    link: undefined,
-    iconUrl: undefined,
+    id: `book:${book.url}`,
+    sourceId: bookSourcePanelId(book.source_url),
+    title: book.name,
+    url: book.url,
+    author: book.author,
+    updated: book.last_read_at,
+    summary: book.intro,
+    imageUrl: book.cover_url,
     mediaType: "novel",
-    folder: book.bookSourceGroup ?? undefined,
-    enabled: book.enabledExplore ?? true,
-    defaultView: undefined,
+    bookSourceUrl: book.source_url,
+    latestEntry: book.reading_chapter,
+    progressLabel,
+    read: false,
   };
+}
+
+function bookSourceTitle(sourceUrl: string, yeaderSources: YeaderSource[]): string {
+  return yeaderSources.find((source) => source.id === sourceUrl)?.name
+    ?? (sourceUrl === "local://epub" ? "本地 EPUB" : sourceUrl);
+}
+
+function bookSourcesFromBooks(books: Book[], yeaderSources: YeaderSource[]): FeedSource[] {
+  const seen = new Set<string>();
+  const sources: FeedSource[] = [];
+
+  for (const book of books) {
+    if (seen.has(book.source_url)) continue;
+    seen.add(book.source_url);
+    const source = yeaderSources.find((entry) => entry.id === book.source_url);
+    sources.push({
+      id: bookSourcePanelId(book.source_url),
+      url: book.source_url,
+      title: bookSourceTitle(book.source_url, yeaderSources),
+      description: source?.homepage,
+      link: source?.homepage,
+      mediaType: "novel",
+      enabled: true,
+      defaultView: "article",
+    });
+  }
+
+  return sources;
 }
 
 export function ThreePanelLayout() {
   const [sources, setSources] = useState<FeedSource[]>([]);
+  const [bookItems, setBookItems] = useState<FeedItem[]>([]);
   const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [items, setItems] = useState<FeedItem[]>([]);
@@ -53,17 +93,19 @@ export function ThreePanelLayout() {
   useEffect(() => {
     async function loadAllSources() {
       try {
-        const [rssSources, bookSources] = await Promise.all([
+        const [rssSources, books, yeaderSources] = await Promise.all([
           listRssSources(),
-          listBookSources(),
+          listBooks(),
+          listYeaderSources(),
         ]);
         const rssFeeds = rssSources.map(rssToFeedSource);
-        const bookFeeds = bookSources.map(bookToFeedSource);
-        // Merge and deduplicate by URL
-        const allSources = [...rssFeeds, ...bookFeeds];
-        setSources(allSources);
+        const nextBookItems = books.map(bookToFeedItem);
+        const bookFeeds = bookSourcesFromBooks(books, yeaderSources);
+        setBookItems(nextBookItems);
+        setSources([...bookFeeds, ...rssFeeds]);
       } catch {
         setSources([]);
+        setBookItems([]);
       }
     }
     loadAllSources();
@@ -71,28 +113,48 @@ export function ThreePanelLayout() {
 
   const selectedSource = sources.find((s) => s.id === selectedSourceId) ?? null;
   const selectedItem = items.find((i) => i.id === selectedItemId) ?? null;
+  const selectedSourceName = selectedSource?.title
+    ?? (selectedSourceId === "all" ? "全部订阅" : selectedSourceId === "starred" ? "收藏" : null);
 
   const handleSelectSource = useCallback(
     async (id: string) => {
       setSelectedSourceId(id);
       setSelectedItemId(null);
+      setLoading(true);
 
-      // Resolve view for this source
       if (id === "all" || id === "starred") {
         setCurrentViewType("article");
-        setItems([]);
+        if (id === "starred") {
+          setItems([]);
+          setLoading(false);
+          return;
+        }
+
+        const rssSources = sources.filter((source) => source.mediaType === "rss");
+        const rssItemLists = await Promise.all(
+          rssSources.map((source) => fetchFeed(source.url).catch(() => [] as FeedItem[])),
+        );
+        setItems([...bookItems, ...rssItemLists.flat()]);
+        setLoading(false);
         return;
       }
 
       const source = sources.find((s) => s.id === id);
-      if (!source) return;
+      if (!source) {
+        setLoading(false);
+        return;
+      }
 
-      // Determine view: subscription override → source default → mediaType fallback
       const sourceDefaultView = source.defaultView as ViewType | undefined;
       const mediaType = source.mediaType as YeaderMediaType;
       setCurrentViewType(resolveView(null, sourceDefaultView ?? null, mediaType));
 
-      setLoading(true);
+      if (source.mediaType === "novel") {
+        setItems(bookItems.filter((item) => item.sourceId === source.id));
+        setLoading(false);
+        return;
+      }
+
       try {
         const feedItems = await fetchFeed(source.url);
         setItems(feedItems);
@@ -102,7 +164,7 @@ export function ThreePanelLayout() {
         setLoading(false);
       }
     },
-    [sources],
+    [bookItems, sources],
   );
 
   const handleSelectItem = useCallback((id: string) => {
@@ -128,7 +190,7 @@ export function ThreePanelLayout() {
       <MiddlePanel
         items={items}
         selectedItemId={selectedItemId}
-        sourceName={selectedSource?.title ?? null}
+        sourceName={selectedSourceName}
         loading={loading}
         onSelectItem={handleSelectItem}
       />

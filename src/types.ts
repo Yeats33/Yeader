@@ -202,12 +202,16 @@ export interface FeedItem {
   sourceId: string;
   title: string;
   url: string;
+  mediaType?: string;
   author?: string;
   published?: string;
   updated?: string;
   summary?: string;
   contentHtml?: string;
   imageUrl?: string;
+  bookSourceUrl?: string;
+  latestEntry?: string;
+  progressLabel?: string;
   read: boolean;
 }
 

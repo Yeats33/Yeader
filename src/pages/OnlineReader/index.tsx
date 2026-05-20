@@ -64,7 +64,7 @@ export function OnlineReaderPage({ bookUrl, sourceUrl }: OnlineReaderPageProps) 
         toc_url: bookInfo.toc_url,
         intro: bookInfo.intro,
       });
-      navigate("/");
+      navigate("/feed");
     } finally {
       setAdding(false);
     }
