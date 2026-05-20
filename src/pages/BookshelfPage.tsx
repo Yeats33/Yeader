@@ -3,7 +3,8 @@ import { ask } from "@tauri-apps/plugin-dialog";
 import { deleteLocalEpub, importEpub, importEpubUrl, listBooks, removeBook } from "../api.ts";
 import { navigate } from "../router.ts";
 import type { Book } from "../types.ts";
-import type { BookViewMode } from "./Bookshelf.ts";
+
+type BookViewMode = "grid" | "list";
 
 type BookshelfFilter = "all" | "local" | "network";
 

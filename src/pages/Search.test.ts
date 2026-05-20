@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  describeSearchSourceFilters,
   parseSearchSourceTags,
   resolveSearchSourceSelection,
   resolveSearchSources,
@@ -47,23 +46,6 @@ test("parseSearchSourceTags splits comma-separated labels and removes duplicates
     JSON.stringify(parseSearchSourceTags("笔趣阁, 漫画，精选,漫画")),
     JSON.stringify(["笔趣阁", "漫画", "精选"]),
   );
-});
-
-test("describeSearchSourceFilters renders distinct tag and source groups", () => {
-  const html = describeSearchSourceFilters(MOCK_SOURCES);
-
-  assert.equal(html.includes("全部标签"), true);
-  assert.equal(html.includes("全部书源"), true);
-  assert.equal(html.includes("按标签筛选书源"), true);
-  assert.equal(html.includes("选择具体书源"), true);
-  assert.equal(html.includes('data-search-tag-value="tag:笔趣阁"'), true);
-  assert.equal(html.includes('data-search-tag-value="tag:__untagged"'), true);
-  assert.equal(html.includes("标签：未标记"), true);
-  assert.equal(html.includes("标签：笔趣阁"), true);
-  assert.equal(html.includes("标签：漫画"), true);
-  assert.equal(html.includes("标签：精选"), true);
-  assert.equal(html.includes('data-search-source-value="source:https://direct-a.example"'), true);
-  assert.equal(html.includes('data-search-source-value="source:https://sub-b.example"'), false, "disabled sources should not be listed");
 });
 
 test("resolveSearchSourceSelection expands tag parents to enabled sources", () => {
