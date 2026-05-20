@@ -1,7 +1,7 @@
 {
   "name": "yeader",
   "version": "0.2.1",
-  "description": "Rust+Tauri 三端重构 - 移动端/桌面端/Web端",
+  "description": "Yeader 跨平台阅读器，围绕自有 Source Pack 内容源格式构建",
   "type": "module",
   "scripts": {
     "dev": "vite",

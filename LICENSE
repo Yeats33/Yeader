@@ -19,5 +19,5 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-This project is a Rust port of legado (https://github.com/gedoor/legado).
-At the time of writing, the upstream repository declares GPL-3.0.
+Yeader is an independent cross-platform reader built around its own
+Yeader Source Pack content-source format.
