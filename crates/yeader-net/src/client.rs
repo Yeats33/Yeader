@@ -1,9 +1,36 @@
 //! HTTP client wrapper using reqwest.
 
-use reqwest::{Client, Method, Response, header::HeaderMap};
+use reqwest::{
+    Client, Method, Response,
+    header::{HeaderMap, HeaderName, HeaderValue},
+};
 use thiserror::Error;
 
 use crate::encoding::{decode_bytes, extract_charset_from_content_type};
+
+const DEFAULT_USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+
+fn default_browser_headers() -> HeaderMap {
+    let mut map = HeaderMap::new();
+    let pairs: &[(&str, &str)] = &[
+        ("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"),
+        ("Accept-Language", "zh-TW,zh-CN;q=0.9,zh;q=0.8,en-US;q=0.7,en;q=0.6"),
+        ("Upgrade-Insecure-Requests", "1"),
+        ("Sec-Fetch-Dest", "document"),
+        ("Sec-Fetch-Mode", "navigate"),
+        ("Sec-Fetch-Site", "none"),
+        ("Sec-Fetch-User", "?1"),
+        ("sec-ch-ua", "\"Chromium\";v=\"124\", \"Google Chrome\";v=\"124\", \"Not-A.Brand\";v=\"99\""),
+        ("sec-ch-ua-mobile", "?0"),
+        ("sec-ch-ua-platform", "\"macOS\""),
+    ];
+    for (name, value) in pairs {
+        if let (Ok(n), Ok(v)) = (HeaderName::from_bytes(name.as_bytes()), HeaderValue::from_str(value)) {
+            map.insert(n, v);
+        }
+    }
+    map
+}
 
 #[derive(Error, Debug)]
 pub enum HttpError {
@@ -28,6 +55,10 @@ impl HttpClient {
         let client = Client::builder()
             .cookie_store(true)
             .gzip(true)
+            .brotli(true)
+            .deflate(true)
+            .user_agent(DEFAULT_USER_AGENT)
+            .default_headers(default_browser_headers())
             .build()
             .expect("reqwest Client should build successfully");
         Self { inner: client }
