@@ -1,10 +1,10 @@
-use scraper::{ElementRef, Selector};
+use scraper::{ElementRef, Html, Selector};
 use std::collections::BTreeMap;
 use tauri::State;
 use yeader_models::{
-    BookInfo as ModelBookInfo, Chapter as ModelChapter, SearchResult, YeaderCapability,
-    YeaderCapabilityKind, YeaderExploreCategory, YeaderSelector, YeaderSelectorEngine,
-    YeaderSource,
+    BookInfo as ModelBookInfo, Chapter as ModelChapter, SearchResult, YeaderAction, YeaderActionKind,
+    YeaderCapability, YeaderCapabilityKind, YeaderExploreCategory, YeaderSelector,
+    YeaderSelectorEngine, YeaderSource,
 };
 
 use crate::state::AppState;
@@ -160,39 +160,213 @@ fn describe_http_error(error: yeader_net::HttpError) -> String {
     format!("HTTP error: {}", raw)
 }
 
+/// Build a rule string for AnalyzeRule from a YeaderSelector.
+fn selector_to_rule(selector: &YeaderSelector, default_output: &str) -> String {
+    match selector.engine {
+        YeaderSelectorEngine::Css => {
+            let output = selector.output.as_deref().unwrap_or(default_output);
+            let q = selector.query.trim();
+            if q.is_empty() {
+                format!("@{}", output)
+            } else if has_extractor_suffix(q) {
+                q.to_string()
+            } else {
+                format!("{}@{}", q, output)
+            }
+        }
+        YeaderSelectorEngine::JsonPath => selector.query.clone(),
+        YeaderSelectorEngine::XPath => selector.query.clone(),
+        YeaderSelectorEngine::Regex => {
+            let q = &selector.query;
+            if q.starts_with("$(") && q.ends_with(')') {
+                q.clone()
+            } else {
+                format!("$({})", q)
+            }
+        }
+        YeaderSelectorEngine::JavaScript => {
+            let q = &selector.query;
+            if q.starts_with("@js:") || q.starts_with("<js>") {
+                q.clone()
+            } else {
+                format!("@js:{}", q)
+            }
+        }
+        YeaderSelectorEngine::Text => String::new(),
+        YeaderSelectorEngine::LegacyLegado => selector.query.clone(),
+    }
+}
+
+fn has_extractor_suffix(query: &str) -> bool {
+    query.rfind('@').map_or(false, |pos| {
+        let suffix = &query[pos + 1..];
+        matches!(
+            suffix,
+            "text" | "textNodes" | "ownText" | "html" | "all"
+                | "href" | "src" | "class" | "id" | "data-url"
+        )
+    })
+}
+
+/// Extract an attribute from the root element of an HTML fragment.
+fn extract_root_attr(html: &str, attr: &str) -> String {
+    let document = Html::parse_fragment(html);
+    document
+        .root_element()
+        .children()
+        .filter_map(ElementRef::wrap)
+        .next()
+        .and_then(|el| el.value().attr(attr).map(String::from))
+        .unwrap_or_default()
+}
+
+/// Execute a YeaderSelector against an AnalyzeRule, returning a single string.
+fn execute_selector_string(
+    analyzer: &yeader_rules::AnalyzeRule,
+    selector: &YeaderSelector,
+    default_output: &str,
+) -> String {
+    match selector.engine {
+        YeaderSelectorEngine::Text => analyzer.text_content(),
+        YeaderSelectorEngine::Css if selector.query.trim().is_empty() => {
+            let output = selector.output.as_deref().unwrap_or(default_output);
+            if output == "text" {
+                analyzer.text_content()
+            } else {
+                extract_root_attr(analyzer.html_content(), output)
+            }
+        }
+        _ => {
+            let rule = selector_to_rule(selector, default_output);
+            if rule.is_empty() {
+                return String::new();
+            }
+            if selector.all {
+                let results = analyzer.get_string_list(&rule);
+                results.join("\n")
+            } else {
+                analyzer.get_string(&rule)
+            }
+        }
+    }
+}
+
+/// Execute a YeaderSelector against an AnalyzeRule, returning a list of strings.
+fn execute_selector_list(
+    analyzer: &yeader_rules::AnalyzeRule,
+    selector: &YeaderSelector,
+    default_output: &str,
+) -> Vec<String> {
+    match selector.engine {
+        YeaderSelectorEngine::Text => {
+            let text = analyzer.text_content();
+            if text.is_empty() {
+                vec![]
+            } else {
+                vec![text]
+            }
+        }
+        _ => {
+            let rule = selector_to_rule(selector, default_output);
+            if rule.is_empty() {
+                return vec![];
+            }
+            analyzer.get_string_list(&rule)
+        }
+    }
+}
+
+/// Run BeforeExtract JS actions on an analyzer.
+fn execute_before_extract_actions(
+    analyzer: &mut yeader_rules::AnalyzeRule,
+    actions: &[YeaderAction],
+) {
+    for action in actions {
+        if action.kind == YeaderActionKind::BeforeExtract {
+            let rule = format!("@js:{}", action.script);
+            analyzer.get_string(&rule);
+        }
+    }
+}
+
 fn extract_listing_results(
     source: &YeaderSource,
     capability: &YeaderCapability,
     body: &str,
 ) -> Vec<SearchResult> {
-    let analyzer = yeader_rules::CssAnalyzer::new(body);
+    let mut analyzer = yeader_rules::AnalyzeRule::new(body, source.homepage.as_deref().unwrap_or(""));
 
-    let item_selector = capability
-        .item
-        .as_ref()
-        .filter(|i| i.engine == YeaderSelectorEngine::Css)
-        .map(|i| i.query.as_str())
-        .unwrap_or(".line");
+    // Set source variables
+    for (key, value) in &source.variables {
+        analyzer.set_variable(key.clone(), value.clone());
+    }
 
-    let elements = analyzer.get_elements(item_selector);
-    let fields = &capability.fields;
+    // Execute BeforeExtract actions
+    execute_before_extract_actions(&mut analyzer, &capability.actions);
+
+    // Get item elements using the item selector, or use whole document
+    let elements: Vec<yeader_rules::Content> = if let Some(item_sel) = &capability.item {
+        let item_rule = selector_to_rule(item_sel, "html");
+        analyzer.get_elements(&item_rule)
+    } else {
+        // No item selector — work with the whole document
+        vec![yeader_rules::Content::Html(body.to_string())]
+    };
 
     let mut results = Vec::new();
-    for el in elements {
-        let name = extract_field(el, fields.get("name"), "text");
-        let author = extract_field(el, fields.get("author"), "text");
+    for element in elements {
+        let elem_analyzer = yeader_rules::AnalyzeRule::from_content(element, analyzer.base_url());
+
+        let name = capability
+            .fields
+            .get("name")
+            .map(|s| execute_selector_string(&elem_analyzer, s, "text"))
+            .unwrap_or_default();
+
+        let author = capability
+            .fields
+            .get("author")
+            .map(|s| execute_selector_string(&elem_analyzer, s, "text"))
+            .unwrap_or_default();
+
         let book_url = normalize_extracted_url(
-            &extract_field(el, fields.get("bookUrl"), "href"),
+            &capability
+                .fields
+                .get("bookUrl")
+                .map(|s| execute_selector_string(&elem_analyzer, s, "href"))
+                .unwrap_or_default(),
             source.homepage.as_deref(),
         );
-        let cover_url = normalize_extracted_url(
-            &extract_field(el, fields.get("coverUrl"), "src"),
-            source.homepage.as_deref(),
-        );
-        let intro = extract_field(el, fields.get("intro"), "text");
-        let kind = extract_field(el, fields.get("kind"), "text");
-        let last_chapter = extract_field(el, fields.get("lastChapter"), "text");
-        let word_count = extract_field(el, fields.get("wordCount"), "text");
+
+        let cover_url = capability
+            .fields
+            .get("coverUrl")
+            .map(|s| execute_selector_string(&elem_analyzer, s, "src"))
+            .unwrap_or_default();
+
+        let intro = capability
+            .fields
+            .get("intro")
+            .map(|s| execute_selector_string(&elem_analyzer, s, "text"))
+            .unwrap_or_default();
+
+        let kind = capability
+            .fields
+            .get("kind")
+            .map(|s| execute_selector_string(&elem_analyzer, s, "text"))
+            .unwrap_or_default();
+
+        let last_chapter = capability
+            .fields
+            .get("lastChapter")
+            .map(|s| execute_selector_string(&elem_analyzer, s, "text"))
+            .unwrap_or_default();
+
+        let word_count = capability
+            .fields
+            .get("wordCount")
+            .map(|s| execute_selector_string(&elem_analyzer, s, "text"))
+            .unwrap_or_default();
 
         if !name.is_empty() || !book_url.is_empty() {
             results.push(SearchResult {
@@ -231,31 +405,71 @@ pub async fn fetch_book_info_yeader(
     let headers = build_headers(source, &request.headers);
     let response = perform_request(source, &url, &headers, None).await?;
 
-    let analyzer = yeader_rules::CssAnalyzer::new(&response.body);
+    let mut analyzer = yeader_rules::AnalyzeRule::new(&response.body, &response.url);
+    for (key, value) in &source.variables {
+        analyzer.set_variable(key.clone(), value.clone());
+    }
+    execute_before_extract_actions(&mut analyzer, &detail_cap.actions);
 
-    let item_selector = detail_cap
-        .item
-        .as_ref()
-        .filter(|i| i.engine == YeaderSelectorEngine::Css)
-        .map(|i| i.query.as_str())
-        .unwrap_or(".novel-detail");
+    // If there's an item selector, scope to first matching element
+    let scoped = if let Some(item_sel) = &detail_cap.item {
+        let item_rule = selector_to_rule(item_sel, "html");
+        analyzer
+            .get_elements(&item_rule)
+            .into_iter()
+            .next()
+            .map(|el| yeader_rules::AnalyzeRule::from_content(el, analyzer.base_url()))
+    } else {
+        None
+    };
 
-    let elements = analyzer.get_elements(item_selector);
-    let el = elements.first().ok_or("No detail element found")?;
-    let fields = &detail_cap.fields;
+    let active_analyzer = scoped.as_ref().unwrap_or(&analyzer);
 
-    let name = extract_field(*el, fields.get("name"), "text");
-    let author = extract_field(*el, fields.get("author"), "text");
-    let cover_url = normalize_extracted_url(
-        &extract_field(*el, fields.get("coverUrl"), "src"),
-        source.homepage.as_deref(),
-    );
-    let intro = extract_field(*el, fields.get("intro"), "text");
-    let kind = extract_field(*el, fields.get("kind"), "text");
-    let toc_url = normalize_extracted_url(
-        &extract_field(*el, fields.get("tocUrl"), "href"),
-        source.homepage.as_deref(),
-    );
+    let name = detail_cap
+        .fields
+        .get("name")
+        .map(|s| execute_selector_string(active_analyzer, s, "text"))
+        .unwrap_or_default();
+
+    let author = detail_cap
+        .fields
+        .get("author")
+        .map(|s| execute_selector_string(active_analyzer, s, "text"))
+        .unwrap_or_default();
+
+    let cover_url = detail_cap
+        .fields
+        .get("coverUrl")
+        .map(|s| {
+            normalize_extracted_url(
+                &execute_selector_string(active_analyzer, s, "src"),
+                source.homepage.as_deref(),
+            )
+        })
+        .unwrap_or_default();
+
+    let intro = detail_cap
+        .fields
+        .get("intro")
+        .map(|s| execute_selector_string(active_analyzer, s, "text"))
+        .unwrap_or_default();
+
+    let kind = detail_cap
+        .fields
+        .get("kind")
+        .map(|s| execute_selector_string(active_analyzer, s, "text"))
+        .unwrap_or_default();
+
+    let toc_url = detail_cap
+        .fields
+        .get("tocUrl")
+        .map(|s| {
+            normalize_extracted_url(
+                &execute_selector_string(active_analyzer, s, "href"),
+                source.homepage.as_deref(),
+            )
+        })
+        .unwrap_or_default();
 
     Ok(ModelBookInfo {
         name,
@@ -288,26 +502,38 @@ pub async fn fetch_toc_yeader(
     let headers = build_headers(source, &request.headers);
     let response = perform_request(source, &url, &headers, None).await?;
 
-    let analyzer = yeader_rules::CssAnalyzer::new(&response.body);
-    let fields = &toc_cap.fields;
+    let mut analyzer = yeader_rules::AnalyzeRule::new(&response.body, &response.url);
+    for (key, value) in &source.variables {
+        analyzer.set_variable(key.clone(), value.clone());
+    }
+    execute_before_extract_actions(&mut analyzer, &toc_cap.actions);
 
-    let item_selector = toc_cap
-        .item
-        .as_ref()
-        .filter(|i| i.engine == YeaderSelectorEngine::Css)
-        .map(|i| i.query.as_str())
-        .unwrap_or("#chapter-list li a");
-
-    let elements = analyzer.get_elements(item_selector);
+    let item_sel = toc_cap.item.as_ref().ok_or("TOC capability has no item selector")?;
+    let item_rule = selector_to_rule(item_sel, "html");
+    let elements = analyzer.get_elements(&item_rule);
 
     let chapters: Vec<ModelChapter> = elements
         .into_iter()
         .filter_map(|el| {
-            let chapter_name = extract_field(el, fields.get("chapterName"), "text");
-            let chapter_url = normalize_extracted_url(
-                &extract_field(el, fields.get("chapterUrl"), "href"),
-                source.homepage.as_deref(),
-            );
+            let elem_analyzer =
+                yeader_rules::AnalyzeRule::from_content(el, analyzer.base_url());
+
+            let chapter_name = toc_cap
+                .fields
+                .get("chapterName")
+                .map(|s| execute_selector_string(&elem_analyzer, s, "text"))
+                .unwrap_or_default();
+
+            let chapter_url = toc_cap
+                .fields
+                .get("chapterUrl")
+                .map(|s| {
+                    normalize_extracted_url(
+                        &execute_selector_string(&elem_analyzer, s, "href"),
+                        source.homepage.as_deref(),
+                    )
+                })
+                .unwrap_or_default();
 
             if chapter_name.is_empty() && chapter_url.is_empty() {
                 return None;
@@ -362,22 +588,17 @@ pub async fn fetch_content_yeader(
     let headers = build_headers(source, &request.headers);
     let response = perform_request(source, &url, &headers, None).await?;
 
-    let analyzer = yeader_rules::CssAnalyzer::new(&response.body);
-    let fields = &content_cap.fields;
+    let mut analyzer = yeader_rules::AnalyzeRule::new(&response.body, &response.url);
+    for (key, value) in &source.variables {
+        analyzer.set_variable(key.clone(), value.clone());
+    }
+    execute_before_extract_actions(&mut analyzer, &content_cap.actions);
 
-    let content_rule = fields
+    let content = content_cap
+        .fields
         .get("content")
-        .filter(|s| s.engine == YeaderSelectorEngine::Css)
-        .map(|selector| {
-            let (query, extractor) = split_selector_and_extractor(
-                &selector.query,
-                selector.output.as_deref().unwrap_or("html"),
-            );
-            format!("{query}@{extractor}")
-        })
-        .unwrap_or_else(|| ".content@html".to_string());
-
-    let content = analyzer.get_string(&content_rule);
+        .map(|s| execute_selector_string(&analyzer, s, "html"))
+        .unwrap_or_default();
 
     Ok(content)
 }
@@ -468,103 +689,6 @@ fn path_segment_after_n(raw_url: &str) -> Option<String> {
     None
 }
 
-fn extract_field(
-    el: ElementRef<'_>,
-    selector: Option<&YeaderSelector>,
-    default_extractor: &str,
-) -> String {
-    let Some(sel) = selector else {
-        return String::new();
-    };
-
-    if sel.engine == YeaderSelectorEngine::Text {
-        return extract_value(el, "text");
-    }
-
-    if sel.engine != YeaderSelectorEngine::Css {
-        return String::new();
-    }
-
-    let (selector_text, extractor) = split_selector_and_extractor(
-        &sel.query,
-        sel.output.as_deref().unwrap_or(default_extractor),
-    );
-    let elements = if selector_text.trim().is_empty() {
-        vec![el]
-    } else {
-        let Ok(selector) = Selector::parse(selector_text.trim()) else {
-            return String::new();
-        };
-        el.select(&selector).collect::<Vec<_>>()
-    };
-
-    if sel.all {
-        elements
-            .into_iter()
-            .map(|e| extract_value(e, extractor))
-            .collect::<Vec<_>>()
-            .join("\n")
-    } else {
-        elements
-            .into_iter()
-            .next()
-            .map(|e| extract_value(e, extractor))
-            .unwrap_or_default()
-    }
-}
-
-fn split_selector_and_extractor<'a>(
-    query: &'a str,
-    default_extractor: &'a str,
-) -> (&'a str, &'a str) {
-    match query.rsplit_once('@') {
-        Some((selector, extractor)) if is_extractor(extractor) => (selector, extractor),
-        _ => (query, default_extractor),
-    }
-}
-
-fn is_extractor(token: &str) -> bool {
-    matches!(
-        token,
-        "text"
-            | "textNodes"
-            | "ownText"
-            | "html"
-            | "all"
-            | "href"
-            | "src"
-            | "class"
-            | "id"
-            | "data-url"
-    )
-}
-
-fn extract_value(element: ElementRef<'_>, extractor: &str) -> String {
-    match extractor {
-        "text" => element
-            .text()
-            .collect::<Vec<_>>()
-            .join("")
-            .trim()
-            .to_string(),
-        "textNodes" => element
-            .text()
-            .collect::<Vec<_>>()
-            .join("\n")
-            .trim()
-            .to_string(),
-        "ownText" => element
-            .children()
-            .filter_map(|child| child.value().as_text().map(|text| text.text.to_string()))
-            .map(|text| text.trim().to_string())
-            .filter(|text| !text.is_empty())
-            .collect::<Vec<_>>()
-            .join(""),
-        "html" | "all" => element.inner_html(),
-        attr => element.value().attr(attr).unwrap_or_default().to_string(),
-    }
-}
-
 #[cfg(test)]
 mod yeader_native_tests {
     use super::*;
@@ -610,34 +734,34 @@ mod yeader_native_tests {
               </div>
             </div>
         "#;
-        let analyzer = yeader_rules::CssAnalyzer::new(html);
-        let detail_el = analyzer
-            .get_elements(detail_cap.item.as_ref().unwrap().query.as_str())
-            .into_iter()
-            .next()
-            .expect("detail element selected");
+        let mut analyzer = yeader_rules::AnalyzeRule::new(html, "https://czbooks.net/");
+        let item_sel = detail_cap.item.as_ref().unwrap();
+        let item_rule = selector_to_rule(item_sel, "html");
+        let elements = analyzer.get_elements(&item_rule);
+        let detail_el = elements.into_iter().next().expect("detail element selected");
+        let elem_analyzer = yeader_rules::AnalyzeRule::from_content(detail_el, analyzer.base_url());
 
         assert_eq!(
-            extract_field(detail_el, detail_cap.fields.get("name"), "text"),
+            execute_selector_string(&elem_analyzer, detail_cap.fields.get("name").unwrap(), "text"),
             "《仙途無憂》"
         );
         assert_eq!(
-            extract_field(detail_el, detail_cap.fields.get("author"), "text"),
+            execute_selector_string(&elem_analyzer, detail_cap.fields.get("author").unwrap(), "text"),
             "零貳"
         );
         assert_eq!(
             normalize_extracted_url(
-                &extract_field(detail_el, detail_cap.fields.get("coverUrl"), "src"),
+                &execute_selector_string(&elem_analyzer, detail_cap.fields.get("coverUrl").unwrap(), "src"),
                 source.homepage.as_deref(),
             ),
             "https://img.czbooks.net/thumbnail/cover.jpeg?1749449776"
         );
         assert_eq!(
-            extract_field(detail_el, detail_cap.fields.get("kind"), "text"),
+            execute_selector_string(&elem_analyzer, detail_cap.fields.get("kind").unwrap(), "text"),
             "女生同人"
         );
         assert!(
-            extract_field(detail_el, detail_cap.fields.get("intro"), "text")
+            execute_selector_string(&elem_analyzer, detail_cap.fields.get("intro").unwrap(), "text")
                 .contains("她將踏紅塵萬里")
         );
     }
@@ -656,20 +780,20 @@ mod yeader_native_tests {
               <li><a href="//czbooks.net/n/cr79bh/crdic?chapterNumber=0">第一章 混沌世界</a></li>
             </ul>
         "#;
-        let analyzer = yeader_rules::CssAnalyzer::new(html);
-        let chapter_el = analyzer
-            .get_elements(toc_cap.item.as_ref().unwrap().query.as_str())
-            .into_iter()
-            .next()
-            .expect("chapter link selected");
+        let mut analyzer = yeader_rules::AnalyzeRule::new(html, "https://czbooks.net/");
+        let item_sel = toc_cap.item.as_ref().unwrap();
+        let item_rule = selector_to_rule(item_sel, "html");
+        let elements = analyzer.get_elements(&item_rule);
+        let chapter_el = elements.into_iter().next().expect("chapter link selected");
+        let elem_analyzer = yeader_rules::AnalyzeRule::from_content(chapter_el, analyzer.base_url());
 
         assert_eq!(
-            extract_field(chapter_el, toc_cap.fields.get("chapterName"), "text"),
+            execute_selector_string(&elem_analyzer, toc_cap.fields.get("chapterName").unwrap(), "text"),
             "第一章 混沌世界"
         );
         assert_eq!(
             normalize_extracted_url(
-                &extract_field(chapter_el, toc_cap.fields.get("chapterUrl"), "href"),
+                &execute_selector_string(&elem_analyzer, toc_cap.fields.get("chapterUrl").unwrap(), "href"),
                 source.homepage.as_deref(),
             ),
             "https://czbooks.net/n/cr79bh/crdic?chapterNumber=0"
@@ -690,16 +814,9 @@ mod yeader_native_tests {
               <div class="content">上古时代<br><br>自此，古神族除白屿双尚在莲中。</div>
             </div>
         "#;
-        let analyzer = yeader_rules::CssAnalyzer::new(html);
-        let selector = content_cap
-            .fields
-            .get("content")
-            .expect("content field exists");
-        let (query, extractor) = split_selector_and_extractor(
-            &selector.query,
-            selector.output.as_deref().unwrap_or("html"),
-        );
-        let content = analyzer.get_string(&format!("{query}@{extractor}"));
+        let analyzer = yeader_rules::AnalyzeRule::new(html, "https://czbooks.net/");
+        let content_sel = content_cap.fields.get("content").expect("content field exists");
+        let content = execute_selector_string(&analyzer, content_sel, "html");
 
         assert!(content.contains("上古时代"));
         assert!(content.contains("<br>"));

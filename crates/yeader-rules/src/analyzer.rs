@@ -232,6 +232,42 @@ impl AnalyzeRule {
         &self.base_url
     }
 
+    /// Return the plain text content, stripping HTML tags if applicable.
+    pub fn text_content(&self) -> String {
+        match &self.content {
+            Content::Html(html) => {
+                let mut result = String::new();
+                let mut in_tag = false;
+                for c in html.chars() {
+                    match c {
+                        '<' => in_tag = true,
+                        '>' => in_tag = false,
+                        _ if !in_tag => result.push(c),
+                        _ => {}
+                    }
+                }
+                // Collapse whitespace
+                result
+                    .split_whitespace()
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            }
+            Content::Json(v) => match v {
+                Value::String(s) => s.clone(),
+                Value::Null => String::new(),
+                other => other.to_string(),
+            },
+        }
+    }
+
+    /// Return the raw HTML content if this is HTML content, empty string otherwise.
+    pub fn html_content(&self) -> &str {
+        match &self.content {
+            Content::Html(s) => s,
+            Content::Json(_) => "",
+        }
+    }
+
     /// Expand `@get:{key}` references in a rule string.
     /// Replaces `@get:{key}` with the stored variable value.
     fn expand_get_variables(&self, rule: &str) -> String {
@@ -668,7 +704,7 @@ impl AnalyzeRule {
                     let elements: Vec<Content> = css
                         .get_elements(&source_rule.rule)
                         .into_iter()
-                        .map(|e| Content::Html(e.inner_html()))
+                        .map(|e| Content::Html(e.html()))
                         .collect();
                     if elements.is_empty() {
                         None
