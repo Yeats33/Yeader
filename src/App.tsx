@@ -17,7 +17,7 @@ import { SoNovelRulesPage } from "./pages/SoNovelRules.tsx";
 import { SettingsPage } from "./pages/Settings.tsx";
 import { AccountPage } from "./pages/Account.tsx";
 import { OnlineReaderPage } from "./pages/OnlineReader/index.tsx";
-import { renderOnlineChapterPage, initOnlineChapter } from "./pages/OnlineReader/chapter.ts";
+import { OnlineChapterPage } from "./pages/OnlineReader/chapter.tsx";
 import { SourceOpsPage } from "./pages/SourceOps.tsx";
 
 const HIDE_NAV_ROUTES = ["/integration/so-novel/webui"];
@@ -43,22 +43,6 @@ function resolvePage(routePath: string): LegacyPageDefinition | null {
 
   if (matchRoute("/settings", { path: routePath })) {
     return null;
-  }
-
-  const onlineChapterParams = matchRoute("/online-reader/:bookId/:sourceId/chapter/:chapterUrl", { path: routePath });
-  if (onlineChapterParams) {
-    const bookId = onlineChapterParams["bookId"] ?? "";
-    const sourceId = onlineChapterParams["sourceId"] ?? "";
-    const chapterUrl = onlineChapterParams["chapterUrl"] ?? "";
-    return {
-      render: () => renderOnlineChapterPage(),
-      init: (container) => initOnlineChapter(
-        container,
-        decodeURIComponent(bookId),
-        decodeURIComponent(sourceId),
-        decodeURIComponent(chapterUrl),
-      ),
-    };
   }
 
   return null;
@@ -90,6 +74,17 @@ function CurrentRoutePage({ routePath }: { routePath: string }) {
       <OnlineReaderPage
         bookUrl={decodeURIComponent(onlineReaderParams["bookId"] ?? "")}
         sourceUrl={decodeURIComponent(onlineReaderParams["sourceId"] ?? "")}
+      />
+    );
+  }
+
+  const onlineChapterParams = matchRoute("/online-reader/:bookId/:sourceId/chapter/:chapterUrl", { path: routePath });
+  if (onlineChapterParams) {
+    return (
+      <OnlineChapterPage
+        bookUrl={decodeURIComponent(onlineChapterParams["bookId"] ?? "")}
+        sourceUrl={decodeURIComponent(onlineChapterParams["sourceId"] ?? "")}
+        chapterUrl={decodeURIComponent(onlineChapterParams["chapterUrl"] ?? "")}
       />
     );
   }

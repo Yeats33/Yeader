@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { fetchContent, fetchToc, fetchBookInfo, getReadingProgress, saveReadingProgress } from "../../api.ts";
 import { loadReaderStyle } from "../Reader/style.ts";
 import { createInitialState } from "../Reader/types.ts";
@@ -91,4 +92,43 @@ export async function initOnlineChapter(
   } catch (e) {
     container.innerHTML = `<div class="page"><div class="error-msg">加载失败: ${e instanceof Error ? e.message : String(e)}</div></div>`;
   }
+}
+
+export function OnlineChapterPage({
+  bookUrl,
+  sourceUrl,
+  chapterUrl,
+}: {
+  bookUrl: string;
+  sourceUrl: string;
+  chapterUrl: string;
+}) {
+  const hostRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const host = hostRef.current;
+    if (!host) return;
+    const pageHost = host;
+
+    pageHost.innerHTML = renderOnlineChapterPage();
+    const page = pageHost.querySelector<HTMLElement>(".page-reader");
+
+    async function load() {
+      if (!page) return;
+      await initOnlineChapter(page, bookUrl, sourceUrl, chapterUrl);
+      if (cancelled) {
+        pageHost.innerHTML = "";
+      }
+    }
+
+    void load();
+
+    return () => {
+      cancelled = true;
+      pageHost.innerHTML = "";
+    };
+  }, [bookUrl, sourceUrl, chapterUrl]);
+
+  return <div ref={hostRef} />;
 }
