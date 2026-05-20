@@ -13,19 +13,31 @@ const DEFAULT_USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7
 fn default_browser_headers() -> HeaderMap {
     let mut map = HeaderMap::new();
     let pairs: &[(&str, &str)] = &[
-        ("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"),
-        ("Accept-Language", "zh-TW,zh-CN;q=0.9,zh;q=0.8,en-US;q=0.7,en;q=0.6"),
+        (
+            "Accept",
+            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        ),
+        (
+            "Accept-Language",
+            "zh-TW,zh-CN;q=0.9,zh;q=0.8,en-US;q=0.7,en;q=0.6",
+        ),
         ("Upgrade-Insecure-Requests", "1"),
         ("Sec-Fetch-Dest", "document"),
         ("Sec-Fetch-Mode", "navigate"),
         ("Sec-Fetch-Site", "none"),
         ("Sec-Fetch-User", "?1"),
-        ("sec-ch-ua", "\"Chromium\";v=\"124\", \"Google Chrome\";v=\"124\", \"Not-A.Brand\";v=\"99\""),
+        (
+            "sec-ch-ua",
+            "\"Chromium\";v=\"124\", \"Google Chrome\";v=\"124\", \"Not-A.Brand\";v=\"99\"",
+        ),
         ("sec-ch-ua-mobile", "?0"),
         ("sec-ch-ua-platform", "\"macOS\""),
     ];
     for (name, value) in pairs {
-        if let (Ok(n), Ok(v)) = (HeaderName::from_bytes(name.as_bytes()), HeaderValue::from_str(value)) {
+        if let (Ok(n), Ok(v)) = (
+            HeaderName::from_bytes(name.as_bytes()),
+            HeaderValue::from_str(value),
+        ) {
             map.insert(n, v);
         }
     }

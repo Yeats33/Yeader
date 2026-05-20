@@ -5,8 +5,8 @@
 
 use image::{ImageBuffer, ImageFormat, RgbImage};
 
-use yeader_sdk::{PluginError, PluginResult};
 use yeader_crypto::md5_hex;
+use yeader_sdk::{PluginError, PluginResult};
 
 /// Output format for `process_image` / re-encoding.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -140,7 +140,10 @@ pub fn process_image(
 
     let mut encoded = Vec::new();
     image::DynamicImage::ImageRgb8(output)
-        .write_to(&mut std::io::Cursor::new(&mut encoded), format.image_format())
+        .write_to(
+            &mut std::io::Cursor::new(&mut encoded),
+            format.image_format(),
+        )
         .map_err(|err| PluginError::Other(err.to_string()))?;
 
     Ok(DescrambledImage {

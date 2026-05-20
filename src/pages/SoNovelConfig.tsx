@@ -177,11 +177,15 @@ export function SoNovelConfigPage() {
   return (
     <div className="page page-integration">
       <header className="page-header">
-        <h1>so-novel 配置</h1>
+        <h1>so-novel 配置（废弃）</h1>
         <button className="btn-icon" type="button" onClick={() => navigate("/integration")} title="返回">
           <ArrowLeftIcon />
         </button>
       </header>
+
+      <div className="config-message">
+        so-novel 仅作为旧兼容入口保留；新的站点接入请使用 YeaderHub 插件或本地规则源。
+      </div>
 
       <div className="config-mode-tabs">
         <button className={`tab-btn ${mode === "smart" ? "active" : ""}`} type="button" onClick={() => setMode("smart")}>

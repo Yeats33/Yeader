@@ -8,7 +8,7 @@ export type SoNovelState = {
 };
 
 export const SO_NOVEL_GITHUB = "https://github.com/freeok/so-novel";
-export const SO_NOVEL_DESC = "一款通用的网页内容处理与导出工具，可将网页提取为 EPUB、TXT、PDF 等多种格式。";
+export const SO_NOVEL_DESC = "已废弃的兼容桥接；新内容接入应迁移到 YeaderHub 插件或本地规则源。";
 
 export const INITIAL_SO_NOVEL_STATE: SoNovelState = {
   status: "checking",
@@ -39,7 +39,7 @@ export function soNovelDescription(state: SoNovelState): string {
     return SO_NOVEL_DESC;
   }
   if (state.status === "missing") {
-    return "点击安装以启用";
+    return "已废弃，不建议新安装";
   }
   if (state.status === "error") {
     return state.error ?? "无法检查安装状态";

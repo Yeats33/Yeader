@@ -90,18 +90,20 @@ fn extract_index_from_rule(rule: &str) -> Option<(&str, IndexSpec)> {
 
     // Check for dot notation .N or .-N
     if let Some(dot_idx) = rule.rfind('.')
-        && dot_idx > 0 {
-            let base = &rule[..dot_idx];
-            let index_str = &rule[dot_idx + 1..];
-            // Must be all digits (possibly leading -)
-            if index_str.chars().all(|c| c.is_ascii_digit() || c == '-')
-                && let Ok(idx) = index_str.parse::<isize>() {
-                    // Don't treat ".git" or similar as index
-                    if idx.abs() < 100000 {
-                        return Some((base, IndexSpec::Index(idx)));
-                    }
-                }
+        && dot_idx > 0
+    {
+        let base = &rule[..dot_idx];
+        let index_str = &rule[dot_idx + 1..];
+        // Must be all digits (possibly leading -)
+        if index_str.chars().all(|c| c.is_ascii_digit() || c == '-')
+            && let Ok(idx) = index_str.parse::<isize>()
+        {
+            // Don't treat ".git" or similar as index
+            if idx.abs() < 100000 {
+                return Some((base, IndexSpec::Index(idx)));
+            }
         }
+    }
 
     None
 }
@@ -247,10 +249,7 @@ impl AnalyzeRule {
                     }
                 }
                 // Collapse whitespace
-                result
-                    .split_whitespace()
-                    .collect::<Vec<_>>()
-                    .join(" ")
+                result.split_whitespace().collect::<Vec<_>>().join(" ")
             }
             Content::Json(v) => match v {
                 Value::String(s) => s.clone(),
@@ -667,17 +666,18 @@ impl AnalyzeRule {
 
         let json_val = self.content.as_json_value()?;
         if let Value::Object(map) = json_val
-            && let Some(value) = map.get(key) {
-                // Return the value as a string
-                let s = match value {
-                    Value::String(s) => s.clone(),
-                    Value::Number(n) => n.to_string(),
-                    Value::Bool(b) => b.to_string(),
-                    Value::Null => String::new(),
-                    other => other.to_string(),
-                };
-                return Some(vec![s]);
-            }
+            && let Some(value) = map.get(key)
+        {
+            // Return the value as a string
+            let s = match value {
+                Value::String(s) => s.clone(),
+                Value::Number(n) => n.to_string(),
+                Value::Bool(b) => b.to_string(),
+                Value::Null => String::new(),
+                other => other.to_string(),
+            };
+            return Some(vec![s]);
+        }
         None
     }
 
@@ -690,9 +690,10 @@ impl AnalyzeRule {
 
         let json_val = self.content.as_json_value()?;
         if let Value::Object(map) = json_val
-            && let Some(value) = map.get(key) {
-                return Some(vec![Content::Json(value.clone())]);
-            }
+            && let Some(value) = map.get(key)
+        {
+            return Some(vec![Content::Json(value.clone())]);
+        }
         None
     }
 
@@ -728,8 +729,7 @@ impl AnalyzeRule {
                     }
                     let json_str = self.content.as_json_value()?.to_string();
                     let values = json_path_list(&json_str, &source_rule.rule);
-                    let elements: Vec<Content> =
-                        values.into_iter().map(Content::Json).collect();
+                    let elements: Vec<Content> = values.into_iter().map(Content::Json).collect();
                     if elements.is_empty() {
                         None
                     } else {

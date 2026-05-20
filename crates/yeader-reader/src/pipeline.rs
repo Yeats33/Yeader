@@ -7,8 +7,7 @@ use yeader_models::{LegacyBookSource, TocRule};
 use yeader_rules::{AnalyzeRule, Content, ReplaceRule};
 
 /// Book information extracted from a book source page.
-#[derive(Debug, Clone, PartialEq)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct BookInfo {
     pub title: String,
     pub author: String,
@@ -62,7 +61,9 @@ fn resolve_url(base: &str, relative: &str) -> String {
         let mut rel = relative;
 
         // If base doesn't end with /, it's a file path - remove the file first
-        if !result.ends_with('/') && let Some(end) = result.rfind('/') {
+        if !result.ends_with('/')
+            && let Some(end) = result.rfind('/')
+        {
             result.truncate(end);
         }
 
@@ -139,7 +140,6 @@ pub fn fetch_book_info(source: &LegacyBookSource, book_url: &str, body: &str) ->
         word_count,
     }
 }
-
 
 /// Fetch table of contents (chapter list) from a TOC page.
 ///

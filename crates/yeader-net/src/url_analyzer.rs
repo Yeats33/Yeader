@@ -27,15 +27,13 @@ pub enum UrlAnalyzerError {
 
 pub type Result<T> = std::result::Result<T, UrlAnalyzerError>;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum Method {
     #[default]
     GET,
     POST,
     HEAD,
 }
-
 
 #[derive(Debug, Clone, Default)]
 pub struct AnalyzedUrl {
@@ -327,9 +325,10 @@ fn parse_url_with_options(url_with_options: &str, key: &str, page: i32) -> Resul
     // Build headers
     let mut headers = HeaderMap::new();
     if let Some(ref ct) = options.as_ref().and_then(|o| o.content_type.clone())
-        && let Ok(value) = ct.parse::<HeaderValue>() {
-            headers.insert(HeaderName::from_static("content-type"), value);
-        }
+        && let Ok(value) = ct.parse::<HeaderValue>()
+    {
+        headers.insert(HeaderName::from_static("content-type"), value);
+    }
     if let Some(ref hs) = options.as_ref().and_then(|o| o.headers.clone()) {
         for (k, v) in hs {
             if let (Ok(name), Ok(val)) = (k.parse::<HeaderName>(), v.parse::<HeaderValue>()) {

@@ -47,38 +47,22 @@ impl PluginRegistry {
             .ok_or_else(|| PluginError::InvalidArgument(format!("unknown plugin: {id}")))
     }
 
-    pub async fn search(
-        &self,
-        plugin_id: &str,
-        query: SearchQuery,
-    ) -> PluginResult<SearchResult> {
+    pub async fn search(&self, plugin_id: &str, query: SearchQuery) -> PluginResult<SearchResult> {
         let plugin = self.resolve(plugin_id)?;
         plugin.search(self.host.as_ref(), query).await
     }
 
-    pub async fn content(
-        &self,
-        plugin_id: &str,
-        content_id: &str,
-    ) -> PluginResult<ContentDetail> {
+    pub async fn content(&self, plugin_id: &str, content_id: &str) -> PluginResult<ContentDetail> {
         let plugin = self.resolve(plugin_id)?;
         plugin.content(self.host.as_ref(), content_id).await
     }
 
-    pub async fn toc(
-        &self,
-        plugin_id: &str,
-        content_id: &str,
-    ) -> PluginResult<Vec<ChapterInfo>> {
+    pub async fn toc(&self, plugin_id: &str, content_id: &str) -> PluginResult<Vec<ChapterInfo>> {
         let plugin = self.resolve(plugin_id)?;
         plugin.toc(self.host.as_ref(), content_id).await
     }
 
-    pub async fn assets(
-        &self,
-        plugin_id: &str,
-        chapter_id: &str,
-    ) -> PluginResult<Vec<AssetUrl>> {
+    pub async fn assets(&self, plugin_id: &str, chapter_id: &str) -> PluginResult<Vec<AssetUrl>> {
         let plugin = self.resolve(plugin_id)?;
         plugin.assets(self.host.as_ref(), chapter_id).await
     }
@@ -104,14 +88,14 @@ impl PluginRegistry {
         let bytes = self
             .host
             .http_request(
-                yeader_sdk::HttpRequest::get(&asset.url).header(
-                    "user-agent",
-                    "Mozilla/5.0 (Yeader)",
-                ),
+                yeader_sdk::HttpRequest::get(&asset.url)
+                    .header("user-agent", "Mozilla/5.0 (Yeader)"),
             )
             .await?
             .body;
-        plugin.transform_asset(self.host.as_ref(), asset, bytes).await
+        plugin
+            .transform_asset(self.host.as_ref(), asset, bytes)
+            .await
     }
 }
 

@@ -10,7 +10,8 @@ pub struct AppState {
     /// Path to the log directory (e.g. ~/.yeader/logs).
     #[allow(dead_code)]
     pub log_dir: PathBuf,
-    /// Path to the app data directory (e.g. ~/.yeader/).
+    /// User-owned Yeader data directory. Defaults to Documents/Yeader and can
+    /// be overridden with YEADER_DATA_DIR.
     pub app_dir: PathBuf,
 }
 

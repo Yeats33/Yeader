@@ -297,11 +297,15 @@ export function SoNovelRulesPage() {
   return (
     <div className="page page-integration">
       <header className="page-header">
-        <h1>规则管理</h1>
+        <h1>so-novel 规则管理（废弃）</h1>
         <button className="btn-icon" type="button" onClick={() => navigate("/integration")} title="返回">
           <ArrowLeftIcon />
         </button>
       </header>
+
+      <div className="config-message">
+        so-novel 规则只为旧流程保留；新的复杂站点规则应迁移到 YeaderHub 插件。
+      </div>
 
       {message ? <div className="config-message">{message}</div> : null}
 

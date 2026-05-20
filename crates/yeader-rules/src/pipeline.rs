@@ -237,9 +237,10 @@ pub async fn fetch_book_info(
 
     // Execute init rule first if present (may set variables)
     if let Some(init) = rule_book_info.init.as_deref()
-        && !init.is_empty() {
-            analyzer.get_string(init);
-        }
+        && !init.is_empty()
+    {
+        analyzer.get_string(init);
+    }
 
     let name = rule_book_info
         .name
@@ -436,12 +437,13 @@ pub async fn fetch_content(
 
         // Extract title
         if let Some(title_rule) = rule_content.title.as_deref()
-            && !title_rule.is_empty() {
-                let t = analyzer.get_string(title_rule).trim().to_string();
-                if !t.is_empty() && last_title.is_none() {
-                    last_title = Some(t);
-                }
+            && !title_rule.is_empty()
+        {
+            let t = analyzer.get_string(title_rule).trim().to_string();
+            if !t.is_empty() && last_title.is_none() {
+                last_title = Some(t);
             }
+        }
 
         // Extract content using source_regex first if present
         let content_rule = rule_content.content.as_deref().unwrap_or("");

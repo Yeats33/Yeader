@@ -59,7 +59,7 @@ npm run tauri build
 ### Progress
 - `WIP` Yeader Source Pack 格式、导入与执行管线
 - `WIP` 外部书源格式到 Yeader Source Pack 的迁移工具
-- `TODO` so-novel Rule 兼容
+- `DEPRECATED` so-novel 兼容桥接：仅保留旧入口，新接入迁移到 YeaderHub 插件或本地规则源
 - `WIP` 本地 EPUB 导入与解析
 ## 开源协议
 

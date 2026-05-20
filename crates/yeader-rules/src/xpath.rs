@@ -385,13 +385,14 @@ fn extract_predicates(segment: &str) -> (&str, Vec<Predicate>) {
 
     // Handle tag[position] like li[1]
     if predicates.is_empty()
-        && let Some(open_bracket) = segment.rfind('[') {
-            let before = &segment[..open_bracket];
-            let rest = &segment[open_bracket + 1..segment.len() - 1];
-            if rest.chars().all(|c| c.is_ascii_digit()) {
-                return (before, vec![]);
-            }
+        && let Some(open_bracket) = segment.rfind('[')
+    {
+        let before = &segment[..open_bracket];
+        let rest = &segment[open_bracket + 1..segment.len() - 1];
+        if rest.chars().all(|c| c.is_ascii_digit()) {
+            return (before, vec![]);
         }
+    }
 
     (tag, predicates)
 }

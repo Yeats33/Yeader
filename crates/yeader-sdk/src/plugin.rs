@@ -18,26 +18,13 @@ pub trait SourcePlugin: Send + Sync {
 
     fn id(&self) -> &str;
 
-    async fn search(
-        &self,
-        host: &dyn HostApi,
-        query: SearchQuery,
-    ) -> PluginResult<SearchResult>;
+    async fn search(&self, host: &dyn HostApi, query: SearchQuery) -> PluginResult<SearchResult>;
 
-    async fn content(&self, host: &dyn HostApi, content_id: &str)
-        -> PluginResult<ContentDetail>;
+    async fn content(&self, host: &dyn HostApi, content_id: &str) -> PluginResult<ContentDetail>;
 
-    async fn toc(
-        &self,
-        host: &dyn HostApi,
-        content_id: &str,
-    ) -> PluginResult<Vec<ChapterInfo>>;
+    async fn toc(&self, host: &dyn HostApi, content_id: &str) -> PluginResult<Vec<ChapterInfo>>;
 
-    async fn assets(
-        &self,
-        host: &dyn HostApi,
-        chapter_id: &str,
-    ) -> PluginResult<Vec<AssetUrl>>;
+    async fn assets(&self, host: &dyn HostApi, chapter_id: &str) -> PluginResult<Vec<AssetUrl>>;
 
     async fn login(
         &self,

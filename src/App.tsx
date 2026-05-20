@@ -53,6 +53,7 @@ function CurrentRoutePage({ routePath }: { routePath: string }) {
   if (routePath === "/account") return <AccountPage />;
   if (routePath === "/settings") return <SettingsPage />;
   if (routePath === "/integration") return <IntegrationPage />;
+  // Deprecated compatibility routes for the old so-novel bridge.
   if (routePath === "/integration/so-novel/webui") return <SoNovelWebuiPage />;
   if (routePath === "/integration/so-novel/config") return <SoNovelConfigPage />;
   if (routePath === "/integration/so-novel/rules") return <SoNovelRulesPage />;

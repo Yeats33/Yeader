@@ -52,11 +52,14 @@ export function SoNovelWebuiPage() {
   return (
     <div className="page page-webui">
       <header className="page-header">
-        <h1>so-novel WebUI</h1>
+        <h1>so-novel WebUI（废弃）</h1>
         <button className="btn-icon" type="button" onClick={() => navigate("/integration")} title="返回">
           &#x2190;
         </button>
       </header>
+      <div className="config-message">
+        这是旧兼容入口；未来内容获取应由 YeaderHub 插件或本地规则源承担。
+      </div>
       <div className="webui-container">
         {status !== "ready" ? (
           <div className="webui-loading">

@@ -1,6 +1,7 @@
 //! Tauri application entry point.
 
 mod commands;
+mod data;
 mod logging;
 mod model;
 mod state;
@@ -22,26 +23,34 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
-            let app_dir = app.path().app_data_dir()?;
-            std::fs::create_dir_all(&app_dir)?;
+            let legacy_app_dir = app.path().app_data_dir()?;
+            let data_dir = data::resolve_data_dir(app.handle())
+                .map_err(|e| std::io::Error::other(format!("Failed to resolve data dir: {e}")))?;
+            std::fs::create_dir_all(&data_dir)?;
+            data::migrate_legacy_data_dir(&legacy_app_dir, &data_dir).map_err(|e| {
+                std::io::Error::other(format!("Failed to migrate legacy data: {e}"))
+            })?;
 
             // Initialize logging first — must happen before any other logging.
-            let log_dir = logging::log_dir(&app_dir);
+            let log_dir = logging::log_dir(&data_dir);
             let guard = logging::init_logging(log_dir.clone())?;
             // Leak the guard so it lives for the entire program duration.
             let _ = LOG_GUARD.set(Box::new(guard));
 
-            let db_path = app_dir.join("yeader.db");
+            let db_path = data_dir.join("yeader.db");
             let db_path_str = db_path
                 .to_str()
                 .ok_or_else(|| "Database path contains non-UTF-8 characters".to_string())?;
             let db = Database::open(db_path_str)
                 .map_err(|e| format!("Failed to open database: {}", e))?;
 
-            let state = AppState::new(db, log_dir, app_dir.clone());
+            let state = AppState::new(db, log_dir, data_dir.clone());
             app.manage(state);
 
-            tracing::info!("Yeader initialized successfully");
+            tracing::info!(
+                "Yeader initialized successfully with data dir {}",
+                data_dir.display()
+            );
 
             #[cfg(debug_assertions)]
             {

@@ -7,8 +7,7 @@ use std::collections::HashMap;
 
 use yeader_sdk::{HttpMethod, HttpRequest, HttpResponse, PluginError, PluginResult};
 
-pub const DEFAULT_USER_AGENT: &str =
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
+pub const DEFAULT_USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36";
 
 /// Percent-encode a single component (RFC 3986 unreserved set).
 pub fn percent_encode(value: &str) -> String {
@@ -187,7 +186,10 @@ mod tests {
     #[test]
     fn append_query_uses_correct_separator() {
         assert_eq!(append_query("https://x/y", "a=1"), "https://x/y?a=1");
-        assert_eq!(append_query("https://x/y?z=0", "a=1"), "https://x/y?z=0&a=1");
+        assert_eq!(
+            append_query("https://x/y?z=0", "a=1"),
+            "https://x/y?z=0&a=1"
+        );
         assert_eq!(append_query("https://x/y", ""), "https://x/y");
     }
 
@@ -202,7 +204,10 @@ mod tests {
 
         assert_eq!(req.url, "https://api.example.com/login");
         assert_eq!(req.method, HttpMethod::Post);
-        assert_eq!(req.body.as_deref(), Some(b"user=alice&pass=p%40ss".as_ref()));
+        assert_eq!(
+            req.body.as_deref(),
+            Some(b"user=alice&pass=p%40ss".as_ref())
+        );
         assert_eq!(
             req.headers.get("content-type").map(String::as_str),
             Some("application/x-www-form-urlencoded")

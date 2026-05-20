@@ -273,7 +273,6 @@ fn delete_source_booksource() {
     use serde_json::Map;
     use yeader_models::LegacyBookSource;
     let db = test_db();
-    let registry = SourceRegistry::new(&db);
 
     let src = LegacyBookSource {
         book_source_url: "https://delete.book.com".into(),
@@ -305,6 +304,7 @@ fn delete_source_booksource() {
     yeader_library::BookSourceRepo::new(&db)
         .upsert(&src)
         .unwrap();
+    let registry = SourceRegistry::new(&db);
     assert_eq!(registry.list_sources(Some(SourceKind::BookSource)).len(), 1);
 
     let deleted = registry.delete_source("https://delete.book.com", SourceKind::BookSource);
@@ -354,7 +354,6 @@ fn delete_source_plugin() {
     use serde_json::Map;
     use yeader_models::{YeaderMediaType, YeaderRequestDefaults, YeaderSource};
     let db = test_db();
-    let registry = SourceRegistry::new(&db);
 
     let source = YeaderSource {
         id: "delete.plugin.com".into(),
@@ -376,6 +375,7 @@ fn delete_source_plugin() {
     yeader_library::YeaderSourceRepo::new(&db)
         .upsert(&source)
         .unwrap();
+    let registry = SourceRegistry::new(&db);
     assert_eq!(registry.list_sources(Some(SourceKind::Plugin)).len(), 1);
 
     let deleted = registry.delete_source("delete.plugin.com", SourceKind::Plugin);
@@ -393,7 +393,6 @@ fn toggle_source_booksource() {
     use serde_json::Map;
     use yeader_models::LegacyBookSource;
     let db = test_db();
-    let registry = SourceRegistry::new(&db);
 
     let src = LegacyBookSource {
         book_source_url: "https://toggle.book.com".into(),
@@ -481,7 +480,6 @@ fn toggle_source_plugin() {
     use serde_json::Map;
     use yeader_models::{YeaderMediaType, YeaderRequestDefaults, YeaderSource};
     let db = test_db();
-    let registry = SourceRegistry::new(&db);
 
     let source = YeaderSource {
         id: "toggle.plugin.com".into(),
@@ -597,7 +595,6 @@ fn list_sources_mixed_all_kinds() {
         LegacyBookSource, LegacyRssSource, YeaderMediaType, YeaderRequestDefaults, YeaderSource,
     };
     let db = test_db();
-    let registry = SourceRegistry::new(&db);
 
     yeader_library::BookSourceRepo::new(&db)
         .upsert(&LegacyBookSource {

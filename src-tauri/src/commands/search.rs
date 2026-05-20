@@ -1,10 +1,10 @@
-use scraper::{ElementRef, Html, Selector};
+use scraper::{ElementRef, Html};
 use std::collections::BTreeMap;
 use tauri::State;
 use yeader_models::{
-    BookInfo as ModelBookInfo, Chapter as ModelChapter, SearchResult, YeaderAction, YeaderActionKind,
-    YeaderCapability, YeaderCapabilityKind, YeaderExploreCategory, YeaderSelector,
-    YeaderSelectorEngine, YeaderSource,
+    BookInfo as ModelBookInfo, Chapter as ModelChapter, SearchResult, YeaderAction,
+    YeaderActionKind, YeaderCapability, YeaderCapabilityKind, YeaderExploreCategory,
+    YeaderSelector, YeaderSelectorEngine, YeaderSource,
 };
 
 use crate::state::AppState;
@@ -30,7 +30,9 @@ pub async fn search_with_yeader_source(
         .ok_or("Search capability has no request")?;
 
     let url = normalize_request_url(
-        &request.url.replace("{{key}}", &urlencoding::encode(keyword)),
+        &request
+            .url
+            .replace("{{key}}", &urlencoding::encode(keyword)),
         source.homepage.as_deref(),
     );
 
@@ -71,10 +73,7 @@ pub async fn explore_with_yeader_source(
         .ok_or("List capability has no request")?;
 
     let mut substituted = request.url.clone();
-    let category_entry = source
-        .explore_categories
-        .iter()
-        .find(|c| c.key == category);
+    let category_entry = source.explore_categories.iter().find(|c| c.key == category);
     if let Some(entry) = category_entry {
         for (key, value) in &entry.variables {
             substituted = substituted.replace(&format!("{{{{{}}}}}", key), value);
@@ -202,8 +201,16 @@ fn has_extractor_suffix(query: &str) -> bool {
         let suffix = &query[pos + 1..];
         matches!(
             suffix,
-            "text" | "textNodes" | "ownText" | "html" | "all"
-                | "href" | "src" | "class" | "id" | "data-url"
+            "text"
+                | "textNodes"
+                | "ownText"
+                | "html"
+                | "all"
+                | "href"
+                | "src"
+                | "class"
+                | "id"
+                | "data-url"
         )
     })
 }
@@ -251,31 +258,6 @@ fn execute_selector_string(
     }
 }
 
-/// Execute a YeaderSelector against an AnalyzeRule, returning a list of strings.
-fn execute_selector_list(
-    analyzer: &yeader_rules::AnalyzeRule,
-    selector: &YeaderSelector,
-    default_output: &str,
-) -> Vec<String> {
-    match selector.engine {
-        YeaderSelectorEngine::Text => {
-            let text = analyzer.text_content();
-            if text.is_empty() {
-                vec![]
-            } else {
-                vec![text]
-            }
-        }
-        _ => {
-            let rule = selector_to_rule(selector, default_output);
-            if rule.is_empty() {
-                return vec![];
-            }
-            analyzer.get_string_list(&rule)
-        }
-    }
-}
-
 /// Run BeforeExtract JS actions on an analyzer.
 fn execute_before_extract_actions(
     analyzer: &mut yeader_rules::AnalyzeRule,
@@ -294,7 +276,8 @@ fn extract_listing_results(
     capability: &YeaderCapability,
     body: &str,
 ) -> Vec<SearchResult> {
-    let mut analyzer = yeader_rules::AnalyzeRule::new(body, source.homepage.as_deref().unwrap_or(""));
+    let mut analyzer =
+        yeader_rules::AnalyzeRule::new(body, source.homepage.as_deref().unwrap_or(""));
 
     // Set source variables
     for (key, value) in &source.variables {
@@ -508,15 +491,17 @@ pub async fn fetch_toc_yeader(
     }
     execute_before_extract_actions(&mut analyzer, &toc_cap.actions);
 
-    let item_sel = toc_cap.item.as_ref().ok_or("TOC capability has no item selector")?;
+    let item_sel = toc_cap
+        .item
+        .as_ref()
+        .ok_or("TOC capability has no item selector")?;
     let item_rule = selector_to_rule(item_sel, "html");
     let elements = analyzer.get_elements(&item_rule);
 
     let chapters: Vec<ModelChapter> = elements
         .into_iter()
         .filter_map(|el| {
-            let elem_analyzer =
-                yeader_rules::AnalyzeRule::from_content(el, analyzer.base_url());
+            let elem_analyzer = yeader_rules::AnalyzeRule::from_content(el, analyzer.base_url());
 
             let chapter_name = toc_cap
                 .fields
@@ -649,14 +634,15 @@ fn normalize_extracted_url(value: &str, homepage: Option<&str>) -> String {
     }
     if trimmed.starts_with('/')
         && let Some(homepage) = homepage
-            && let Ok(base) = reqwest::Url::parse(homepage) {
-                return format!(
-                    "{}://{}{}",
-                    base.scheme(),
-                    base.host_str().unwrap_or_default(),
-                    trimmed
-                );
-            }
+        && let Ok(base) = reqwest::Url::parse(homepage)
+    {
+        return format!(
+            "{}://{}{}",
+            base.scheme(),
+            base.host_str().unwrap_or_default(),
+            trimmed
+        );
+    }
     trimmed.to_string()
 }
 
@@ -734,35 +720,58 @@ mod yeader_native_tests {
               </div>
             </div>
         "#;
-        let mut analyzer = yeader_rules::AnalyzeRule::new(html, "https://czbooks.net/");
+        let analyzer = yeader_rules::AnalyzeRule::new(html, "https://czbooks.net/");
         let item_sel = detail_cap.item.as_ref().unwrap();
         let item_rule = selector_to_rule(item_sel, "html");
         let elements = analyzer.get_elements(&item_rule);
-        let detail_el = elements.into_iter().next().expect("detail element selected");
+        let detail_el = elements
+            .into_iter()
+            .next()
+            .expect("detail element selected");
         let elem_analyzer = yeader_rules::AnalyzeRule::from_content(detail_el, analyzer.base_url());
 
         assert_eq!(
-            execute_selector_string(&elem_analyzer, detail_cap.fields.get("name").unwrap(), "text"),
+            execute_selector_string(
+                &elem_analyzer,
+                detail_cap.fields.get("name").unwrap(),
+                "text"
+            ),
             "《仙途無憂》"
         );
         assert_eq!(
-            execute_selector_string(&elem_analyzer, detail_cap.fields.get("author").unwrap(), "text"),
+            execute_selector_string(
+                &elem_analyzer,
+                detail_cap.fields.get("author").unwrap(),
+                "text"
+            ),
             "零貳"
         );
         assert_eq!(
             normalize_extracted_url(
-                &execute_selector_string(&elem_analyzer, detail_cap.fields.get("coverUrl").unwrap(), "src"),
+                &execute_selector_string(
+                    &elem_analyzer,
+                    detail_cap.fields.get("coverUrl").unwrap(),
+                    "src"
+                ),
                 source.homepage.as_deref(),
             ),
             "https://img.czbooks.net/thumbnail/cover.jpeg?1749449776"
         );
         assert_eq!(
-            execute_selector_string(&elem_analyzer, detail_cap.fields.get("kind").unwrap(), "text"),
+            execute_selector_string(
+                &elem_analyzer,
+                detail_cap.fields.get("kind").unwrap(),
+                "text"
+            ),
             "女生同人"
         );
         assert!(
-            execute_selector_string(&elem_analyzer, detail_cap.fields.get("intro").unwrap(), "text")
-                .contains("她將踏紅塵萬里")
+            execute_selector_string(
+                &elem_analyzer,
+                detail_cap.fields.get("intro").unwrap(),
+                "text"
+            )
+            .contains("她將踏紅塵萬里")
         );
     }
 
@@ -780,20 +789,29 @@ mod yeader_native_tests {
               <li><a href="//czbooks.net/n/cr79bh/crdic?chapterNumber=0">第一章 混沌世界</a></li>
             </ul>
         "#;
-        let mut analyzer = yeader_rules::AnalyzeRule::new(html, "https://czbooks.net/");
+        let analyzer = yeader_rules::AnalyzeRule::new(html, "https://czbooks.net/");
         let item_sel = toc_cap.item.as_ref().unwrap();
         let item_rule = selector_to_rule(item_sel, "html");
         let elements = analyzer.get_elements(&item_rule);
         let chapter_el = elements.into_iter().next().expect("chapter link selected");
-        let elem_analyzer = yeader_rules::AnalyzeRule::from_content(chapter_el, analyzer.base_url());
+        let elem_analyzer =
+            yeader_rules::AnalyzeRule::from_content(chapter_el, analyzer.base_url());
 
         assert_eq!(
-            execute_selector_string(&elem_analyzer, toc_cap.fields.get("chapterName").unwrap(), "text"),
+            execute_selector_string(
+                &elem_analyzer,
+                toc_cap.fields.get("chapterName").unwrap(),
+                "text"
+            ),
             "第一章 混沌世界"
         );
         assert_eq!(
             normalize_extracted_url(
-                &execute_selector_string(&elem_analyzer, toc_cap.fields.get("chapterUrl").unwrap(), "href"),
+                &execute_selector_string(
+                    &elem_analyzer,
+                    toc_cap.fields.get("chapterUrl").unwrap(),
+                    "href"
+                ),
                 source.homepage.as_deref(),
             ),
             "https://czbooks.net/n/cr79bh/crdic?chapterNumber=0"
@@ -815,7 +833,10 @@ mod yeader_native_tests {
             </div>
         "#;
         let analyzer = yeader_rules::AnalyzeRule::new(html, "https://czbooks.net/");
-        let content_sel = content_cap.fields.get("content").expect("content field exists");
+        let content_sel = content_cap
+            .fields
+            .get("content")
+            .expect("content field exists");
         let content = execute_selector_string(&analyzer, content_sel, "html");
 
         assert!(content.contains("上古时代"));

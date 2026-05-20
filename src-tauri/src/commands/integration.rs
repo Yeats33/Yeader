@@ -9,9 +9,14 @@ use notify::RecursiveMode;
 use notify_debouncer_mini::{DebouncedEventKind, new_debouncer};
 use tauri::{AppHandle, Emitter, Manager};
 
+use crate::data::resolve_data_dir;
+
 static SO_NOVEL_PROCESS: OnceLock<Mutex<Option<Child>>> = OnceLock::new();
 static SO_NOVEL_WATCHER_RUNNING: AtomicBool = AtomicBool::new(false);
 
+// Deprecated compatibility integration. New site-specific acquisition should
+// move to YeaderHub plugins and local source rules instead of expanding
+// so-novel-specific host behavior.
 fn so_novel_process() -> &'static Mutex<Option<Child>> {
     SO_NOVEL_PROCESS.get_or_init(|| Mutex::new(None))
 }
@@ -112,10 +117,7 @@ pub async fn start_so_novel_webui(app: AppHandle) -> Result<(), String> {
         return Ok(());
     }
 
-    let app_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| format!("Failed to get app dir: {}", e))?;
+    let app_dir = resolve_data_dir(&app).map_err(|e| format!("Failed to get data dir: {}", e))?;
 
     let so_novel_dir = PathBuf::from(get_so_novel_dir());
     let config_dir = app_dir.join("so-novel");
@@ -277,10 +279,7 @@ pub fn stop_so_novel() -> Result<(), String> {
 }
 
 fn so_novel_config_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
-    let app_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| format!("Failed to get app dir: {}", e))?;
+    let app_dir = resolve_data_dir(app).map_err(|e| format!("Failed to get data dir: {}", e))?;
     Ok(app_dir.join("so-novel"))
 }
 

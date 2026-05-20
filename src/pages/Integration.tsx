@@ -110,6 +110,7 @@ function SoNovelCard({ state, busyAction, onRefresh, onStart, onStop }: {
       </div>
       <div className="integration-card-info">
         <strong className="integration-card-name">so-novel</strong>
+        <span className="source-status">废弃兼容</span>
         <span className="integration-card-desc">{soNovelDescription(state)}</span>
       </div>
       <div className="integration-card-status">
@@ -123,7 +124,7 @@ function SoNovelCard({ state, busyAction, onRefresh, onStart, onStop }: {
       <div className="integration-card-actions">
         {state.status === "missing" ? (
           <button className="btn-primary" type="button" onClick={() => void openUrl(SO_NOVEL_GITHUB)}>
-            前往安装
+            查看旧项目
           </button>
         ) : null}
 

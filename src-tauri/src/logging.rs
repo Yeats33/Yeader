@@ -176,16 +176,17 @@ impl Write for LevelSplitWriter {
         // Parse the level from the JSON line to route correctly.
         if let Some(first_char) = buf.first().copied()
             && first_char == b'{'
-                && let Ok(line) = std::str::from_utf8(buf)
-                    && let Some(level_start) = line.find("\"level\":\"") {
-                        let after = &line[level_start + 8..];
-                        let level_end = after.find('"').unwrap_or(0);
-                        let level = &after[..level_end];
+            && let Ok(line) = std::str::from_utf8(buf)
+            && let Some(level_start) = line.find("\"level\":\"")
+        {
+            let after = &line[level_start + 8..];
+            let level_end = after.find('"').unwrap_or(0);
+            let level = &after[..level_end];
 
-                        if level == "ERROR" || level == "WARN" {
-                            return self.error.lock().unwrap().write(buf);
-                        }
-                    }
+            if level == "ERROR" || level == "WARN" {
+                return self.error.lock().unwrap().write(buf);
+            }
+        }
         // Default: main log (INFO, DEBUG, etc.)
         self.main.lock().unwrap().write(buf)
     }
