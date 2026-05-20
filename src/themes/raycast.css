@@ -1,0 +1,86 @@
+/* ============================================================
+   Raycast-inspired Theme
+   ============================================================ */
+
+:root[data-theme="raycast"] {
+  --color-bg: #f7f3f0;
+  --color-surface: #fffdfb;
+  --color-text: #1f1b1b;
+  --color-text-secondary: #4c4545;
+  --color-text-muted: #766b6b;
+  --color-text-placeholder: #9a8f8f;
+  --color-border: rgba(31, 27, 27, 0.08);
+  --color-border-medium: rgba(31, 27, 27, 0.14);
+  --color-brand: #ff6363;
+  --color-brand-light: #ffe4e0;
+  --color-brand-deep: #d73535;
+  --color-danger: #e5484d;
+  --color-warning: #d97706;
+  --color-info: #ff6363;
+  --color-success: #30a46c;
+  --font-main: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-mono: "SF Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-size: 16px;
+  --line-height: 1.5;
+  --radius: 10px;
+  --radius-pill: 9999px;
+  --radius-search: 12px;
+  --shadow-card: 0 18px 48px rgba(31, 27, 27, 0.12);
+  --shadow-subtle: 0 1px 2px rgba(31, 27, 27, 0.06), 0 8px 28px rgba(31, 27, 27, 0.06);
+  --shadow-button: 0 1px 2px rgba(31, 27, 27, 0.08);
+  --focus-ring: 2px solid var(--color-brand);
+  --page-header-bg: rgba(255, 253, 251, 0.86);
+  --chip-enabled-bg: var(--color-brand);
+  --chip-enabled-color: #ffffff;
+  --chip-available-bg: var(--color-brand-light);
+  --chip-available-color: var(--color-brand-deep);
+  --chip-unavailable-bg: rgba(229, 72, 77, 0.10);
+  --chip-unavailable-color: var(--color-danger);
+  --btn-primary-bg: #1f1b1b;
+  --btn-primary-color: #ffffff;
+  --gradient-brand: linear-gradient(135deg, #ff6363 0%, #ff8a63 100%);
+  --gradient-cover: linear-gradient(135deg, #2c2020 0%, #ff6363 100%);
+}
+
+:root[data-theme="raycast"][data-color-mode="dark"] {
+  --color-bg: #0f0d0d;
+  --color-surface: #1a1717;
+  --color-text: #fff7f4;
+  --color-text-secondary: #e8d8d3;
+  --color-text-muted: #a99691;
+  --color-text-placeholder: #75645f;
+  --color-border: rgba(255, 247, 244, 0.08);
+  --color-border-medium: rgba(255, 247, 244, 0.14);
+  --color-brand-light: rgba(255, 99, 99, 0.18);
+  --color-brand-deep: #ff8585;
+  --color-info: #ff8585;
+  --page-header-bg: rgba(15, 13, 13, 0.86);
+  --shadow-card: 0 18px 48px rgba(0, 0, 0, 0.36);
+  --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --btn-primary-bg: #ff6363;
+  --btn-primary-color: #180f0f;
+}
+
+:root[data-theme="raycast"] .source-chip.state.active,
+:root[data-theme="raycast"] .source-meta-tag {
+  background: var(--color-brand);
+  color: #ffffff;
+}
+
+:root[data-theme="raycast"] .source-chip.availability.available {
+  border-color: transparent;
+  background: var(--color-brand-light);
+  color: var(--color-brand-deep);
+}
+
+:root[data-theme="raycast"] .source-chip.availability.unavailable {
+  border-color: transparent;
+  background: var(--chip-unavailable-bg);
+  color: var(--color-danger);
+}
+
+:root[data-theme="raycast"] .book-cover-placeholder,
+:root[data-theme="raycast"] .list-cover-placeholder,
+:root[data-theme="raycast"] .result-cover-placeholder {
+  background: var(--gradient-brand);
+}

@@ -8,6 +8,11 @@
   --color-text: #1d1d1f;
   --color-text-muted: rgba(0, 0, 0, 0.48);
   --color-border: rgba(0, 0, 0, 0.04);
+  --color-border-medium: rgba(0, 0, 0, 0.10);
+  --color-brand: #0071e3;
+  --color-brand-light: rgba(0, 113, 227, 0.12);
+  --color-brand-deep: #0066cc;
+  --color-info: #0071e3;
   --color-danger: #ff3b30;
   --color-success: #34c759;
   --color-warning: #ff9500;
@@ -41,8 +46,14 @@
   --color-bg: #000000;
   --color-surface: #1d1d1f;
   --color-text: #ffffff;
+  --color-text-secondary: rgba(255, 255, 255, 0.72);
   --color-text-muted: rgba(255, 255, 255, 0.48);
+  --color-text-placeholder: rgba(255, 255, 255, 0.34);
   --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-medium: rgba(255, 255, 255, 0.14);
+  --color-brand-light: rgba(41, 151, 255, 0.18);
+  --color-brand-deep: #2997ff;
+  --color-info: #2997ff;
   --page-header-bg: rgba(0, 0, 0, 0.8);
 }
 

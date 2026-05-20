@@ -2,7 +2,7 @@
    Theme Management — Yeader
    ============================================================ */
 
-export type ThemeName = "apple" | "mintlify";
+export type ThemeName = "default" | "apple" | "mintlify" | "raycast";
 export type ColorMode = "light" | "dark";
 export type ColorModePreference = ColorMode | "system";
 export type CustomTheme = {
@@ -15,15 +15,21 @@ const COLOR_MODE_KEY = "yeader-color-mode";
 const CUSTOM_THEMES_KEY = "yeader-custom-themes";
 const CUSTOM_CSS_KEY = "yeader-custom-css";
 
-const BASE_THEMES: ThemeName[] = ["apple", "mintlify"];
+const BASE_THEMES: ThemeName[] = ["apple", "mintlify", "raycast"];
 
 export function getCurrentTheme(): ThemeName {
-  return (localStorage.getItem(THEME_STORAGE_KEY) as ThemeName) ?? "apple";
+  const stored = localStorage.getItem(THEME_STORAGE_KEY);
+  if (stored === "default" || stored === "apple" || stored === "mintlify" || stored === "raycast") {
+    return stored;
+  }
+  return "default";
 }
 
 export function setCurrentTheme(theme: ThemeName): void {
   localStorage.setItem(THEME_STORAGE_KEY, theme);
-  applyTheme(theme, getColorModePreference());
+  void loadTheme(theme, getColorModePreference()).catch(() => {
+    applyTheme(theme, getColorModePreference());
+  });
 }
 
 export function getColorModePreference(): ColorModePreference {
@@ -101,11 +107,10 @@ export function applyTheme(theme: ThemeName, colorModePreference: ColorModePrefe
   document.documentElement.removeAttribute("data-color-mode");
   document.documentElement.removeAttribute("data-color-mode-preference");
 
-  // Remove old theme link + custom CSS style
-  document.querySelectorAll('link[data-theme-link]').forEach((el) => el.remove());
+  // Remove old custom CSS style
   document.querySelectorAll('style[data-custom-css]').forEach((el) => el.remove());
 
-  // Set base theme (apple or mintlify)
+  // Set base theme. The default theme is the root token set from base.css.
   if (BASE_THEMES.includes(theme)) {
     document.documentElement.setAttribute("data-theme", theme);
   }
@@ -126,11 +131,8 @@ export function applyTheme(theme: ThemeName, colorModePreference: ColorModePrefe
 }
 
 export async function loadTheme(theme: ThemeName, colorModePreference: ColorModePreference): Promise<void> {
-  if (theme === "mintlify") {
-    await loadThemeLink("/themes/mintlify.css");
-  } else {
-    // apple is default baked into styles.css
-    await loadThemeLink("/themes/apple.css");
+  if (theme !== "default") {
+    await loadThemeLink(`/themes/${theme}.css`);
   }
   applyTheme(theme, colorModePreference);
 }
@@ -168,8 +170,10 @@ function loadThemeLink(href: string): Promise<void> {
 
 export function describeThemeOptions(): Array<{ name: string; label: string }> {
   return [
+    { name: "default", label: "默认" },
     { name: "apple", label: "Apple" },
     { name: "mintlify", label: "Mintlify" },
+    { name: "raycast", label: "Raycast" },
     ...getCustomThemes().map((t) => ({ name: t.name, label: t.name })),
   ];
 }
