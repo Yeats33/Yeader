@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
 import { navigate } from "../router.ts";
 import {
-  EXAMPLE_PLUGIN_REGISTRY,
+  getBundledPluginRegistryPreview,
   identityVerificationLabel,
+  pluginRegistryEntries,
   pluginRiskLabels,
   summarizePluginActivation,
   type PluginActivation,
+  type PluginRegistryView,
   type PluginRegistryEntry,
 } from "../content/pluginMarket.ts";
 import {
@@ -308,7 +310,8 @@ export function SourceListTab({ sources }: { sources: YeaderSource[] }) {
   const [filter, setFilter] = useState<SourceKindFilter>("all");
   const filteredSourceItems = useMemo(() => filterContentSources(sourceItems, filter), [sourceItems, filter]);
   const [selectedSourceId, setSelectedSourceId] = useState(() => sources[0]?.id ?? "");
-  const pluginCount = EXAMPLE_PLUGIN_REGISTRY.plugins.length;
+  const pluginRegistry = useMemo(() => getBundledPluginRegistryPreview(), []);
+  const pluginCount = pluginRegistryEntries(pluginRegistry).length;
 
   useEffect(() => {
     if (filter === "plugin" || filter === "legacy") {
@@ -360,7 +363,7 @@ export function SourceListTab({ sources }: { sources: YeaderSource[] }) {
         onChange={setFilter}
       />
 
-      {filter === "plugin" ? <PluginRegistryPreview /> : null}
+      {filter === "plugin" ? <PluginRegistryPreview registry={pluginRegistry} /> : null}
       {filter === "legacy" ? (
         <div className="empty-state source-kind-empty">
           <p>Legacy 兼容入口保留在旧书源兼容流程中；后续会作为独立导入分组接入。</p>
@@ -491,10 +494,17 @@ function SourceKindTabs({
   );
 }
 
-function PluginRegistryPreview() {
+function PluginRegistryPreview({ registry }: { registry: PluginRegistryView }) {
+  const entries = pluginRegistryEntries(registry);
+
   return (
     <div className="plugin-registry-preview">
-      {EXAMPLE_PLUGIN_REGISTRY.plugins.map((plugin) => (
+      <div className="plugin-registry-source">
+        <a href={registry.sourceUrl} target="_blank" rel="noreferrer">索引: {registry.sourceLabel}</a>
+        <span>{registry.readonly ? "只读预览" : "可安装"}</span>
+        <span>{registry.installAvailable ? "安装已启用" : "安装待接入"}</span>
+      </div>
+      {entries.map((plugin) => (
         <PluginRegistryCard plugin={plugin} key={plugin.id} />
       ))}
     </div>
@@ -533,6 +543,7 @@ function PluginRegistryCard({ plugin }: { plugin: PluginRegistryEntry }) {
 }
 
 export function PluginMarketPanel() {
+  const registryPreview = getBundledPluginRegistryPreview();
   const freeActivation = summarizePluginActivation({ mode: "free" });
   const tokenActivation: PluginActivation = {
     mode: "token-transfer",
@@ -579,7 +590,7 @@ export function PluginMarketPanel() {
       <div className="plugin-market-meta">
         <span>身份：EVM 单地址</span>
         <span>验证：unverified / signature-pending / verified</span>
-        <span>索引：../YeaderPlugins/registry/plugins.json</span>
+        <a href={registryPreview.sourceUrl} target="_blank" rel="noreferrer">索引：{registryPreview.sourceLabel}</a>
       </div>
     </section>
   );

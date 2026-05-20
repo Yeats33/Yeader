@@ -630,7 +630,8 @@
 }
 
 .plugin-market-card span,
-.plugin-market-meta span {
+.plugin-market-meta span,
+.plugin-market-meta a {
   color: var(--color-text-muted);
   font-size: 12px;
   line-height: 1.45;
@@ -643,17 +644,37 @@
   margin-top: 0.875rem;
 }
 
-.plugin-market-meta span {
+.plugin-market-meta span,
+.plugin-market-meta a {
   padding: 0.25rem 0.5rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-pill);
   background: var(--color-bg);
+  text-decoration: none;
 }
 
 .plugin-registry-preview {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
+}
+
+.plugin-registry-source {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.plugin-registry-source span,
+.plugin-registry-source a {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  color: var(--color-text-muted);
+  background: var(--color-bg);
+  font-size: 12px;
+  text-decoration: none;
 }
 
 .plugin-registry-card {

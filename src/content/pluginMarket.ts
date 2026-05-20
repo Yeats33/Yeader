@@ -76,8 +76,19 @@ export interface PluginActivationSummary {
   detail: string;
 }
 
-export const EXAMPLE_PLUGIN_REGISTRY: PluginRegistry = {
-  format: "yeader.plugin-registry",
+export interface PluginRegistryView {
+  registry: PluginRegistry;
+  sourceLabel: string;
+  sourceUrl: string;
+  readonly: boolean;
+  installAvailable: boolean;
+}
+
+const PLUGIN_REGISTRY_FORMAT = "yeader.plugin-registry";
+export const PLUGIN_REGISTRY_REPOSITORY_URL = "https://github.com/Yeats33/YeaderPlugins";
+
+const BUNDLED_PLUGIN_REGISTRY_PREVIEW: PluginRegistry = {
+  format: PLUGIN_REGISTRY_FORMAT,
   version: 1,
   plugins: [
     {
@@ -165,6 +176,41 @@ export const EXAMPLE_PLUGIN_REGISTRY: PluginRegistry = {
   ],
 };
 
+export function getBundledPluginRegistryPreview(): PluginRegistryView {
+  return {
+    registry: BUNDLED_PLUGIN_REGISTRY_PREVIEW,
+    sourceLabel: "Yeats33/YeaderPlugins",
+    sourceUrl: PLUGIN_REGISTRY_REPOSITORY_URL,
+    readonly: true,
+    installAvailable: false,
+  };
+}
+
+export function pluginRegistryEntries(view: PluginRegistryView): PluginRegistryEntry[] {
+  return view.registry.plugins;
+}
+
+export function parsePluginRegistry(value: unknown): PluginRegistry | null {
+  if (!isObject(value)) {
+    return null;
+  }
+
+  const registry = value as Partial<PluginRegistry>;
+  if (
+    registry.format !== PLUGIN_REGISTRY_FORMAT ||
+    typeof registry.version !== "number" ||
+    !Array.isArray(registry.plugins)
+  ) {
+    return null;
+  }
+
+  return {
+    format: registry.format,
+    version: registry.version,
+    plugins: registry.plugins,
+  };
+}
+
 export function summarizePluginActivation(activation: PluginActivation): PluginActivationSummary {
   if (activation.mode === "free") {
     return {
@@ -199,4 +245,8 @@ export function pluginRiskLabels(risk: PluginRisk): string[] {
   if (risk.usesAntiBotWorkarounds) labels.push("反爬适配");
   if (risk.requiresBrowserRendering) labels.push("浏览器渲染");
   return labels;
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }

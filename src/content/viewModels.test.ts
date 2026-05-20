@@ -8,8 +8,10 @@ import {
   sourceKindLabel,
 } from "./viewModels.ts";
 import {
-  EXAMPLE_PLUGIN_REGISTRY,
+  getBundledPluginRegistryPreview,
   identityVerificationLabel,
+  parsePluginRegistry,
+  pluginRegistryEntries,
   pluginRiskLabels,
   summarizePluginActivation,
   type PluginRegistryEntry,
@@ -157,15 +159,32 @@ test("plugin activation summaries distinguish free and token-gated plugins", () 
   assert.equal(identityVerificationLabel(plugin.identity.verification), "待验证");
 });
 
-test("example plugin registry covers free and token activation previews", () => {
-  assert.equal(EXAMPLE_PLUGIN_REGISTRY.format, "yeader.plugin-registry");
-  assert.equal(EXAMPLE_PLUGIN_REGISTRY.plugins.length, 2);
+test("bundled plugin registry preview covers free and token activation previews", () => {
+  const registryView = getBundledPluginRegistryPreview();
+  const entries = pluginRegistryEntries(registryView);
 
-  const free = EXAMPLE_PLUGIN_REGISTRY.plugins.find((plugin) => plugin.activation.mode === "free");
-  const paid = EXAMPLE_PLUGIN_REGISTRY.plugins.find((plugin) => plugin.activation.mode === "token-transfer");
+  assert.equal(registryView.registry.format, "yeader.plugin-registry");
+  assert.equal(registryView.sourceLabel, "Yeats33/YeaderPlugins");
+  assert.equal(registryView.sourceUrl, "https://github.com/Yeats33/YeaderPlugins");
+  assert.equal(registryView.readonly, true);
+  assert.equal(registryView.installAvailable, false);
+  assert.equal(entries.length, 2);
+
+  const free = entries.find((plugin) => plugin.activation.mode === "free");
+  const paid = entries.find((plugin) => plugin.activation.mode === "token-transfer");
 
   assert.equal(free?.id, "example.news");
   assert.equal(paid?.id, "example.paid-news");
   assert.equal(paid?.activation.mode, "token-transfer");
   assert.deepEqual(pluginRiskLabels(free!.risk), []);
+});
+
+test("parsePluginRegistry rejects values outside the registry envelope", () => {
+  const registryView = getBundledPluginRegistryPreview();
+
+  assert.deepEqual(parsePluginRegistry(registryView.registry), registryView.registry);
+  assert.equal(parsePluginRegistry(null), null);
+  assert.equal(parsePluginRegistry({ format: "other", version: 1, plugins: [] }), null);
+  assert.equal(parsePluginRegistry({ format: "yeader.plugin-registry", version: "1", plugins: [] }), null);
+  assert.equal(parsePluginRegistry({ format: "yeader.plugin-registry", version: 1, plugins: {} }), null);
 });
