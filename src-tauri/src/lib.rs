@@ -110,6 +110,8 @@ pub fn run() {
             library::get_reading_progress,
             library::save_reading_progress,
             search::search_books,
+            search::list_explore_categories,
+            search::explore_books,
             search::test_book_sources_availability,
             reader::fetch_book_info,
             reader::fetch_toc,

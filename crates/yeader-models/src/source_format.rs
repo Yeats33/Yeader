@@ -53,7 +53,37 @@ pub struct YeaderSource {
     #[serde(default)]
     pub variables: BTreeMap<String, String>,
     #[serde(default)]
+    pub explore_categories: Vec<YeaderExploreCategory>,
+    #[serde(default)]
     pub capabilities: Vec<YeaderCapability>,
+    #[serde(flatten, default)]
+    pub extra: Map<String, Value>,
+}
+
+/// A discoverable category/section exposed by a source's explore capability.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct YeaderExploreCategory {
+    pub key: String,
+    pub label: String,
+    #[serde(default)]
+    pub group: Option<String>,
+    #[serde(default)]
+    pub variables: BTreeMap<String, String>,
+    #[serde(default)]
+    pub order_options: Vec<YeaderExploreOrder>,
+    #[serde(flatten, default)]
+    pub extra: Map<String, Value>,
+}
+
+/// A sort/order variant available within an explore category.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct YeaderExploreOrder {
+    pub key: String,
+    pub label: String,
+    #[serde(default)]
+    pub variables: BTreeMap<String, String>,
     #[serde(flatten, default)]
     pub extra: Map<String, Value>,
 }
@@ -317,6 +347,7 @@ impl From<&LegacyBookSource> for YeaderSource {
                 timeout_ms: None,
             },
             variables: BTreeMap::new(),
+            explore_categories: Vec::new(),
             capabilities,
             extra: Map::new(),
         }
@@ -345,6 +376,7 @@ impl From<&LegacyRssSource> for YeaderSource {
             enabled: source.enabled,
             request_defaults: YeaderRequestDefaults::default(),
             variables: BTreeMap::new(),
+            explore_categories: Vec::new(),
             capabilities: vec![capability],
             extra: Map::new(),
         }

@@ -1172,6 +1172,7 @@ mod tests {
             enabled: true,
             request_defaults: YeaderRequestDefaults::default(),
             variables: Default::default(),
+            explore_categories: Vec::new(),
             capabilities: Vec::new(),
             extra: Map::new(),
         };
@@ -1205,6 +1206,7 @@ mod tests {
             enabled: false,
             request_defaults: YeaderRequestDefaults::default(),
             variables: Default::default(),
+            explore_categories: Vec::new(),
             capabilities: Vec::new(),
             extra: Map::new(),
         };

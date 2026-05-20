@@ -14,33 +14,89 @@
       "enabled": true,
       "requestDefaults": {
         "headers": {
-          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         },
         "encoding": "UTF-8",
         "timeoutMs": 15000
       },
       "variables": {},
+      "exploreCategories": [
+        {
+          "key": "xuanhuan", "label": "玄幻奇幻", "group": "分類",
+          "orderOptions": [
+            { "key": "new", "label": "最新", "variables": { "order": "" } },
+            { "key": "day", "label": "日榜", "variables": { "order": "/day" } },
+            { "key": "week", "label": "週榜", "variables": { "order": "/week" } },
+            { "key": "total", "label": "總榜", "variables": { "order": "/total" } },
+            { "key": "finish", "label": "完本", "variables": { "order": "/finish" } }
+          ]
+        },
+        { "key": "yanqing", "label": "言情", "group": "分類", "orderOptions": [
+          { "key": "new", "label": "最新", "variables": { "order": "" } },
+          { "key": "day", "label": "日榜", "variables": { "order": "/day" } },
+          { "key": "week", "label": "週榜", "variables": { "order": "/week" } },
+          { "key": "total", "label": "總榜", "variables": { "order": "/total" } },
+          { "key": "finish", "label": "完本", "variables": { "order": "/finish" } }
+        ] },
+        { "key": "xianxia", "label": "武俠仙俠", "group": "分類", "orderOptions": [
+          { "key": "new", "label": "最新", "variables": { "order": "" } },
+          { "key": "day", "label": "日榜", "variables": { "order": "/day" } },
+          { "key": "week", "label": "週榜", "variables": { "order": "/week" } },
+          { "key": "total", "label": "總榜", "variables": { "order": "/total" } },
+          { "key": "finish", "label": "完本", "variables": { "order": "/finish" } }
+        ] },
+        { "key": "lishi", "label": "軍事歷史", "group": "分類", "orderOptions": [
+          { "key": "new", "label": "最新", "variables": { "order": "" } },
+          { "key": "day", "label": "日榜", "variables": { "order": "/day" } },
+          { "key": "week", "label": "週榜", "variables": { "order": "/week" } },
+          { "key": "total", "label": "總榜", "variables": { "order": "/total" } },
+          { "key": "finish", "label": "完本", "variables": { "order": "/finish" } }
+        ] },
+        { "key": "wangyou", "label": "科幻未來", "group": "分類", "orderOptions": [
+          { "key": "new", "label": "最新", "variables": { "order": "" } },
+          { "key": "day", "label": "日榜", "variables": { "order": "/day" } },
+          { "key": "week", "label": "週榜", "variables": { "order": "/week" } },
+          { "key": "total", "label": "總榜", "variables": { "order": "/total" } },
+          { "key": "finish", "label": "完本", "variables": { "order": "/finish" } }
+        ] },
+        { "key": "lingyi", "label": "靈異玄幻", "group": "分類" },
+        { "key": "tongren", "label": "女生同人", "group": "分類" },
+        { "key": "erciyuan", "label": "原創同人", "group": "分類" },
+        { "key": "danmei", "label": "耽美", "group": "分類" },
+        { "key": "baihe", "label": "百合", "group": "分類" },
+        { "key": "japan", "label": "日系", "group": "分類" },
+        { "key": "fanatsy", "label": "奇幻冒險", "group": "分類" },
+        { "key": "drama", "label": "電視劇", "group": "分類" },
+        { "key": "herotic", "label": "情色工口", "group": "分類" },
+        { "key": "blerotic", "label": "耽美工口", "group": "分類" },
+        { "key": "classicbook", "label": "經典文學", "group": "分類" },
+        { "key": "suspense", "label": "推理", "group": "分類" },
+        { "key": "girl", "label": "女性向", "group": "分類" },
+        { "key": "short", "label": "短篇", "group": "分類" },
+        { "key": "normal", "label": "精選排行", "group": "排行榜" },
+        { "key": "all", "label": "人氣榜", "group": "排行榜" },
+        { "key": "favorite", "label": "收藏榜", "group": "排行榜" },
+        { "key": "finish", "label": "完本榜", "group": "排行榜" },
+        { "key": "hot", "label": "工口榜", "group": "排行榜" }
+      ],
       "capabilities": [
         {
           "kind": "search",
           "request": {
-            "url": "https://czbooks.net/s",
-            "method": "POST",
-            "headers": {
-              "Content-Type": "application/x-www-form-urlencoded",
-              "charset": "GBK"
-            },
-            "body": "type=articlename&s={{key}}&submit="
+            "url": "https://czbooks.net/s/{{key}}?q={{key}}",
+            "method": "GET"
           },
           "item": {
             "engine": "css",
-            "query": ".line"
+            "query": "ul.novel-list li.novel-item-wrapper"
           },
           "fields": {
-            "name": { "engine": "css", "query": "a:nth-of-type(1)@text" },
-            "author": { "engine": "css", "query": "a:nth-of-type(2)@text" },
-            "bookUrl": { "engine": "css", "query": "a:nth-of-type(1)@href" },
-            "coverUrl": { "engine": "css", "query": "img.cover@src", "fallback": [{ "engine": "text", "query": "" }] }
+            "name": { "engine": "css", "query": ".novel-item-title" },
+            "author": { "engine": "css", "query": ".novel-item-author a" },
+            "bookUrl": { "engine": "css", "query": ".novel-item-cover-wrapper a", "output": "href" },
+            "coverUrl": { "engine": "css", "query": ".novel-item-thumbnail img", "output": "src" },
+            "lastChapter": { "engine": "css", "query": ".novel-item-newest-chapter a" },
+            "kind": { "engine": "css", "query": ".novel-item-state" }
           }
         },
         {
@@ -88,18 +144,19 @@
         {
           "kind": "list",
           "request": {
-            "url": "https://czbooks.net/c/{{category}}"
+            "url": "https://czbooks.net/c/{{category}}{{order}}"
           },
           "item": {
             "engine": "css",
-            "query": ".novel-item"
+            "query": "ul.novel-list li.novel-item-wrapper"
           },
           "fields": {
-            "name": { "engine": "css", "query": ".novel-item-title@text" },
-            "author": { "engine": "css", "query": ".novel-item-author@text" },
-            "bookUrl": { "engine": "css", "query": "a@href" },
-            "coverUrl": { "engine": "css", "query": "img@src" },
-            "kind": { "engine": "css", "query": ".novel-item-state@text" }
+            "name": { "engine": "css", "query": ".novel-item-title" },
+            "author": { "engine": "css", "query": ".novel-item-author a" },
+            "bookUrl": { "engine": "css", "query": ".novel-item-cover-wrapper a", "output": "href" },
+            "coverUrl": { "engine": "css", "query": ".novel-item-thumbnail img", "output": "src" },
+            "lastChapter": { "engine": "css", "query": ".novel-item-newest-chapter a" },
+            "kind": { "engine": "css", "query": ".novel-item-state" }
           }
         }
       ]

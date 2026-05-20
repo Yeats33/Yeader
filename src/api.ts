@@ -4,6 +4,7 @@ import type {
   LegacyRssSource,
   LegacyReplaceRule,
   YeaderSource,
+  YeaderExploreCategory,
   Book,
   SearchResult,
   Chapter,
@@ -176,6 +177,32 @@ export async function searchBooks(
   return await invokeAdapter<SearchResult[]>("search_books", {
     sourceId,
     keyword,
+    page,
+  });
+}
+
+export async function listExploreCategories(
+  sourceId: string,
+): Promise<YeaderExploreCategory[]> {
+  try {
+    return await invokeAdapter<YeaderExploreCategory[]>("list_explore_categories", {
+      sourceId,
+    });
+  } catch {
+    return [];
+  }
+}
+
+export async function exploreBooks(
+  sourceId: string,
+  category: string,
+  variables: Record<string, string> = {},
+  page: number = 1,
+): Promise<SearchResult[]> {
+  return await invokeAdapter<SearchResult[]>("explore_books", {
+    sourceId,
+    category,
+    variables,
     page,
   });
 }

@@ -5,7 +5,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::State;
 use yeader_models::{
     BookInfo as ModelBookInfo, Chapter as ModelChapter, LegacyBookSource, SearchResult,
-    YeaderCapabilityKind, YeaderSelector, YeaderSelectorEngine, YeaderSource,
+    YeaderCapability, YeaderCapabilityKind, YeaderExploreCategory, YeaderSelector,
+    YeaderSelectorEngine, YeaderSource,
 };
 
 use crate::state::AppState;
@@ -59,9 +60,89 @@ pub async fn search_with_yeader_source(
             .map_err(|e| format!("HTTP error: {}", e))?
     };
 
-    let analyzer = yeader_rules::CssAnalyzer::new(&response.body);
+    Ok(extract_listing_results(source, search_cap, &response.body))
+}
 
-    let item_selector = search_cap
+/// Browse a source's `List` capability by category, optionally with order variables.
+pub async fn explore_with_yeader_source(
+    source: &YeaderSource,
+    category: &str,
+    variables: &BTreeMap<String, String>,
+    page: i32,
+) -> Result<Vec<SearchResult>, String> {
+    let list_cap = source
+        .capabilities
+        .iter()
+        .find(|c| c.kind == YeaderCapabilityKind::List)
+        .ok_or("Source has no list capability")?;
+
+    let request = list_cap
+        .request
+        .as_ref()
+        .ok_or("List capability has no request")?;
+
+    let mut substituted = request.url.clone();
+    let category_entry = source
+        .explore_categories
+        .iter()
+        .find(|c| c.key == category);
+    if let Some(entry) = category_entry {
+        for (key, value) in &entry.variables {
+            substituted = substituted.replace(&format!("{{{{{}}}}}", key), value);
+        }
+    }
+    for (key, value) in variables {
+        substituted = substituted.replace(&format!("{{{{{}}}}}", key), value);
+    }
+    substituted = substituted
+        .replace("{{category}}", category)
+        .replace("{{page}}", &page.to_string());
+    // Drop any unresolved placeholders so we don't issue a broken URL.
+    let cleaned = strip_unresolved_placeholders(&substituted);
+    let url = normalize_request_url(&cleaned, source.homepage.as_deref());
+
+    let headers = build_headers(source, &request.headers);
+    let response = client_get(source, &url, &headers).await?;
+
+    Ok(extract_listing_results(source, list_cap, &response.body))
+}
+
+fn strip_unresolved_placeholders(input: &str) -> String {
+    let mut output = String::with_capacity(input.len());
+    let mut rest = input;
+    while let Some(start) = rest.find("{{") {
+        output.push_str(&rest[..start]);
+        if let Some(end) = rest[start..].find("}}") {
+            rest = &rest[start + end + 2..];
+        } else {
+            output.push_str(&rest[start..]);
+            return output;
+        }
+    }
+    output.push_str(rest);
+    output
+}
+
+async fn client_get(
+    _source: &YeaderSource,
+    url: &str,
+    headers: &reqwest::header::HeaderMap,
+) -> Result<yeader_net::HttpResponse, String> {
+    let client = yeader_net::HttpClient::new();
+    client
+        .get(url, headers)
+        .await
+        .map_err(|e| format!("HTTP error: {}", e))
+}
+
+fn extract_listing_results(
+    source: &YeaderSource,
+    capability: &YeaderCapability,
+    body: &str,
+) -> Vec<SearchResult> {
+    let analyzer = yeader_rules::CssAnalyzer::new(body);
+
+    let item_selector = capability
         .item
         .as_ref()
         .filter(|i| i.engine == YeaderSelectorEngine::Css)
@@ -69,7 +150,7 @@ pub async fn search_with_yeader_source(
         .unwrap_or(".line");
 
     let elements = analyzer.get_elements(item_selector);
-    let fields = &search_cap.fields;
+    let fields = &capability.fields;
 
     let mut results = Vec::new();
     for el in elements {
@@ -85,6 +166,8 @@ pub async fn search_with_yeader_source(
         );
         let intro = extract_field(el, fields.get("intro"), "text");
         let kind = extract_field(el, fields.get("kind"), "text");
+        let last_chapter = extract_field(el, fields.get("lastChapter"), "text");
+        let word_count = extract_field(el, fields.get("wordCount"), "text");
 
         if !name.is_empty() || !book_url.is_empty() {
             results.push(SearchResult {
@@ -95,13 +178,13 @@ pub async fn search_with_yeader_source(
                 cover_url: Some(cover_url).filter(|s| !s.is_empty()),
                 intro: Some(intro).filter(|s| !s.is_empty()),
                 kind: Some(kind).filter(|s| !s.is_empty()),
-                last_chapter: None,
-                word_count: None,
+                last_chapter: Some(last_chapter).filter(|s| !s.is_empty()),
+                word_count: Some(word_count).filter(|s| !s.is_empty()),
             });
         }
     }
 
-    Ok(results)
+    results
 }
 
 pub async fn fetch_book_info_yeader(
@@ -691,6 +774,45 @@ pub async fn search_books(
     };
 
     search_with_yeader_source(&source, &keyword, _page).await
+}
+
+#[tauri::command]
+pub async fn list_explore_categories(
+    state: State<'_, AppState>,
+    source_id: String,
+) -> Result<Vec<YeaderExploreCategory>, String> {
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+    let repo = yeader_library::YeaderSourceRepo::new(&db);
+    let source = repo
+        .find_by_id(&source_id)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "Book source not found".to_string())?;
+    Ok(source.explore_categories)
+}
+
+#[tauri::command]
+pub async fn explore_books(
+    state: State<'_, AppState>,
+    source_id: String,
+    category: String,
+    variables: Option<BTreeMap<String, String>>,
+    page: Option<i32>,
+) -> Result<Vec<SearchResult>, String> {
+    let source = {
+        let db = state.db.lock().map_err(|e| e.to_string())?;
+        let repo = yeader_library::YeaderSourceRepo::new(&db);
+        repo.find_by_id(&source_id)
+            .map_err(|e| e.to_string())?
+            .ok_or_else(|| "Book source not found".to_string())?
+    };
+
+    explore_with_yeader_source(
+        &source,
+        &category,
+        &variables.unwrap_or_default(),
+        page.unwrap_or(1),
+    )
+    .await
 }
 
 #[tauri::command]

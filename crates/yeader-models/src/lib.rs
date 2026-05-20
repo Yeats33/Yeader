@@ -18,7 +18,7 @@ pub use library::{Book, BookGroup, BookId, BookInfo, Bookmark, Chapter, ReadingP
 pub use rule::{BookInfoRule, ContentRule, SearchRule, TocRule};
 pub use search::{SearchQuery, SearchResult};
 pub use source_format::{
-    YeaderAction, YeaderActionKind, YeaderCapability, YeaderCapabilityKind, YeaderMediaType,
-    YeaderPagination, YeaderRequest, YeaderRequestDefaults, YeaderSelector, YeaderSelectorEngine,
-    YeaderSource, YeaderSourcePack, parse_yeader_source_pack,
+    YeaderAction, YeaderActionKind, YeaderCapability, YeaderCapabilityKind, YeaderExploreCategory,
+    YeaderExploreOrder, YeaderMediaType, YeaderPagination, YeaderRequest, YeaderRequestDefaults,
+    YeaderSelector, YeaderSelectorEngine, YeaderSource, YeaderSourcePack, parse_yeader_source_pack,
 };

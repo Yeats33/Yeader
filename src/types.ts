@@ -107,7 +107,22 @@ export interface YeaderSource {
   enabled: boolean;
   requestDefaults?: YeaderRequestDefaults;
   variables?: Record<string, string>;
+  exploreCategories?: YeaderExploreCategory[];
   capabilities?: YeaderCapability[];
+}
+
+export interface YeaderExploreCategory {
+  key: string;
+  label: string;
+  group?: string;
+  variables?: Record<string, string>;
+  orderOptions?: YeaderExploreOrder[];
+}
+
+export interface YeaderExploreOrder {
+  key: string;
+  label: string;
+  variables?: Record<string, string>;
 }
 
 export interface YeaderRequestDefaults {
