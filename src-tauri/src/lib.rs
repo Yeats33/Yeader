@@ -79,7 +79,6 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            parse_legado_import_uri,
             dev::get_dev_mode_status,
             dev::toggle_dev_mode,
             dev::get_log_lines,
@@ -100,19 +99,10 @@ pub fn run() {
             integration::delete_so_novel_rule,
             integration::get_so_novel_active_rule,
             integration::set_so_novel_active_rule,
-            library::list_book_sources,
             library::list_yeader_sources,
             library::toggle_yeader_source,
             library::delete_yeader_source,
             library::import_yeader_source_pack_json,
-            library::load_book_sources_from_file,
-            library::import_book_sources_json,
-            library::import_book_sources_url,
-            library::import_book_sources_subscription,
-            library::list_replace_rules,
-            library::list_rss_sources,
-            library::delete_book_source,
-            library::toggle_book_source,
             library::list_books,
             library::get_book,
             library::add_book_to_shelf,
@@ -122,7 +112,6 @@ pub fn run() {
             search::search_books,
             search::list_explore_categories,
             search::explore_books,
-            search::test_book_sources_availability,
             reader::fetch_book_info,
             reader::fetch_toc,
             reader::fetch_content,
@@ -143,9 +132,4 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
-}
-
-#[tauri::command]
-fn parse_legado_import_uri(_uri: &str) -> Result<yeader_models::CompatImportArtifact, String> {
-    Err("旧书源兼容已暂时关闭，等待 Yeader 自有书源格式。".into())
 }
