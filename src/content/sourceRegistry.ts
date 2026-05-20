@@ -18,8 +18,8 @@ export interface SourceRegistryEntry {
   };
 }
 
-export const SOURCE_REGISTRY_REPOSITORY_URL = "https://github.com/Yeats33/YeaderPlugins";
-export const SOURCE_REGISTRY_URL = "https://raw.githubusercontent.com/Yeats33/YeaderPlugins/main/registry/sources.json";
+export const SOURCE_REGISTRY_REPOSITORY_URL = "https://github.com/Yeats33/YeaderHub";
+export const SOURCE_REGISTRY_URL = "https://raw.githubusercontent.com/Yeats33/YeaderHub/main/registry/sources.json";
 
 const SOURCE_REGISTRY_FORMAT = "yeader.source-registry";
 

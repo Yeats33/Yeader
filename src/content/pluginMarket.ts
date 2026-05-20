@@ -85,7 +85,7 @@ export interface PluginRegistryView {
 }
 
 const PLUGIN_REGISTRY_FORMAT = "yeader.plugin-registry";
-export const PLUGIN_REGISTRY_REPOSITORY_URL = "https://github.com/Yeats33/YeaderPlugins";
+export const PLUGIN_REGISTRY_REPOSITORY_URL = "https://github.com/Yeats33/YeaderHub";
 
 const BUNDLED_PLUGIN_REGISTRY_PREVIEW: PluginRegistry = {
   format: PLUGIN_REGISTRY_FORMAT,
@@ -179,7 +179,7 @@ const BUNDLED_PLUGIN_REGISTRY_PREVIEW: PluginRegistry = {
 export function getBundledPluginRegistryPreview(): PluginRegistryView {
   return {
     registry: BUNDLED_PLUGIN_REGISTRY_PREVIEW,
-    sourceLabel: "Yeats33/YeaderPlugins",
+    sourceLabel: "Yeats33/YeaderHub",
     sourceUrl: PLUGIN_REGISTRY_REPOSITORY_URL,
     readonly: true,
     installAvailable: false,

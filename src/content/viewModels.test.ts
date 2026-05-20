@@ -162,8 +162,8 @@ test("bundled plugin registry preview covers free and token activation previews"
   const entries = pluginRegistryEntries(registryView);
 
   assert.equal(registryView.registry.format, "yeader.plugin-registry");
-  assert.equal(registryView.sourceLabel, "Yeats33/YeaderPlugins");
-  assert.equal(registryView.sourceUrl, "https://github.com/Yeats33/YeaderPlugins");
+  assert.equal(registryView.sourceLabel, "Yeats33/YeaderHub");
+  assert.equal(registryView.sourceUrl, "https://github.com/Yeats33/YeaderHub");
   assert.equal(registryView.readonly, true);
   assert.equal(registryView.installAvailable, false);
   assert.equal(entries.length, 2);
