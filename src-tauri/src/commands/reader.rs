@@ -3,14 +3,12 @@ use tracing::{info, warn};
 use yeader_models::{BookInfo as ModelBookInfo, Chapter as ModelChapter};
 
 use crate::{
-    bookmark::{load_bookmark_from_local_storage, save_bookmark_to_local_storage},
     model::{BookMark, ReaderStyle},
     style::{load_style_from_local_storage, save_style_to_local_storage},
 };
 
 use super::search::{fetch_book_info_yeader, fetch_content_yeader, fetch_toc_yeader};
 use crate::state::AppState;
-
 
 #[tauri::command(rename_all = "camelCase")]
 pub async fn fetch_book_info(
@@ -154,6 +152,8 @@ pub async fn import_epub(
         group_id: None,
         book_type: Some("epub".to_string()),
         intro: None,
+        reading_progress: None,
+        reading_chapter: None,
         extra: {
             let mut map = serde_json::Map::new();
             map.insert(
@@ -221,10 +221,8 @@ pub async fn import_epub_url(
     let book_id = Uuid::new_v4().to_string();
     let app_dir = state.app_dir.clone();
     let temp_path = app_dir.join("temp_epub").join(format!("{}.epub", book_id));
-    std::fs::create_dir_all(
-        temp_path.parent().ok_or("Invalid temp path")?,
-    )
-    .map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(temp_path.parent().ok_or("Invalid temp path")?)
+        .map_err(|e| e.to_string())?;
     let mut file = std::fs::File::create(&temp_path).map_err(|e| e.to_string())?;
     file.write_all(&bytes).map_err(|e| e.to_string())?;
 
@@ -233,10 +231,8 @@ pub async fn import_epub_url(
         .join("epub_library")
         .join(&book_id)
         .join(format!("{}.epub", book_id));
-    std::fs::create_dir_all(
-        dest_path.parent().ok_or("Invalid dest path")?,
-    )
-    .map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(dest_path.parent().ok_or("Invalid dest path")?)
+        .map_err(|e| e.to_string())?;
     std::fs::copy(&temp_path, &dest_path).map_err(|e| e.to_string())?;
     std::fs::remove_file(&temp_path).ok();
 
@@ -284,6 +280,8 @@ pub async fn import_epub_url(
         group_id: None,
         book_type: Some("epub".to_string()),
         intro: None,
+        reading_progress: None,
+        reading_chapter: None,
         extra: {
             let mut map = serde_json::Map::new();
             map.insert(
@@ -450,43 +448,40 @@ pub async fn get_reader_style(app_handle: AppHandle) -> Result<ReaderStyle, Stri
     load_style_from_local_storage(&app_handle).await
 }
 
-fn validate_book_path(state: &AppState, book_path: &str) -> Result<(), String> {
-    let epub_library = state.app_dir.join("epub_library");
-    let path = std::path::Path::new(book_path);
-    if !path.starts_with(&epub_library) {
-        return Err("Invalid book path: must be within epub_library".to_string());
-    }
-    Ok(())
-}
-
 #[tauri::command]
 pub async fn save_bookmark(
     state: State<'_, AppState>,
     book_path: String,
     page: u32,
     content: String,
-    width: u32,
-    height: u32,
+    _width: u32,
+    _height: u32,
     cfi: String,
+    offset: Option<u32>,
     action: Option<u32>,
 ) -> Result<String, String> {
-    validate_book_path(&state, &book_path)?;
+    let offset = offset.unwrap_or_else(|| cfi.parse::<u32>().unwrap_or(0));
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+    let repo = yeader_library::BookmarkRepo::new(&db);
 
-    let mut bookmark = match load_bookmark_from_local_storage(&book_path).await {
-        Ok(bm) => bm,
-        Err(_) => BookMark::new(book_path.clone()),
-    };
-
-    match action {
-        Some(1) => {
-            bookmark.remove_mark(page);
-        }
-        _ => {
-            bookmark.add_mark(page, content, width, height, cfi);
-        }
+    if action == Some(1) {
+        repo.delete_at_position(&book_path, page as usize, offset as usize)
+            .map_err(|e| e.to_string())?;
+    } else {
+        let bookmark = yeader_models::Bookmark {
+            id: 0,
+            book_url: book_path.clone(),
+            chapter_index: page as usize,
+            chapter_title: content,
+            offset: offset as usize,
+            note: if cfi.is_empty() { None } else { Some(cfi) },
+            created_at: chrono::Utc::now().to_rfc3339(),
+        };
+        repo.save_at_position(&bookmark)
+            .map_err(|e| e.to_string())?;
     }
 
-    save_bookmark_to_local_storage(&bookmark).await
+    Ok(book_path)
 }
 
 #[tauri::command]
@@ -494,6 +489,18 @@ pub async fn get_bookmark(
     state: State<'_, AppState>,
     book_path: String,
 ) -> Result<BookMark, String> {
-    validate_book_path(&state, &book_path)?;
-    load_bookmark_from_local_storage(&book_path).await
+    let db = state.db.lock().map_err(|e| e.to_string())?;
+    let repo = yeader_library::BookmarkRepo::new(&db);
+    let bookmarks = repo.list_by_book(&book_path).map_err(|e| e.to_string())?;
+    let mut result = BookMark::new(book_path);
+    for bookmark in bookmarks {
+        result.add_mark(
+            bookmark.chapter_index as u32,
+            bookmark.chapter_title,
+            0,
+            0,
+            bookmark.offset.to_string(),
+        );
+    }
+    Ok(result)
 }

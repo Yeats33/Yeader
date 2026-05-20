@@ -70,15 +70,16 @@ test("describeBookCards shows progress text correctly", () => {
   }], "grid");
   assert.equal(withProgress.includes("阅读至第 10 章"), true, "should show chapter progress");
 
-  // No total chapters = percentage
-  const withPercent = describeBookCards([{
+  // Reading progress is a 1-based chapter position even when total chapters are unknown
+  const withUnknownTotal = describeBookCards([{
     url: "https://x.com/b",
     name: "Test",
     author: "Author",
     source_url: "https://x.com",
     reading_progress: 75,
+    reading_chapter: "终章",
   }], "grid");
-  assert.equal(withPercent.includes("阅读 75%"), true, "should show percentage");
+  assert.equal(withUnknownTotal.includes("阅读至第 75 章 · 终章"), true, "should show chapter progress");
 });
 
 test("describeBookCards renders cover or placeholder", () => {

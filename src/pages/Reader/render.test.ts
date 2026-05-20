@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { renderReaderContent } from "./render.ts";
+import { renderBookmarkListItems, renderReaderContent } from "./render.ts";
 import { createInitialState } from "./types.ts";
 
 test("renderReaderContent includes reader search controls", () => {
@@ -83,6 +83,24 @@ test("renderReaderContent escapes toc chapter titles", () => {
   const html = renderReaderContent(state);
 
   assert.equal(html.includes("&lt;书名&gt;"), true);
+  assert.equal(html.includes("&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;"), true);
+  assert.equal(html.includes("<script>"), false);
+});
+
+test("renderBookmarkListItems shows saved scroll offset and escapes content", () => {
+  const state = createInitialState();
+  state.bookmarks = [
+    {
+      page: 1,
+      content: '<script>alert("x")</script>',
+      cfi: "",
+      offset: 320,
+    },
+  ];
+
+  const html = renderBookmarkListItems(state);
+
+  assert.equal(html.includes("第2章 · 位置 320"), true);
   assert.equal(html.includes("&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;"), true);
   assert.equal(html.includes("<script>"), false);
 });

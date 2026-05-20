@@ -16,6 +16,7 @@ import {
   listBookSources,
   listBooks,
   resetInvokeAdapterForTests,
+  saveBookmark,
   setBookSourcesEnabled,
   setInvokeAdapterForTests,
   testBookSourcesAvailability,
@@ -105,6 +106,48 @@ test("listBookSources reads data from injected invoke adapter", async () => {
   const sources = await listBookSources();
   assert.equal(sources.length, 2);
   assert.equal(sources[0]?.bookSourceName, "源 A");
+});
+
+test("saveBookmark passes offset and delete action to Tauri", async () => {
+  resetInvokeAdapterForTests();
+  const calls: Array<{ command: string; args: InvokeArgs }> = [];
+
+  setInvokeAdapterForTests(async <T>(command: string, args?: InvokeArgs): Promise<T> => {
+    calls.push({ command, args });
+    return "book-1" as T;
+  });
+
+  await saveBookmark("book-1", 2, "第二章", 800, 600, "", 120);
+  await saveBookmark("book-1", 2, "第二章", 800, 600, "", 120, 1);
+
+  assert.equal(JSON.stringify(calls), JSON.stringify([
+    {
+      command: "save_bookmark",
+      args: {
+        bookPath: "book-1",
+        page: 2,
+        content: "第二章",
+        width: 800,
+        height: 600,
+        cfi: "",
+        offset: 120,
+        action: undefined,
+      },
+    },
+    {
+      command: "save_bookmark",
+      args: {
+        bookPath: "book-1",
+        page: 2,
+        content: "第二章",
+        width: 800,
+        height: 600,
+        cfi: "",
+        offset: 120,
+        action: 1,
+      },
+    },
+  ]));
 });
 
 test("listBooks reads data from injected invoke adapter", async () => {

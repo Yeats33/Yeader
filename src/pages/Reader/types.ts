@@ -6,6 +6,7 @@ export interface Bookmark {
   page: number;
   content: string;
   cfi: string;
+  offset: number;
 }
 
 export interface ReaderState {

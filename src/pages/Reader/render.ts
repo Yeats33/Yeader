@@ -30,7 +30,6 @@ export function renderReaderContent(state: ReaderState): string {
     showToc,
     showSettings,
     showBookmarks,
-    bookmarks,
     chineseScript,
   } = state;
   const currentChapter = chapters[currentChapterIndex];
@@ -105,18 +104,7 @@ export function renderReaderContent(state: ReaderState): string {
         </div>
         <button class="btn-save-bookmark" id="save-bookmark-btn">保存当前书签</button>
         <ul class="bookmark-list">
-          ${bookmarks.length === 0 ? '<li class="no-bookmarks">暂无书签</li>' : ""}
-          ${bookmarks
-            .map(
-              (bm, i) => `
-            <li class="bookmark-item" data-index="${i}">
-              <span class="bookmark-page">第${bm.page + 1}章</span>
-              <span class="bookmark-content-text">${bm.content || "无描述"}</span>
-              <span class="bookmark-delete" data-index="${i}">&#x2715;</span>
-            </li>
-          `,
-            )
-            .join("")}
+          ${renderBookmarkListItems(state)}
         </ul>
       </div>
 
@@ -166,4 +154,24 @@ export function renderReaderContent(state: ReaderState): string {
       </div>
     </div>
   `;
+}
+
+export function renderBookmarkListItems(state: ReaderState): string {
+  const { bookmarks } = state;
+  if (bookmarks.length === 0) {
+    return '<li class="no-bookmarks">暂无书签</li>';
+  }
+
+  return bookmarks
+    .map((bm, i) => {
+      const position = bm.offset > 0 ? ` · 位置 ${bm.offset}` : "";
+      return `
+            <li class="bookmark-item" data-index="${i}">
+              <span class="bookmark-page">第${bm.page + 1}章${position}</span>
+              <span class="bookmark-content-text">${escapeHtml(bm.content || "无描述")}</span>
+              <button class="bookmark-delete" data-index="${i}" type="button" title="删除">&#x2715;</button>
+            </li>
+          `;
+    })
+    .join("");
 }

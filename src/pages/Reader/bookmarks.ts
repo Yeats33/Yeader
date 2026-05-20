@@ -12,6 +12,7 @@ export async function loadBookmarks(state: ReaderState): Promise<void> {
         page: m.page,
         content: m.content,
         cfi: m.cfi,
+        offset: m.offset ?? (Number.parseInt(m.cfi, 10) || 0),
       }));
     }
   } catch {
@@ -30,6 +31,7 @@ export async function saveCurrentBookmark(state: ReaderState): Promise<void> {
       window.innerWidth,
       window.innerHeight,
       state.currentCfi,
+      Math.max(0, Math.round(state.currentOffset)),
     );
     await loadBookmarks(state);
   } catch {
@@ -47,6 +49,7 @@ export async function deleteBookmark(state: ReaderState, index: number): Promise
       window.innerWidth,
       window.innerHeight,
       bookmark.cfi,
+      bookmark.offset,
       1, // action: 1 = delete
     );
     await loadBookmarks(state);

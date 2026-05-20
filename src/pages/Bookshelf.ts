@@ -30,12 +30,13 @@ function escapeHtml(str: string): string {
 function describeBookCard(book: Book): string {
   const progress = book.reading_progress ?? 0;
   const total = book.total_chapters ?? 0;
+  const chapterTitle = book.reading_chapter ? ` · ${escapeHtml(book.reading_chapter)}` : "";
   const progressText =
     progress === 0
       ? "待阅读"
       : total > 0
-        ? `阅读至第 ${progress} 章`
-        : `阅读 ${progress}%`;
+        ? `阅读至第 ${progress} 章${chapterTitle}`
+        : `阅读至第 ${progress} 章${chapterTitle}`;
 
   const name = escapeHtml(book.name);
   const author = escapeHtml(book.author);
@@ -64,12 +65,13 @@ function describeBookCard(book: Book): string {
 function describeBookListItem(book: Book): string {
   const progress = book.reading_progress ?? 0;
   const total = book.total_chapters ?? 0;
+  const chapterTitle = book.reading_chapter ? ` · ${escapeHtml(book.reading_chapter)}` : "";
   const progressText =
     progress === 0
       ? "待阅读"
       : total > 0
-        ? `阅读至第 ${progress} 章`
-        : `阅读 ${progress}%`;
+        ? `阅读至第 ${progress} 章${chapterTitle}`
+        : `阅读至第 ${progress} 章${chapterTitle}`;
 
   const name = escapeHtml(book.name);
   const author = escapeHtml(book.author);

@@ -14,7 +14,7 @@ import { IntegrationPage } from "./pages/Integration.tsx";
 import { renderSoNovelWebuiPage, initSoNovelWebuiHandlers } from "./pages/SoNovelWebui.ts";
 import { SoNovelConfigPage } from "./pages/SoNovelConfig.tsx";
 import { SoNovelRulesPage } from "./pages/SoNovelRules.tsx";
-import { renderSettingsPage, initSettingsHandlers } from "./pages/Settings.ts";
+import { SettingsPage } from "./pages/Settings.tsx";
 import { AccountPage } from "./pages/Account.tsx";
 import { renderOnlineReaderPage, initOnlineReader } from "./pages/OnlineReader/index.ts";
 import { renderOnlineChapterPage, initOnlineChapter } from "./pages/OnlineReader/chapter.ts";
@@ -58,10 +58,7 @@ function resolvePage(routePath: string): LegacyPageDefinition | null {
   }
 
   if (matchRoute("/settings", { path: routePath })) {
-    return {
-      render: renderSettingsPage,
-      init: initSettingsHandlers,
-    };
+    return null;
   }
 
   if (matchRoute("/source-ops", { path: routePath })) {
@@ -140,7 +137,7 @@ export function App() {
 
   return (
     <>
-      {route.path === "/account" ? <AccountPage /> : route.path === "/integration" ? <IntegrationPage /> : route.path === "/integration/so-novel/config" ? <SoNovelConfigPage /> : route.path === "/integration/so-novel/rules" ? <SoNovelRulesPage /> : page ? <LegacyPage page={page} routeKey={route.path} /> : <NotFoundPage />}
+      {route.path === "/account" ? <AccountPage /> : route.path === "/settings" ? <SettingsPage /> : route.path === "/integration" ? <IntegrationPage /> : route.path === "/integration/so-novel/config" ? <SoNovelConfigPage /> : route.path === "/integration/so-novel/rules" ? <SoNovelRulesPage /> : page ? <LegacyPage page={page} routeKey={route.path} /> : <NotFoundPage />}
       {!hideNav ? <NavBar routePath={route.path} /> : null}
     </>
   );

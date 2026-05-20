@@ -284,6 +284,22 @@ impl<'a> YeaderSourceRepo<'a> {
         })?;
         rows.next().transpose()
     }
+
+    pub fn set_enabled(&self, id: &str, enabled: bool) -> rusqlite::Result<bool> {
+        let affected = self.db.conn().execute(
+            "UPDATE yeader_sources SET enabled = ?1 WHERE id = ?2",
+            params![enabled as i32, id],
+        )?;
+        Ok(affected > 0)
+    }
+
+    pub fn delete(&self, id: &str) -> rusqlite::Result<bool> {
+        let affected = self
+            .db
+            .conn()
+            .execute("DELETE FROM yeader_sources WHERE id = ?1", params![id])?;
+        Ok(affected > 0)
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -609,13 +625,19 @@ impl<'a> BookRepo<'a> {
 
     pub fn list_all(&self) -> rusqlite::Result<Vec<Book>> {
         let mut stmt = self.0.conn().prepare(
-            "SELECT url, name, author, cover_url, source_url, toc_url, last_read_at, group_id, book_type, intro, extra
-             FROM books ORDER BY last_read_at DESC NULLS LAST, name",
+            "SELECT b.url, b.name, b.author, b.cover_url, b.source_url, b.toc_url, b.last_read_at,
+                    b.group_id, b.book_type, b.intro, b.extra,
+                    rp.chapter_index, rp.chapter_title
+             FROM books b
+             LEFT JOIN reading_progress rp ON rp.book_id = b.url
+             ORDER BY b.last_read_at DESC NULLS LAST, b.name",
         )?;
         let rows = stmt.query_map([], |row| {
             let extra_str: String = row.get(10)?;
             let extra: Map<String, serde_json::Value> =
                 serde_json::from_str(&extra_str).unwrap_or_default();
+            let chapter_index: Option<i64> = row.get(11)?;
+            let chapter_title: Option<String> = row.get(12)?;
             Ok(Book {
                 url: row.get(0)?,
                 name: row.get(1)?,
@@ -627,6 +649,8 @@ impl<'a> BookRepo<'a> {
                 group_id: row.get(7)?,
                 book_type: row.get(8)?,
                 intro: row.get(9)?,
+                reading_progress: chapter_index.map(|index| index.max(0) as usize + 1),
+                reading_chapter: chapter_title.filter(|title| !title.is_empty()),
                 extra,
             })
         })?;
@@ -635,13 +659,19 @@ impl<'a> BookRepo<'a> {
 
     pub fn find_by_url(&self, url: &str) -> rusqlite::Result<Option<Book>> {
         let mut stmt = self.0.conn().prepare(
-            "SELECT url, name, author, cover_url, source_url, toc_url, last_read_at, group_id, book_type, intro, extra
-             FROM books WHERE url = ?1",
+            "SELECT b.url, b.name, b.author, b.cover_url, b.source_url, b.toc_url, b.last_read_at,
+                    b.group_id, b.book_type, b.intro, b.extra,
+                    rp.chapter_index, rp.chapter_title
+             FROM books b
+             LEFT JOIN reading_progress rp ON rp.book_id = b.url
+             WHERE b.url = ?1",
         )?;
         let mut rows = stmt.query_map(params![url], |row| {
             let extra_str: String = row.get(10)?;
             let extra: Map<String, serde_json::Value> =
                 serde_json::from_str(&extra_str).unwrap_or_default();
+            let chapter_index: Option<i64> = row.get(11)?;
+            let chapter_title: Option<String> = row.get(12)?;
             Ok(Book {
                 url: row.get(0)?,
                 name: row.get(1)?,
@@ -653,6 +683,8 @@ impl<'a> BookRepo<'a> {
                 group_id: row.get(7)?,
                 book_type: row.get(8)?,
                 intro: row.get(9)?,
+                reading_progress: chapter_index.map(|index| index.max(0) as usize + 1),
+                reading_chapter: chapter_title.filter(|title| !title.is_empty()),
                 extra,
             })
         })?;
@@ -669,13 +701,19 @@ impl<'a> BookRepo<'a> {
 
     pub fn list_by_group(&self, group_id: i64) -> rusqlite::Result<Vec<Book>> {
         let mut stmt = self.0.conn().prepare(
-            "SELECT url, name, author, cover_url, source_url, toc_url, last_read_at, group_id, book_type, intro, extra
-             FROM books WHERE group_id = ?1 ORDER BY name",
+            "SELECT b.url, b.name, b.author, b.cover_url, b.source_url, b.toc_url, b.last_read_at,
+                    b.group_id, b.book_type, b.intro, b.extra,
+                    rp.chapter_index, rp.chapter_title
+             FROM books b
+             LEFT JOIN reading_progress rp ON rp.book_id = b.url
+             WHERE b.group_id = ?1 ORDER BY b.name",
         )?;
         let rows = stmt.query_map(params![group_id], |row| {
             let extra_str: String = row.get(10)?;
             let extra: Map<String, serde_json::Value> =
                 serde_json::from_str(&extra_str).unwrap_or_default();
+            let chapter_index: Option<i64> = row.get(11)?;
+            let chapter_title: Option<String> = row.get(12)?;
             Ok(Book {
                 url: row.get(0)?,
                 name: row.get(1)?,
@@ -687,6 +725,8 @@ impl<'a> BookRepo<'a> {
                 group_id: row.get(7)?,
                 book_type: row.get(8)?,
                 intro: row.get(9)?,
+                reading_progress: chapter_index.map(|index| index.max(0) as usize + 1),
+                reading_chapter: chapter_title.filter(|title| !title.is_empty()),
                 extra,
             })
         })?;
@@ -823,6 +863,39 @@ impl<'a> BookmarkRepo<'a> {
             "DELETE FROM bookmarks WHERE book_url = ?1",
             params![book_url],
         )
+    }
+
+    pub fn save_at_position(&self, b: &Bookmark) -> rusqlite::Result<()> {
+        self.0.conn().execute(
+            "DELETE FROM bookmarks WHERE book_url = ?1 AND chapter_index = ?2 AND offset = ?3",
+            params![b.book_url, b.chapter_index as i64, b.offset as i64],
+        )?;
+        self.0.conn().execute(
+            "INSERT INTO bookmarks (book_url, chapter_index, chapter_title, offset, note, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![
+                b.book_url,
+                b.chapter_index as i64,
+                b.chapter_title,
+                b.offset as i64,
+                b.note,
+                b.created_at,
+            ],
+        )?;
+        Ok(())
+    }
+
+    pub fn delete_at_position(
+        &self,
+        book_url: &str,
+        chapter_index: usize,
+        offset: usize,
+    ) -> rusqlite::Result<bool> {
+        let count = self.0.conn().execute(
+            "DELETE FROM bookmarks WHERE book_url = ?1 AND chapter_index = ?2 AND offset = ?3",
+            params![book_url, chapter_index as i64, offset as i64],
+        )?;
+        Ok(count > 0)
     }
 }
 
@@ -1334,6 +1407,8 @@ mod tests {
             group_id: None,
             book_type: Some("novel".into()),
             intro: Some("A great book.".into()),
+            reading_progress: None,
+            reading_chapter: None,
             extra: Map::new(),
         };
 
@@ -1359,6 +1434,8 @@ mod tests {
             group_id: None,
             book_type: None,
             intro: None,
+            reading_progress: None,
+            reading_chapter: None,
             extra: Map::new(),
         };
         repo.upsert(&book).unwrap();
@@ -1392,6 +1469,8 @@ mod tests {
             group_id: None,
             book_type: None,
             intro: None,
+            reading_progress: None,
+            reading_chapter: None,
             extra: Map::new(),
         };
         repo.upsert(&book).unwrap();
@@ -1400,6 +1479,46 @@ mod tests {
                 .unwrap()
                 .is_some()
         );
+    }
+
+    #[test]
+    fn book_list_includes_reading_progress() {
+        let db = test_db();
+        let book_repo = BookRepo::new(&db);
+        let progress_repo = ReadingProgressRepo::new(&db);
+
+        let book = Book {
+            url: "https://example.com/book/progress".into(),
+            name: "Progress".into(),
+            author: String::new(),
+            cover_url: None,
+            source_url: "https://source.com".into(),
+            toc_url: None,
+            last_read_at: None,
+            group_id: None,
+            book_type: None,
+            intro: None,
+            reading_progress: None,
+            reading_chapter: None,
+            extra: Map::new(),
+        };
+        book_repo.upsert(&book).unwrap();
+        progress_repo
+            .upsert(&ReadingProgress {
+                book_id: book.url.clone(),
+                chapter_index: 4,
+                chapter_title: "第五章".into(),
+                offset: 120,
+            })
+            .unwrap();
+
+        let found = book_repo.find_by_url(&book.url).unwrap().unwrap();
+        assert_eq!(found.reading_progress, Some(5));
+        assert_eq!(found.reading_chapter.as_deref(), Some("第五章"));
+
+        let all = book_repo.list_all().unwrap();
+        assert_eq!(all[0].reading_progress, Some(5));
+        assert_eq!(all[0].reading_chapter.as_deref(), Some("第五章"));
     }
 
     #[test]
@@ -1418,6 +1537,8 @@ mod tests {
             group_id: None,
             book_type: None,
             intro: None,
+            reading_progress: None,
+            reading_chapter: None,
             extra: Map::new(),
         };
         repo.upsert(&book).unwrap();
@@ -1442,6 +1563,8 @@ mod tests {
             group_id: Some(1),
             book_type: None,
             intro: None,
+            reading_progress: None,
+            reading_chapter: None,
             extra: Map::new(),
         })
         .unwrap();
@@ -1456,6 +1579,8 @@ mod tests {
             group_id: Some(2),
             book_type: None,
             intro: None,
+            reading_progress: None,
+            reading_chapter: None,
             extra: Map::new(),
         })
         .unwrap();
@@ -1539,6 +1664,43 @@ mod tests {
         let all = repo.list_by_book("https://example.com/book/1").unwrap();
         assert_eq!(all.len(), 1);
         assert_eq!(all[0].chapter_title, "Chapter 3");
+    }
+
+    #[test]
+    fn bookmark_save_at_position_replaces_same_position() {
+        let db = test_db();
+        let repo = BookmarkRepo::new(&db);
+
+        let first = Bookmark {
+            id: 0,
+            book_url: "https://example.com/book/1".into(),
+            chapter_index: 2,
+            chapter_title: "Old".into(),
+            offset: 50,
+            note: None,
+            created_at: "2026-01-01T00:00:00Z".into(),
+        };
+        repo.save_at_position(&first).unwrap();
+
+        let second = Bookmark {
+            chapter_title: "New".into(),
+            created_at: "2026-01-01T00:00:01Z".into(),
+            ..first
+        };
+        repo.save_at_position(&second).unwrap();
+
+        let all = repo.list_by_book("https://example.com/book/1").unwrap();
+        assert_eq!(all.len(), 1);
+        assert_eq!(all[0].chapter_title, "New");
+        assert!(
+            repo.delete_at_position("https://example.com/book/1", 2, 50)
+                .unwrap()
+        );
+        assert!(
+            repo.list_by_book("https://example.com/book/1")
+                .unwrap()
+                .is_empty()
+        );
     }
 
     #[test]

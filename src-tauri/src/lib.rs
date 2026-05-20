@@ -1,6 +1,5 @@
 //! Tauri application entry point.
 
-mod bookmark;
 mod commands;
 mod logging;
 mod model;
@@ -58,7 +57,7 @@ pub fn run() {
                                 pack.sources.len()
                             );
                         }
-                    }
+                }
 
             tracing::info!("Yeader initialized successfully");
 
@@ -93,6 +92,8 @@ pub fn run() {
             integration::set_so_novel_active_rule,
             library::list_book_sources,
             library::list_yeader_sources,
+            library::toggle_yeader_source,
+            library::delete_yeader_source,
             library::import_yeader_source_pack_json,
             library::load_book_sources_from_file,
             library::import_book_sources_json,

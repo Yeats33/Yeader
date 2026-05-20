@@ -41,6 +41,12 @@ pub struct Book {
     /// Book introduction / description.
     #[serde(default)]
     pub intro: Option<String>,
+    /// 1-based chapter number currently being read.
+    #[serde(default)]
+    pub reading_progress: Option<usize>,
+    /// Title of the currently reading chapter.
+    #[serde(default)]
+    pub reading_chapter: Option<String>,
     /// Arbitrary extra fields serialised as JSON.
     #[serde(default)]
     pub extra: Map<String, serde_json::Value>,

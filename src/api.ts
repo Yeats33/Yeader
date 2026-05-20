@@ -39,6 +39,14 @@ export async function listYeaderSources(): Promise<YeaderSource[]> {
   return await invokeAdapter<YeaderSource[]>("list_yeader_sources");
 }
 
+export async function toggleYeaderSource(id: string, enabled: boolean): Promise<boolean> {
+  return await invokeAdapter<boolean>("toggle_yeader_source", { id, enabled });
+}
+
+export async function deleteYeaderSource(id: string): Promise<boolean> {
+  return await invokeAdapter<boolean>("delete_yeader_source", { id });
+}
+
 export async function importYeaderSourcePackJson(
   json: string,
 ): Promise<YeaderSource[]> {
@@ -363,6 +371,7 @@ export async function saveBookmark(
   width: number,
   height: number,
   cfi: string,
+  offset?: number,
   action?: number,
 ): Promise<string> {
   return await invokeAdapter<string>("save_bookmark", {
@@ -372,6 +381,7 @@ export async function saveBookmark(
     width,
     height,
     cfi,
+    offset,
     action,
   });
 }

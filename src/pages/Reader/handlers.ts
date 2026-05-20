@@ -12,6 +12,7 @@ export async function initReaderHandlers(
   const { applyReaderStyle, applyReaderStyleToContent, saveReaderStyleSettings } = await import("./style.ts");
   const { saveCurrentBookmark, deleteBookmark } = await import("./bookmarks.ts");
   const { saveCurrentReadingProgress } = await import("./chapter.ts");
+  const { renderBookmarkListItems } = await import("./render.ts");
   let progressSaveTimer: number | undefined;
 
   const scheduleProgressSave = () => {
@@ -33,14 +34,14 @@ export async function initReaderHandlers(
     await saveCurrentReadingProgress(state);
   };
 
-  const goToChapter = async (chapterIndex: number): Promise<void> => {
+  const goToChapter = async (chapterIndex: number, offset = 0): Promise<void> => {
     if (chapterIndex < 0 || chapterIndex >= state.chapters.length) return;
     if (readerBody) {
       state.currentOffset = readerBody.scrollTop;
       await flushProgressSave();
     }
     state.currentChapterIndex = chapterIndex;
-    state.currentOffset = 0;
+    state.currentOffset = Math.max(0, Math.round(offset));
     await loadCurrentChapter(container);
     updateChapterSearch();
   };
@@ -72,6 +73,36 @@ export async function initReaderHandlers(
   const chapterSearchNext = container.querySelector<HTMLButtonElement>("#chapter-search-next");
   const chapterSearchCount = container.querySelector<HTMLElement>("#chapter-search-count");
   let chapterSearchTimer: number | undefined;
+
+  const attachBookmarkItemHandlers = () => {
+    container.querySelectorAll<HTMLElement>(".bookmark-delete").forEach((el) => {
+      el.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const index = parseInt(el.dataset.index!);
+        await deleteBookmark(state, index);
+        refreshBookmarkList();
+      });
+    });
+
+    container.querySelectorAll<HTMLElement>(".bookmark-item").forEach((el) => {
+      el.addEventListener("click", () => {
+        const index = parseInt(el.dataset.index!);
+        const bookmark = state.bookmarks[index];
+        if (bookmark) {
+          state.showBookmarks = false;
+          bookmarksPanel?.classList.add("hidden");
+          goToChapter(bookmark.page, bookmark.offset);
+        }
+      });
+    });
+  };
+
+  const refreshBookmarkList = () => {
+    const list = container.querySelector<HTMLElement>(".bookmark-list");
+    if (!list) return;
+    list.innerHTML = renderBookmarkListItems(state);
+    attachBookmarkItemHandlers();
+  };
 
   const scrollCurrentTocItemIntoView = () => {
     const currentItem = container.querySelector<HTMLElement>(
@@ -392,30 +423,16 @@ export async function initReaderHandlers(
     bookmarksPanel?.classList.add("hidden");
   });
 
-  saveBookmarkBtn?.addEventListener("click", (e) => {
+  saveBookmarkBtn?.addEventListener("click", async (e) => {
     e.stopPropagation();
-    saveCurrentBookmark(state);
+    if (readerBody) {
+      state.currentOffset = readerBody.scrollTop;
+    }
+    await saveCurrentBookmark(state);
+    refreshBookmarkList();
   });
 
-  container.querySelectorAll<HTMLElement>(".bookmark-delete").forEach((el) => {
-    el.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const index = parseInt(el.dataset.index!);
-      deleteBookmark(state, index);
-    });
-  });
-
-  container.querySelectorAll<HTMLElement>(".bookmark-item").forEach((el) => {
-    el.addEventListener("click", () => {
-      const index = parseInt(el.dataset.index!);
-      const bookmark = state.bookmarks[index];
-      if (bookmark) {
-        state.showBookmarks = false;
-        bookmarksPanel?.classList.add("hidden");
-        goToChapter(bookmark.page);
-      }
-    });
-  });
+  attachBookmarkItemHandlers();
 
   // Keyboard shortcuts
   container.addEventListener("keydown", (e: KeyboardEvent) => {
@@ -450,7 +467,10 @@ export async function initReaderHandlers(
         settingsPanel?.classList.toggle("hidden", !state.showSettings);
         break;
       case "m":
-        saveCurrentBookmark(state);
+        if (readerBody) {
+          state.currentOffset = readerBody.scrollTop;
+        }
+        saveCurrentBookmark(state).then(refreshBookmarkList);
         break;
       case "+":
       case "=":

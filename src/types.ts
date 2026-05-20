@@ -160,7 +160,7 @@ export interface Book {
   type?: number;
   intro?: string;
   total_chapters?: number;
-  reading_chapter?: number;
+  reading_chapter?: string;
   reading_progress?: number;
   extra?: Record<string, unknown>;
 }
@@ -242,6 +242,7 @@ export interface Mark {
   width: number;
   height: number;
   cfi: string;
+  offset?: number;
 }
 
 export interface BookMark {
