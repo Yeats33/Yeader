@@ -27,6 +27,7 @@ export function renderReaderContent(state: ReaderState): string {
     lineHeight,
     fontFamily,
     theme,
+    colorModePreference,
     showToc,
     showSettings,
     showBookmarks,
@@ -126,11 +127,19 @@ export function renderReaderContent(state: ReaderState): string {
           <span id="line-height-val">${lineHeight}</span>
         </div>
         <div class="setting-row">
-          <label>主题</label>
+          <label>阅读背景</label>
           <div class="theme-selector">
             <button class="theme-btn ${theme === "light" ? "active" : ""}" data-theme="light">浅色</button>
             <button class="theme-btn ${theme === "dark" ? "active" : ""}" data-theme="dark">深色</button>
             <button class="theme-btn ${theme === "sepia" ? "active" : ""}" data-theme="sepia">护眼</button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <label>显示模式</label>
+          <div class="theme-selector">
+            <button class="theme-btn ${colorModePreference === "system" ? "active" : ""}" data-color-mode="system">跟随系统</button>
+            <button class="theme-btn ${colorModePreference === "light" ? "active" : ""}" data-color-mode="light">浅色</button>
+            <button class="theme-btn ${colorModePreference === "dark" ? "active" : ""}" data-color-mode="dark">深色</button>
           </div>
         </div>
         <div class="setting-row">

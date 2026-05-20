@@ -482,6 +482,24 @@
   gap: 1rem;
 }
 
+.appearance-settings .setting-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.appearance-settings .setting-label {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  min-width: 80px;
+}
+
+.setting-hint {
+  font-size: 12px;
+  color: var(--color-text-subtle);
+}
+
 .theme-buttons {
   display: flex;
   flex-wrap: wrap;

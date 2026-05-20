@@ -4,10 +4,12 @@ import {
   getCurrentTheme,
   setCurrentTheme,
   getColorMode,
-  toggleColorMode,
+  getColorModePreference,
+  setColorMode,
   getCustomCss,
   setCustomCss,
   describeThemeOptions,
+  type ColorModePreference,
   type ThemeName,
 } from "../theme.ts";
 import { getDevModeStatus, toggleDevMode, getLogLines, openLogFile } from "../api.ts";
@@ -48,11 +50,18 @@ function ThemeButton({ label, active, onClick }: {
   );
 }
 
+const COLOR_MODE_OPTIONS: Array<{ mode: ColorModePreference; label: string }> = [
+  { mode: "system", label: "跟随系统" },
+  { mode: "light", label: "浅色" },
+  { mode: "dark", label: "深色" },
+];
+
 function AppearanceSettings() {
   const [result, setResult] = useState<string>("");
   const [cssExpanded, setCssExpanded] = useState(false);
   const [cssValue, setCssValue] = useState(() => getCustomCss());
   const currentTheme = getCurrentTheme();
+  const currentColorModePreference = getColorModePreference();
   const currentColorMode = getColorMode();
   const themeOptions = describeThemeOptions();
 
@@ -81,17 +90,22 @@ function AppearanceSettings() {
           </div>
         </div>
         <div className="setting-row">
-          <span className="setting-label">深色模式</span>
-          <button
-            type="button"
-            className={`btn-toggle ${currentColorMode === "dark" ? "active" : ""}`}
-            onClick={() => {
-              const mode = toggleColorMode();
-              showResult(`已切换到${mode === "dark" ? "深色" : "浅色"}模式`);
-            }}
-          >
-            {currentColorMode === "dark" ? "深色" : "浅色"}
-          </button>
+          <span className="setting-label">显示模式</span>
+          <div className="theme-buttons">
+            {COLOR_MODE_OPTIONS.map(({ mode, label }) => (
+              <ThemeButton
+                key={mode}
+                label={label}
+                active={currentColorModePreference === mode}
+                onClick={() => {
+                  setColorMode(mode);
+                  const suffix = mode === "system" ? `，当前为${getColorMode() === "dark" ? "深色" : "浅色"}` : "";
+                  showResult(`已切换到${label}模式${suffix}`);
+                }}
+              />
+            ))}
+          </div>
+          <span className="setting-hint">当前生效：{currentColorMode === "dark" ? "深色" : "浅色"}</span>
         </div>
         <div className="setting-row">
           <span className="setting-label">自定义 CSS</span>

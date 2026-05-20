@@ -18,6 +18,18 @@ test("renderReaderContent includes reader search controls", () => {
   assert.equal(html.includes('id="chapter-search-count"'), true);
 });
 
+test("renderReaderContent includes global display mode controls", () => {
+  const state = createInitialState();
+  state.colorModePreference = "system";
+
+  const html = renderReaderContent(state);
+
+  assert.equal(html.includes('data-color-mode="system"'), true);
+  assert.equal(html.includes('data-color-mode="light"'), true);
+  assert.equal(html.includes('data-color-mode="dark"'), true);
+  assert.equal(html.includes('class="theme-btn active" data-color-mode="system"'), true);
+});
+
 test("renderReaderContent includes toc search and jump controls", () => {
   const state = createInitialState();
   state.chapters = [

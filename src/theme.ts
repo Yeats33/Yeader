@@ -4,6 +4,7 @@
 
 export type ThemeName = "apple" | "mintlify";
 export type ColorMode = "light" | "dark";
+export type ColorModePreference = ColorMode | "system";
 export type CustomTheme = {
   name: string;
   css: string;
@@ -22,14 +23,22 @@ export function getCurrentTheme(): ThemeName {
 
 export function setCurrentTheme(theme: ThemeName): void {
   localStorage.setItem(THEME_STORAGE_KEY, theme);
-  applyTheme(theme, getColorMode());
+  applyTheme(theme, getColorModePreference());
+}
+
+export function getColorModePreference(): ColorModePreference {
+  const stored = localStorage.getItem(COLOR_MODE_KEY);
+  if (stored === "light" || stored === "dark" || stored === "system") {
+    return stored;
+  }
+  return "system";
 }
 
 export function getColorMode(): ColorMode {
-  return (localStorage.getItem(COLOR_MODE_KEY) as ColorMode) ?? "light";
+  return resolveColorMode(getColorModePreference());
 }
 
-export function setColorMode(mode: ColorMode): void {
+export function setColorMode(mode: ColorModePreference): void {
   localStorage.setItem(COLOR_MODE_KEY, mode);
   applyTheme(getCurrentTheme(), mode);
 }
@@ -38,6 +47,13 @@ export function toggleColorMode(): ColorMode {
   const next = getColorMode() === "light" ? "dark" : "light";
   setColorMode(next);
   return next;
+}
+
+export function resolveColorMode(preference: ColorModePreference): ColorMode {
+  if (preference !== "system") {
+    return preference;
+  }
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 export function getCustomThemes(): CustomTheme[] {
@@ -74,13 +90,16 @@ export function setCustomCss(css: string): void {
   } else {
     localStorage.removeItem(CUSTOM_CSS_KEY);
   }
-  applyTheme(getCurrentTheme(), getColorMode());
+  applyTheme(getCurrentTheme(), getColorModePreference());
 }
 
-export function applyTheme(theme: ThemeName, colorMode: ColorMode): void {
+export function applyTheme(theme: ThemeName, colorModePreference: ColorModePreference): void {
+  const colorMode = resolveColorMode(colorModePreference);
+
   // Remove all theme attributes
   document.documentElement.removeAttribute("data-theme");
   document.documentElement.removeAttribute("data-color-mode");
+  document.documentElement.removeAttribute("data-color-mode-preference");
 
   // Remove old theme link + custom CSS style
   document.querySelectorAll('link[data-theme-link]').forEach((el) => el.remove());
@@ -93,6 +112,7 @@ export function applyTheme(theme: ThemeName, colorMode: ColorMode): void {
 
   // Set color mode
   document.documentElement.setAttribute("data-color-mode", colorMode);
+  document.documentElement.setAttribute("data-color-mode-preference", colorModePreference);
   document.body.classList.toggle("dark-mode", colorMode === "dark");
 
   // Apply custom CSS last (overrides everything)
@@ -105,14 +125,28 @@ export function applyTheme(theme: ThemeName, colorMode: ColorMode): void {
   }
 }
 
-export async function loadTheme(theme: ThemeName, colorMode: ColorMode): Promise<void> {
+export async function loadTheme(theme: ThemeName, colorModePreference: ColorModePreference): Promise<void> {
   if (theme === "mintlify") {
     await loadThemeLink("/themes/mintlify.css");
   } else {
     // apple is default baked into styles.css
     await loadThemeLink("/themes/apple.css");
   }
-  applyTheme(theme, colorMode);
+  applyTheme(theme, colorModePreference);
+}
+
+export function watchSystemColorMode(): () => void {
+  const media = window.matchMedia?.("(prefers-color-scheme: dark)");
+  if (!media) {
+    return () => {};
+  }
+  const applySystemPreference = () => {
+    if (getColorModePreference() === "system") {
+      applyTheme(getCurrentTheme(), "system");
+    }
+  };
+  media.addEventListener("change", applySystemPreference);
+  return () => media.removeEventListener("change", applySystemPreference);
 }
 
 function loadThemeLink(href: string): Promise<void> {

@@ -1,6 +1,7 @@
 import type { ReaderState } from "./types.ts";
 import type { Theme } from "../../utils/themeManager";
 import type { ChineseScript } from "../../utils/chineseConvert.ts";
+import type { ColorModePreference } from "../../theme.ts";
 
 export async function initReaderHandlers(
   container: HTMLElement,
@@ -9,6 +10,7 @@ export async function initReaderHandlers(
 ): Promise<void> {
   const { navigate } = await import("../../router.ts");
   const { themeManager } = await import("../../utils/themeManager");
+  const { setColorMode } = await import("../../theme.ts");
   const { applyReaderStyle, applyReaderStyleToContent, saveReaderStyleSettings } = await import("./style.ts");
   const { saveCurrentBookmark, deleteBookmark } = await import("./bookmarks.ts");
   const { saveCurrentReadingProgress } = await import("./chapter.ts");
@@ -64,6 +66,7 @@ export async function initReaderHandlers(
   const bookmarksCloseBtn = container.querySelector<HTMLButtonElement>("#bookmarks-close");
   const saveBookmarkBtn = container.querySelector<HTMLButtonElement>("#save-bookmark-btn");
   const themeBtns = container.querySelectorAll<HTMLButtonElement>(".theme-btn");
+  const colorModeBtns = container.querySelectorAll<HTMLButtonElement>("[data-color-mode]");
   const fontFamilySelect = container.querySelector<HTMLSelectElement>("#font-family-select");
   const tocSearchInput = container.querySelector<HTMLInputElement>("#toc-search-input");
   const tocJumpInput = container.querySelector<HTMLInputElement>("#toc-jump-input");
@@ -362,6 +365,17 @@ export async function initReaderHandlers(
         saveReaderStyleSettings(state);
         applyReaderStyleToContent(state);
       }
+    });
+  });
+
+  colorModeBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const preference = btn.dataset.colorMode as ColorModePreference | undefined;
+      if (!preference) return;
+      state.colorModePreference = preference;
+      setColorMode(preference);
+      colorModeBtns.forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
     });
   });
 

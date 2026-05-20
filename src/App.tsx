@@ -5,20 +5,20 @@ import { NavBar } from "./components/NavBar.tsx";
 import { LegacyPage, type LegacyPageDefinition } from "./legacy/LegacyPage.tsx";
 import { useHashRoute } from "./routing/hashRoute.ts";
 import { matchRoute } from "./routing/matchRoute.ts";
-import { loadTheme, getCurrentTheme, getColorMode } from "./theme.ts";
+import { loadTheme, getCurrentTheme, getColorModePreference, watchSystemColorMode } from "./theme.ts";
 
 import { renderBookshelfPage, initBookshelfHandlers } from "./pages/Bookshelf.ts";
 import { renderSearchPage, initSearchHandlers } from "./pages/Search.ts";
-import { renderReaderPage, initReader } from "./pages/Reader/index.ts";
+import { ReaderPage } from "./pages/Reader/index.tsx";
 import { IntegrationPage } from "./pages/Integration.tsx";
-import { renderSoNovelWebuiPage, initSoNovelWebuiHandlers } from "./pages/SoNovelWebui.ts";
+import { SoNovelWebuiPage } from "./pages/SoNovelWebui.tsx";
 import { SoNovelConfigPage } from "./pages/SoNovelConfig.tsx";
 import { SoNovelRulesPage } from "./pages/SoNovelRules.tsx";
 import { SettingsPage } from "./pages/Settings.tsx";
 import { AccountPage } from "./pages/Account.tsx";
-import { renderOnlineReaderPage, initOnlineReader } from "./pages/OnlineReader/index.ts";
+import { OnlineReaderPage } from "./pages/OnlineReader/index.tsx";
 import { renderOnlineChapterPage, initOnlineChapter } from "./pages/OnlineReader/chapter.ts";
-import { renderSourceOpsPage, initSourceOpsHandlers } from "./pages/SourceOps.ts";
+import { SourceOpsPage } from "./pages/SourceOps.tsx";
 
 const HIDE_NAV_ROUTES = ["/integration/so-novel/webui"];
 
@@ -37,45 +37,12 @@ function resolvePage(routePath: string): LegacyPageDefinition | null {
     };
   }
 
-  const readerParams = matchRoute("/reader/:bookId", { path: routePath });
-  if (readerParams) {
-    const bookId = readerParams["bookId"] ?? "";
-    return {
-      render: () => renderReaderPage(bookId),
-      init: initReader,
-    };
-  }
-
-  if (matchRoute("/integration/so-novel/webui", { path: routePath })) {
-    return {
-      render: () => renderSoNovelWebuiPage(),
-      init: initSoNovelWebuiHandlers,
-    };
-  }
-
   if (matchRoute("/account", { path: routePath })) {
     return null;
   }
 
   if (matchRoute("/settings", { path: routePath })) {
     return null;
-  }
-
-  if (matchRoute("/source-ops", { path: routePath })) {
-    return {
-      render: renderSourceOpsPage,
-      init: initSourceOpsHandlers,
-    };
-  }
-
-  const onlineReaderParams = matchRoute("/online-reader/:bookId/:sourceId", { path: routePath });
-  if (onlineReaderParams) {
-    const bookId = onlineReaderParams["bookId"] ?? "";
-    const sourceId = onlineReaderParams["sourceId"] ?? "";
-    return {
-      render: () => renderOnlineReaderPage(),
-      init: (container) => initOnlineReader(container, decodeURIComponent(bookId), decodeURIComponent(sourceId)),
-    };
   }
 
   const onlineChapterParams = matchRoute("/online-reader/:bookId/:sourceId/chapter/:chapterUrl", { path: routePath });
@@ -108,13 +75,42 @@ function NotFoundPage() {
   );
 }
 
+function CurrentRoutePage({ routePath }: { routePath: string }) {
+  if (routePath === "/account") return <AccountPage />;
+  if (routePath === "/settings") return <SettingsPage />;
+  if (routePath === "/integration") return <IntegrationPage />;
+  if (routePath === "/integration/so-novel/webui") return <SoNovelWebuiPage />;
+  if (routePath === "/integration/so-novel/config") return <SoNovelConfigPage />;
+  if (routePath === "/integration/so-novel/rules") return <SoNovelRulesPage />;
+  if (routePath === "/source-ops") return <SourceOpsPage />;
+
+  const onlineReaderParams = matchRoute("/online-reader/:bookId/:sourceId", { path: routePath });
+  if (onlineReaderParams) {
+    return (
+      <OnlineReaderPage
+        bookUrl={decodeURIComponent(onlineReaderParams["bookId"] ?? "")}
+        sourceUrl={decodeURIComponent(onlineReaderParams["sourceId"] ?? "")}
+      />
+    );
+  }
+
+  const readerParams = matchRoute("/reader/:bookId", { path: routePath });
+  if (readerParams) {
+    return <ReaderPage bookUrl={readerParams["bookId"] ?? ""} />;
+  }
+
+  const page = resolvePage(routePath);
+  return page ? <LegacyPage page={page} routeKey={routePath} /> : <NotFoundPage />;
+}
+
 export function App() {
   const { route } = useHashRoute();
-  const page = resolvePage(route.path);
   const hideNav = HIDE_NAV_ROUTES.some((path) => route.path.startsWith(path));
 
   useEffect(() => {
-    loadTheme(getCurrentTheme(), getColorMode()).catch(() => {});
+    const stopWatchingSystemTheme = watchSystemColorMode();
+    loadTheme(getCurrentTheme(), getColorModePreference()).catch(() => {});
+    return stopWatchingSystemTheme;
   }, []);
 
   useEffect(() => {
@@ -137,7 +133,7 @@ export function App() {
 
   return (
     <>
-      {route.path === "/account" ? <AccountPage /> : route.path === "/settings" ? <SettingsPage /> : route.path === "/integration" ? <IntegrationPage /> : route.path === "/integration/so-novel/config" ? <SoNovelConfigPage /> : route.path === "/integration/so-novel/rules" ? <SoNovelRulesPage /> : page ? <LegacyPage page={page} routeKey={route.path} /> : <NotFoundPage />}
+      <CurrentRoutePage routePath={route.path} />
       {!hideNav ? <NavBar routePath={route.path} /> : null}
     </>
   );

@@ -1,6 +1,7 @@
 import type { BookInfo, Chapter } from "../../types.ts";
 import type { Theme } from "../../utils/themeManager";
 import type { ChineseScript } from "../../utils/chineseConvert.ts";
+import type { ColorModePreference } from "../../theme.ts";
 
 export interface Bookmark {
   page: number;
@@ -18,6 +19,7 @@ export interface ReaderState {
   lineHeight: number;
   fontFamily: string;
   theme: Theme;
+  colorModePreference: ColorModePreference;
   bookUrl: string;
   sourceUrl: string;
   showToc: boolean;
@@ -41,6 +43,7 @@ export function createInitialState(): ReaderState {
     lineHeight: 1.6,
     fontFamily: "Noto Serif",
     theme: "light",
+    colorModePreference: "system",
     bookUrl: "",
     sourceUrl: "",
     showToc: false,
