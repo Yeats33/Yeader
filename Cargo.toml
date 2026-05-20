@@ -4,6 +4,11 @@ members = [
   "crates/yeader-library",
   "crates/yeader-models",
   "crates/yeader-net",
+  "crates/yeader-sdk",
+  "crates/yeader-crypto",
+  "crates/yeader-descramble",
+  "crates/yeader-http-util",
+  "crates/yeader-runtime",
   "crates/yeader-protocol",
   "crates/yeader-reader",
   "crates/yeader-rules",
@@ -18,6 +23,8 @@ version = "0.2.1-beta1"
 
 [workspace.dependencies]
 anyhow = "1"
+async-trait = "0.1"
+thiserror = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["json", "env-filter"] }
 tracing-appender = "0.2"
@@ -43,6 +50,7 @@ hex = "0.4"
 http = "1"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 reqwest = { version = "0.12", features = ["cookies", "gzip", "json"] }
+feed-rs = "2"
 yeader-backup = { path = "crates/yeader-backup" }
 yeader-library = { path = "crates/yeader-library" }
 yeader-models = { path = "crates/yeader-models" }

@@ -2,6 +2,7 @@
 
 pub mod compatibility;
 pub mod dev;
+pub mod feed;
 pub mod legacy;
 pub mod library;
 pub mod rule;
@@ -10,6 +11,7 @@ pub mod source_format;
 
 pub use compatibility::{CompatImportArtifact, ImportArtifactKind};
 pub use dev::{DevModeStatus, LogLine};
+pub use feed::{FeedItem, FeedSource};
 pub use legacy::{
     LEGADO_BACKUP_FILES, LegacyBookSource, LegacyReplaceRule, LegacyRssSource, parse_book_sources,
     parse_replace_rules, parse_rss_sources,

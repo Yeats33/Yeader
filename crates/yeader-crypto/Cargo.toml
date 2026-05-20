@@ -1,0 +1,12 @@
+[package]
+name = "yeader-crypto"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+yeader-sdk = { path = "../yeader-sdk" }
+aes = "0.8"
+md-5 = "0.10"
+base64 = { workspace = true }
+hex = { workspace = true }

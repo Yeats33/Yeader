@@ -1,0 +1,10 @@
+[package]
+name = "yeader-descramble"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+yeader-sdk = { path = "../yeader-sdk" }
+yeader-crypto = { path = "../yeader-crypto" }
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp", "gif"] }
