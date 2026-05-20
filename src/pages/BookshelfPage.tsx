@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { deleteLocalEpub, importEpub, importEpubUrl, listBooks, removeBook } from "../api.ts";
+import { libraryItemFromBook, type LibraryItem } from "../content/viewModels.ts";
 import { navigate } from "../router.ts";
 import type { Book } from "../types.ts";
 
@@ -8,21 +9,12 @@ type BookViewMode = "grid" | "list";
 
 type BookshelfFilter = "all" | "local" | "web";
 
-function getProgressText(book: Book): string {
-  const progress = book.reading_progress ?? 0;
-  const chapterTitle = book.reading_chapter ? ` · ${book.reading_chapter}` : "";
-  if (progress === 0) {
-    return "待阅读";
-  }
-  return `阅读至第 ${progress} 章${chapterTitle}`;
-}
-
-function BookCover({ book, list = false }: { book: Book; list?: boolean }) {
-  if (book.cover_url) {
+function ItemThumbnail({ item, list = false }: { item: LibraryItem; list?: boolean }) {
+  if (item.thumbnailUrl) {
     return (
       <img
-        src={book.cover_url}
-        alt={book.name}
+        src={item.thumbnailUrl}
+        alt={item.title}
         loading="lazy"
         className={list ? "list-cover-img" : undefined}
       />
@@ -32,36 +24,36 @@ function BookCover({ book, list = false }: { book: Book; list?: boolean }) {
   const className = list ? "list-cover-placeholder" : "book-cover-placeholder";
   return (
     <div className={className}>
-      <span>{book.name.charAt(0)}</span>
+      <span>{item.title.charAt(0)}</span>
     </div>
   );
 }
 
-function BookEntry({
-  book,
+function LibraryItemEntry({
+  item,
   viewMode,
   onDelete,
 }: {
-  book: Book;
+  item: LibraryItem;
   viewMode: BookViewMode;
-  onDelete: (book: Book) => void;
+  onDelete: (item: LibraryItem) => void;
 }) {
-  const openBook = () => navigate(`/reader/${encodeURIComponent(book.url)}`);
+  const openItem = () => navigate(`/reader/${encodeURIComponent(item.id)}`);
   const onKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
-      openBook();
+      openItem();
     }
   };
 
   if (viewMode === "list") {
     return (
-      <li className="book-list-item" data-book-url={book.url} tabIndex={0} role="button" onClick={openBook} onKeyDown={onKeyDown}>
-        <div className="list-cover"><BookCover book={book} list /></div>
+      <li className="book-list-item" data-book-url={item.id} tabIndex={0} role="button" onClick={openItem} onKeyDown={onKeyDown}>
+        <div className="list-cover"><ItemThumbnail item={item} list /></div>
         <div className="list-info">
-          <h3 className="list-title">{book.name}</h3>
-          <p className="list-author">{book.author}</p>
-          <p className="list-progress">{getProgressText(book)}</p>
+          <h3 className="list-title">{item.title}</h3>
+          <p className="list-author">{item.creator}</p>
+          <p className="list-progress">{item.progressLabel}</p>
         </div>
         <button
           className="book-delete-btn"
@@ -69,7 +61,7 @@ function BookEntry({
           title="删除"
           onClick={(e) => {
             e.stopPropagation();
-            onDelete(book);
+            onDelete(item);
           }}
         >
           &#x2715;
@@ -79,12 +71,12 @@ function BookEntry({
   }
 
   return (
-    <li className="book-card" data-book-url={book.url} tabIndex={0} role="button" onClick={openBook} onKeyDown={onKeyDown}>
-      <div className="book-cover"><BookCover book={book} /></div>
+    <li className="book-card" data-book-url={item.id} tabIndex={0} role="button" onClick={openItem} onKeyDown={onKeyDown}>
+      <div className="book-cover"><ItemThumbnail item={item} /></div>
       <div className="book-info">
-        <h3 className="book-title">{book.name}</h3>
-        <p className="book-author">{book.author}</p>
-        <p className="book-progress">{getProgressText(book)}</p>
+        <h3 className="book-title">{item.title}</h3>
+        <p className="book-author">{item.creator}</p>
+        <p className="book-progress">{item.progressLabel}</p>
       </div>
       <button
         className="book-delete-btn"
@@ -92,7 +84,7 @@ function BookEntry({
         title="删除"
         onClick={(e) => {
           e.stopPropagation();
-          onDelete(book);
+          onDelete(item);
         }}
       >
         &#x2715;
@@ -127,12 +119,13 @@ export function BookshelfPage() {
   const localBooks = useMemo(() => books.filter((book) => book.source_url === "local://epub"), [books]);
   const webBooks = useMemo(() => books.filter((book) => book.source_url !== "local://epub"), [books]);
   const visibleBooks = filter === "local" ? localBooks : filter === "web" ? webBooks : books;
+  const visibleItems = useMemo(() => visibleBooks.map(libraryItemFromBook), [visibleBooks]);
 
-  async function deleteBook(book: Book) {
+  async function deleteItem(item: LibraryItem) {
     if (deletingUrl) return;
-    setDeletingUrl(book.url);
+    setDeletingUrl(item.id);
     try {
-      const confirmed = await ask(`确定要从阅读库删除《${book.name}》吗？`, {
+      const confirmed = await ask(`确定要从阅读库删除《${item.title}》吗？`, {
         title: "确认删除",
         kind: "warning",
         okLabel: "删除",
@@ -140,11 +133,11 @@ export function BookshelfPage() {
       });
       if (!confirmed) return;
 
-      const success = book.url.startsWith("local://epub/")
-        ? await deleteLocalEpub(book.url)
-        : await removeBook(book.url);
+      const success = item.id.startsWith("local://epub/")
+        ? await deleteLocalEpub(item.id)
+        : await removeBook(item.id);
       if (success) {
-        setBooks((current) => current.filter((candidate) => candidate.url !== book.url));
+        setBooks((current) => current.filter((candidate) => candidate.url !== item.id));
       } else {
         window.alert("删除失败");
       }
@@ -233,11 +226,11 @@ export function BookshelfPage() {
         <div id="book-container" data-view={viewMode}>
           {viewMode === "grid" ? (
             <ul className="book-grid">
-              {visibleBooks.map((book) => <BookEntry book={book} viewMode={viewMode} onDelete={deleteBook} key={book.url} />)}
+              {visibleItems.map((item) => <LibraryItemEntry item={item} viewMode={viewMode} onDelete={deleteItem} key={item.id} />)}
             </ul>
           ) : (
             <ul className="book-list">
-              {visibleBooks.map((book) => <BookEntry book={book} viewMode={viewMode} onDelete={deleteBook} key={book.url} />)}
+              {visibleItems.map((item) => <LibraryItemEntry item={item} viewMode={viewMode} onDelete={deleteItem} key={item.id} />)}
             </ul>
           )}
         </div>

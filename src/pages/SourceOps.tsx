@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
 import { navigate } from "../router.ts";
+import { summarizePluginActivation, type PluginActivation } from "../content/pluginMarket.ts";
+import { contentSourceFromYeaderSource, type ContentSource } from "../content/viewModels.ts";
 import type { YeaderCapability, YeaderSource } from "../types.ts";
 import { ExploreTab } from "./ExplorePage.tsx";
 import { SourceSearchTab } from "./SourceSearch.tsx";
@@ -287,9 +289,17 @@ function SourceFeatureList({ source }: { source: YeaderSource }) {
   );
 }
 
+function sourceKindLabel(kind: ContentSource["kind"]): string {
+  if (kind === "rss") return "RSS";
+  if (kind === "rule-source") return "规则";
+  if (kind === "plugin") return "插件";
+  return "通用";
+}
+
 export function SourceListTab({ sources }: { sources: YeaderSource[] }) {
   const [donationSource, setDonationSource] = useState<YeaderSource | null>(null);
-  const enabledCount = sources.filter((source) => source.enabled).length;
+  const sourceItems = useMemo(() => sources.map(contentSourceFromYeaderSource), [sources]);
+  const enabledCount = sourceItems.filter((source) => source.enabled).length;
   const [selectedSourceId, setSelectedSourceId] = useState(() => sources[0]?.id ?? "");
 
   useEffect(() => {
@@ -309,6 +319,7 @@ export function SourceListTab({ sources }: { sources: YeaderSource[] }) {
   }
 
   const selectedSource = sources.find((source) => source.id === selectedSourceId) ?? sources[0];
+  const selectedSourceItem = contentSourceFromYeaderSource(selectedSource);
 
   return (
     <div className="source-ops-panel">
@@ -329,22 +340,22 @@ export function SourceListTab({ sources }: { sources: YeaderSource[] }) {
             value={selectedSource.id}
             onChange={(event) => setSelectedSourceId(event.target.value)}
           >
-            {sources.map((source) => (
+            {sourceItems.map((source) => (
               <option key={source.id} value={source.id}>{source.name}</option>
             ))}
           </select>
 
           <div className="source-picker-list" role="list">
-            {sources.map((source) => (
+            {sourceItems.map((source) => (
               <button
-                className={`source-picker-item ${source.id === selectedSource.id ? "active" : ""}`}
+                className={`source-picker-item ${source.id === selectedSourceItem.id ? "active" : ""}`}
                 data-source-id={source.id}
                 key={source.id}
                 type="button"
                 onClick={() => setSelectedSourceId(source.id)}
               >
                 <span>{source.name}</span>
-                <small>{(source.capabilities ?? []).length} 项功能</small>
+                <small>{sourceKindLabel(source.kind)} · {source.capabilityLabels.length} 项功能</small>
               </button>
             ))}
           </div>
@@ -355,6 +366,7 @@ export function SourceListTab({ sources }: { sources: YeaderSource[] }) {
             <div>
               <h3>{selectedSource.name}</h3>
               <span className={`source-status ${selectedSource.enabled ? "enabled" : "disabled"}`}>{selectedSource.enabled ? "启用" : "禁用"}</span>
+              <span className="source-status">{sourceKindLabel(selectedSourceItem.kind)}</span>
             </div>
             {selectedSource.donateUrl ? (
               <button className="source-donate-btn donate-action-primary" type="button" onClick={() => setDonationSource(selectedSource)}>Donate</button>
@@ -395,6 +407,24 @@ export function SourceListTab({ sources }: { sources: YeaderSource[] }) {
 }
 
 export function PluginMarketPanel() {
+  const freeActivation = summarizePluginActivation({ mode: "free" });
+  const tokenActivation: PluginActivation = {
+    mode: "token-transfer",
+    token: {
+      chain: "evm",
+      chainId: 1,
+      standard: "erc20",
+      contract: "0xTokenContract",
+      symbol: "TOKEN",
+      decimals: 18,
+      minAmount: "10.0",
+      recipient: "0xRecipient",
+      verification: "onchain-transfer",
+      loginRequired: true,
+    },
+  };
+  const tokenSummary = summarizePluginActivation(tokenActivation);
+
   return (
     <section className="source-ops-panel plugin-market-panel">
       <div className="source-ops-panel-header">
@@ -407,12 +437,12 @@ export function PluginMarketPanel() {
 
       <div className="plugin-market-grid">
         <div className="plugin-market-card">
-          <strong>免费插件</strong>
-          <span>不需要登录即可安装和使用。</span>
+          <strong>{freeActivation.label}插件</strong>
+          <span>{freeActivation.detail}</span>
         </div>
         <div className="plugin-market-card">
-          <strong>Token 启用</strong>
-          <span>需要 EVM 登录，并由 Yeader 校验登录地址是否有满足条件的历史 ERC-20 转账。</span>
+          <strong>{tokenSummary.label}</strong>
+          <span>{tokenSummary.detail}；需要 EVM 登录，并由 Yeader 校验历史 ERC-20 转账。</span>
         </div>
         <div className="plugin-market-card">
           <strong>多链捐赠</strong>
