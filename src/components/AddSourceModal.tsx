@@ -3,13 +3,14 @@ import { probeFeed, fetchFeed } from "../api.ts";
 import type { FeedSource } from "../types.ts";
 
 interface AddSourceModalProps {
-  onAdd: (source: FeedSource) => void;
+  onAdd: (source: FeedSource) => void | Promise<void>;
   onClose: () => void;
 }
 
 export function AddSourceModal({ onAdd, onClose }: AddSourceModalProps) {
   const [url, setUrl] = useState("");
   const [probing, setProbing] = useState(false);
+  const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [probeResult, setProbeResult] = useState<FeedSource | null>(null);
 
@@ -24,19 +25,29 @@ export function AddSourceModal({ onAdd, onClose }: AddSourceModalProps) {
       const source = await probeFeed(trimmed);
       setProbeResult(source);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to probe feed URL");
+      setError(e instanceof Error ? e.message : "无法识别 RSS/Atom 订阅地址");
       setProbeResult(null);
     } finally {
       setProbing(false);
     }
   };
 
-  const handleAdd = () => {
-    if (probeResult) {
-      onAdd(probeResult);
+  const handleAdd = async () => {
+    if (probeResult && !adding) {
+      setAdding(true);
+      setError(null);
+      try {
+        await onAdd(probeResult);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "添加订阅失败");
+        setAdding(false);
+        return;
+      }
       setUrl("");
       setProbeResult(null);
       setError(null);
+      setAdding(false);
+      onClose();
     }
   };
 
@@ -49,7 +60,7 @@ export function AddSourceModal({ onAdd, onClose }: AddSourceModalProps) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="add-source-modal" onClick={(e) => e.stopPropagation()}>
-        <h2>Add Source</h2>
+        <h2>添加订阅源</h2>
 
         <div className="field">
           <input
@@ -57,16 +68,16 @@ export function AddSourceModal({ onAdd, onClose }: AddSourceModalProps) {
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Paste RSS/Atom feed URL..."
+            placeholder="粘贴 RSS/Atom feed URL..."
             autoFocus
           />
           <button
             type="button"
             className="btn btn-primary"
             onClick={handleProbe}
-            disabled={probing || !url.trim()}
+            disabled={probing || adding || !url.trim()}
           >
-            {probing ? "Probing..." : "Probe"}
+            {probing ? "检测中..." : "检测"}
           </button>
         </div>
 
@@ -85,15 +96,15 @@ export function AddSourceModal({ onAdd, onClose }: AddSourceModalProps) {
 
         <div className="add-source-actions">
           <button type="button" className="btn btn-secondary" onClick={onClose}>
-            Cancel
+            取消
           </button>
           <button
             type="button"
             className="btn btn-primary"
-            onClick={handleAdd}
-            disabled={!probeResult}
+            onClick={() => void handleAdd()}
+            disabled={!probeResult || adding}
           >
-            Add Source
+            {adding ? "添加中..." : "添加订阅"}
           </button>
         </div>
       </div>

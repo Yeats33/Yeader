@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { fetchFeed, listRssSources, listBooks, listYeaderSources } from "../api.ts";
+import { fetchFeed, listRssSources, listBooks, listYeaderSources, saveRssSource } from "../api.ts";
 import type { Book, FeedSource, FeedItem, LegacyRssSource, YeaderSource } from "../types.ts";
 import type { ViewType, YeaderMediaType } from "../views/types.ts";
 import { resolveView } from "../views/types.ts";
@@ -89,27 +89,27 @@ export function ThreePanelLayout() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [currentViewType, setCurrentViewType] = useState<ViewType>("article");
 
-  // Load sources from database on mount
-  useEffect(() => {
-    async function loadAllSources() {
-      try {
-        const [rssSources, books, yeaderSources] = await Promise.all([
-          listRssSources(),
-          listBooks(),
-          listYeaderSources(),
-        ]);
-        const rssFeeds = rssSources.map(rssToFeedSource);
-        const nextBookItems = books.map(bookToFeedItem);
-        const bookFeeds = bookSourcesFromBooks(books, yeaderSources);
-        setBookItems(nextBookItems);
-        setSources([...bookFeeds, ...rssFeeds]);
-      } catch {
-        setSources([]);
-        setBookItems([]);
-      }
+  const loadAllSources = useCallback(async () => {
+    try {
+      const [rssSources, books, yeaderSources] = await Promise.all([
+        listRssSources(),
+        listBooks(),
+        listYeaderSources(),
+      ]);
+      const rssFeeds = rssSources.map(rssToFeedSource);
+      const nextBookItems = books.map(bookToFeedItem);
+      const bookFeeds = bookSourcesFromBooks(books, yeaderSources);
+      setBookItems(nextBookItems);
+      setSources([...bookFeeds, ...rssFeeds]);
+    } catch {
+      setSources([]);
+      setBookItems([]);
     }
-    loadAllSources();
   }, []);
+
+  useEffect(() => {
+    void loadAllSources();
+  }, [loadAllSources]);
 
   const selectedSource = sources.find((s) => s.id === selectedSourceId) ?? null;
   const selectedItem = items.find((i) => i.id === selectedItemId) ?? null;
@@ -171,13 +171,13 @@ export function ThreePanelLayout() {
     setSelectedItemId(id);
   }, []);
 
-  const handleAddSource = useCallback((source: FeedSource) => {
-    setSources((prev) => {
-      if (prev.some((s) => s.url === source.url)) return prev;
-      return [...prev, source];
-    });
-    setShowAddModal(false);
-  }, []);
+  const handleAddSource = useCallback(async (source: FeedSource) => {
+    const saved = await saveRssSource(source);
+    await loadAllSources();
+    setSelectedSourceId(`rss:${saved.url}`);
+    setSelectedItemId(null);
+    setItems([]);
+  }, [loadAllSources]);
 
   return (
     <div className="threepanel-layout">

@@ -597,7 +597,7 @@ export function ReaderPage({
               readerState.currentOffset = readerBodyRef.current.scrollTop;
               void saveCurrentReadingProgress(readerState);
             }
-            navigate("/");
+            navigate("/feed");
           }}
         >
           &#x2190;

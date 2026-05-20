@@ -728,6 +728,7 @@ function PluginRegistryCard({ plugin }: { plugin: PluginRegistryEntry }) {
       <p className="plugin-registry-activation">{activation.detail}</p>
       <div className="plugin-registry-meta">
         {plugin.capabilities.map((capability) => <span key={capability}>{capability}</span>)}
+        {plugin.fileAccess ? <span>文件:{plugin.fileAccess}</span> : null}
         {riskLabels.length === 0 ? <span>无高风险标签</span> : riskLabels.map((label) => <span key={label}>{label}</span>)}
       </div>
       <a className="source-donate-btn" href={plugin.sourceRepo} target="_blank" rel="noreferrer">查看源码仓库</a>

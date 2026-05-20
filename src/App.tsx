@@ -21,7 +21,7 @@ import { OnlineChapterPage } from "./pages/OnlineReader/chapter.tsx";
 import { ThreePanelLayout } from "./panels/ThreePanelLayout.tsx";
 import { SourcePanels } from "./panels/SourcePanels.tsx";
 
-const HIDE_NAV_ROUTES = ["/integration/so-novel/webui", "/feed"];
+const HIDE_NAV_ROUTES = ["/integration/so-novel/webui"];
 
 function NotFoundPage() {
   const { navigate } = useHashRoute();

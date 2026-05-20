@@ -166,14 +166,17 @@ test("bundled plugin registry preview covers free and token activation previews"
   assert.equal(registryView.sourceUrl, "https://github.com/Yeats33/YeaderHub");
   assert.equal(registryView.readonly, true);
   assert.equal(registryView.installAvailable, false);
-  assert.equal(entries.length, 2);
+  assert.equal(entries.length, 3);
 
   const free = entries.find((plugin) => plugin.activation.mode === "free");
   const paid = entries.find((plugin) => plugin.activation.mode === "token-transfer");
+  const localEpub = entries.find((plugin) => plugin.id === "local.epub");
 
   assert.equal(free?.id, "example.news");
   assert.equal(paid?.id, "example.paid-news");
   assert.equal(paid?.activation.mode, "token-transfer");
+  assert.equal(localEpub?.fileAccess, "user-selected");
+  assert.deepEqual(localEpub?.capabilities, ["import", "content", "toc", "offline"]);
   assert.deepEqual(pluginRiskLabels(free!.risk), []);
 });
 

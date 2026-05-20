@@ -1,6 +1,7 @@
 export type PluginIdentityVerification = "unverified" | "signature-pending" | "verified";
 export type PluginActivationMode = "free" | "token-transfer";
 export type DonationChain = "evm" | "tron" | "bitcoin" | "solana";
+export type PluginFileAccess = "none" | "user-selected" | "scoped-library";
 
 export interface PluginRegistry {
   format: "yeader.plugin-registry";
@@ -23,6 +24,7 @@ export interface PluginRegistryEntry {
   runtime: "wasm32-wasip1";
   capabilities: string[];
   network: string[];
+  fileAccess?: PluginFileAccess;
   risk: PluginRisk;
   review: PluginReview;
 }
@@ -171,6 +173,44 @@ const BUNDLED_PLUGIN_REGISTRY_PREVIEW: PluginRegistry = {
       review: {
         status: "example",
         notes: "Schema preview only.",
+      },
+    },
+    {
+      id: "local.epub",
+      name: "Local EPUB",
+      version: "0.1.0",
+      description: "本地 EPUB 导入插件，将用户选中的 EPUB 转成 Yeader 内容项。",
+      license: "MIT",
+      sourceRepo: "https://github.com/Yeats33/YeaderHub/tree/main/plugins/local-epub",
+      identity: {
+        chain: "evm",
+        address: "0x00000073a2c5581b9ea3d79261a567571Dd14E31",
+        verification: "unverified",
+        proof: "",
+      },
+      donations: [
+        {
+          chain: "evm",
+          address: "0x00000073a2c5581b9ea3d79261a567571Dd14E31",
+          label: "EVM",
+        },
+      ],
+      activation: { mode: "free" },
+      releaseUrl: "https://github.com/Yeats33/YeaderHub/releases/download/local-epub-v0.1.0/local-epub-plugin.tar.gz",
+      sha256: "0".repeat(64),
+      runtime: "wasm32-wasip1",
+      capabilities: ["import", "content", "toc", "offline"],
+      network: [],
+      fileAccess: "user-selected",
+      risk: {
+        requiresLogin: false,
+        touchesPaidContent: false,
+        usesAntiBotWorkarounds: false,
+        requiresBrowserRendering: false,
+      },
+      review: {
+        status: "pending",
+        notes: "Local file plugin scaffold; installable after host file grants are implemented.",
       },
     },
   ],
