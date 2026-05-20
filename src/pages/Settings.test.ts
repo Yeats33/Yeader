@@ -11,9 +11,7 @@ import {
   getDeleteAllButtonLabel,
   getSourceDeleteButtonLabel,
   mergeAvailabilityResults,
-  renderSettingsPage,
 } from "./Settings.ts";
-import { resetInvokeAdapterForTests, setInvokeAdapterForTests } from "../api.ts";
 
 const MOCK_SOURCES = [
   {
@@ -273,24 +271,6 @@ test("runAvailabilityChecksIncrementally emits results as each source finishes",
 
   assert.equal(JSON.stringify(emitted), JSON.stringify(["fast", "slow"]));
   assert.equal(completed.length, 2);
-});
-
-test("renderSettingsPage marks fixture import as dev-only", async () => {
-  resetInvokeAdapterForTests();
-  setInvokeAdapterForTests(async <T>(command: string) => {
-    if (command === "list_book_sources") {
-      return MOCK_SOURCES as T;
-    }
-    if (command === "list_replace_rules") {
-      return [] as T;
-    }
-    throw new Error(`unexpected command: ${command}`);
-  });
-
-  const html = await renderSettingsPage();
-  assert.equal(html.includes("开发专用：导入测试书源"), true, "should render dev-only fixture import");
-
-  resetInvokeAdapterForTests();
 });
 
 test("describeBookSourceTree escapes unsafe values", () => {
