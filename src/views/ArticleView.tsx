@@ -8,7 +8,7 @@ export function ArticleView({ item }: ArticleViewProps) {
   if (!item) {
     return (
       <main className="right-panel">
-        <div className="right-panel-empty">Select an item to read</div>
+        <div className="right-panel-empty">选择一篇内容开始阅读</div>
       </main>
     );
   }
@@ -30,9 +30,9 @@ export function ArticleView({ item }: ArticleViewProps) {
             type="button"
             className="open-external"
             onClick={() => openUrl(url).catch(() => {})}
-            title="Open in browser"
+            title="在浏览器中打开"
           >
-            Open ↗
+            打开原文
           </button>
         ) : null}
       </div>
@@ -41,7 +41,7 @@ export function ArticleView({ item }: ArticleViewProps) {
         <article className="article-content">
           <h1>{title}</h1>
           <div className="article-meta">
-            {author ? <span>By {author} · </span> : null}
+            {author ? <span>{author} · </span> : null}
             {published ? <span>{formatDate(published)}</span> : null}
           </div>
 
@@ -52,7 +52,7 @@ export function ArticleView({ item }: ArticleViewProps) {
               }}
             />
           ) : (
-            <p>No content available.</p>
+            <p>暂无正文。</p>
           )}
         </article>
       </div>

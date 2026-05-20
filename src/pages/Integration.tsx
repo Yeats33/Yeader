@@ -335,7 +335,7 @@ export function IntegrationPage() {
     <div className="page page-integration">
       <header className="page-header">
         <h1>集成</h1>
-        <button className="btn-icon" type="button" onClick={() => navigate("/")} title="返回">
+        <button className="btn-icon" type="button" onClick={() => navigate("/feed")} title="返回订阅">
           <ArrowLeftIcon />
         </button>
       </header>

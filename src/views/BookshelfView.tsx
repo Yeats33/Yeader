@@ -11,25 +11,25 @@ export function BookshelfView({ item }: BookshelfViewProps) {
   if (!item) {
     return (
       <main className="right-panel">
-        <div className="right-panel-empty">Select a folder to browse</div>
+        <div className="right-panel-empty">选择一个书籍分组</div>
       </main>
     );
   }
 
-  const title = (item.title as string) ?? "Bookshelf";
+  const title = (item.title as string) ?? "书架";
   const items = (item.items as Array<Record<string, unknown>>) ?? [];
 
   return (
     <main className="right-panel">
       <div className="right-panel-header">
         <h2>{title}</h2>
-        <span className="item-count">{items.length} items</span>
+        <span className="item-count">{items.length} 项</span>
       </div>
 
       <div className="right-panel-scroll">
         <div className="bookshelf-grid">
           {items.length === 0 ? (
-            <div className="bookshelf-empty">Empty folder</div>
+            <div className="bookshelf-empty">暂无内容</div>
           ) : (
             items.map((entry) => {
               const entryTitle = (entry.title as string) ?? (entry.name as string) ?? "";

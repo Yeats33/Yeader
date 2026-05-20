@@ -29,14 +29,14 @@ export function LeftPanel({ sources, selectedSourceId, onSelectSource, onAddSour
     <aside className="left-panel">
       <div className="left-panel-header">
         <h2>Yeader</h2>
-        <button type="button" onClick={onAddSource} title="Add Source">
+        <button type="button" onClick={onAddSource} title="添加订阅源">
           +
         </button>
       </div>
 
       <div className="left-panel-scroll">
         <div className="panel-section">
-          <div className="panel-section-title">Collections</div>
+          <div className="panel-section-title">聚合</div>
           {VIRTUAL_COLLECTIONS.map((col) => (
             <div
               key={col.id}
@@ -50,7 +50,7 @@ export function LeftPanel({ sources, selectedSourceId, onSelectSource, onAddSour
         </div>
 
         <div className="panel-section">
-          <div className="panel-section-title">Sources</div>
+          <div className="panel-section-title">来源</div>
           {sources.length === 0 ? (
             <div style={{ padding: "12px 16px", fontSize: "13px", color: "var(--color-text-muted)" }}>
               暂无订阅。点击 + 添加 RSS/Atom，或从发现页加入书籍。

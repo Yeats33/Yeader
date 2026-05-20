@@ -263,7 +263,7 @@ export function SettingsPage() {
   return (
     <div className="page page-settings">
       <header className="page-header">
-        <button className="btn-icon" type="button" onClick={() => navigate("/")} title="返回">
+        <button className="btn-icon" type="button" onClick={() => navigate("/feed")} title="返回订阅">
           <ArrowLeftIcon />
         </button>
         <h1>设置</h1>

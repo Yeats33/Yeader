@@ -29,16 +29,16 @@ function NotFoundPage() {
     <div className="page">
       <h1>404</h1>
       <p>页面未找到</p>
-      <button type="button" onClick={() => navigate("/")}>返回首页</button>
+      <button type="button" onClick={() => navigate("/feed")}>返回订阅</button>
     </div>
   );
 }
 
 function CurrentRoutePage({ routePath }: { routePath: string }) {
+  if (routePath === "/" || routePath === "/feed") return <ThreePanelLayout />;
   // Deprecated route surface: keep mounted for compatibility until local EPUB
   // import moves to the downloadable Local EPUB plugin in YeaderHub.
-  if (routePath === "/" || routePath === "/library") return <BookshelfPage />;
-  if (routePath === "/feed") return <ThreePanelLayout />;
+  if (routePath === "/library") return <BookshelfPage />;
   if (routePath === "/discover") return <DiscoverPage />;
   const discoverParams = matchRoute("/discover/:sourceId", { path: routePath });
   if (discoverParams) {

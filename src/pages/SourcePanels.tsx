@@ -222,14 +222,14 @@ function DonateDialog({ source, onClose }: { source: YeaderSource; onClose: () =
         <div className="donate-publisher-card">
           <span className="donate-network-badge">{networkLabel}</span>
           <div>
-            <strong>{source.publisher ?? "Unknown publisher"}</strong>
+            <strong>{source.publisher ?? "未知发布者"}</strong>
             <span>{shortAddress(donateAddress)}</span>
           </div>
         </div>
 
         <div className="donate-qr-frame">
           <div className="donate-qr-surface">
-            {qrDataUrl ? <img src={qrDataUrl} alt="Donate QR code" /> : <span className="muted-text">二维码生成失败</span>}
+            {qrDataUrl ? <img src={qrDataUrl} alt="赞助二维码" /> : <span className="muted-text">二维码生成失败</span>}
           </div>
           <span>扫码转账或复制地址</span>
         </div>
@@ -431,7 +431,7 @@ export function SourceListTab({ sources }: { sources: YeaderSource[] }) {
                 <button className="btn-secondary" type="button" onClick={() => openSourceHomepage(visibleRawSource.homepage)}>打开主页</button>
               ) : null}
               {visibleRawSource.donateUrl ? (
-                <button className="source-donate-btn donate-action-primary" type="button" onClick={() => setDonationSource(visibleRawSource)}>Donate</button>
+                <button className="source-donate-btn donate-action-primary" type="button" onClick={() => setDonationSource(visibleRawSource)}>赞助</button>
               ) : null}
             </div>
           </div>
