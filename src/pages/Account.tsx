@@ -138,7 +138,7 @@ function AccountContent({ state, step, setStep }: {
   );
 }
 
-export function AccountPage() {
+export function AccountSettingsPanel() {
   const [state, setState] = useState<AuthState>(() => getSessionState());
   const [step, setStep] = useState<LoginStep>("idle");
 
@@ -185,6 +185,10 @@ export function AccountPage() {
     };
   }, []);
 
+  return <AccountContent state={state} step={step} setStep={setStep} />;
+}
+
+export function AccountPage() {
   return (
     <div className="page page-account">
       <header className="page-header">
@@ -192,7 +196,7 @@ export function AccountPage() {
       </header>
 
       <div id="account-content">
-        <AccountContent state={state} step={step} setStep={setStep} />
+        <AccountSettingsPanel />
       </div>
     </div>
   );

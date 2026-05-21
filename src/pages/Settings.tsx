@@ -13,6 +13,7 @@ import {
   type ThemeName,
 } from "../theme.ts";
 import { getDevModeStatus, toggleDevMode, getLogLines, openLogFile } from "../api.ts";
+import { AccountSettingsPanel } from "./Account.tsx";
 
 function ArrowLeftIcon() {
   return (
@@ -269,6 +270,9 @@ export function SettingsPage() {
         <h1>设置</h1>
       </header>
 
+      <SettingsSection title="账户">
+        <AccountSettingsPanel />
+      </SettingsSection>
       <AppearanceSettings />
       <DevModeSettings />
     </div>
